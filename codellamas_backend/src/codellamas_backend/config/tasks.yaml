@@ -1,0 +1,54 @@
+generate_full_exercise:
+  description: >
+    INPUTS:
+    - {topic}: The business domain for the Spring Boot project
+    - {code_smell}: A specific code smell that will be tested for this exercise
+
+    SECTION 1: PROBLEM GENERATION
+    1. Generate a small, realistic Java Spring Boot project based on {topic}.
+    2. Intentionally include the code smell {code_smell} in a way that students
+      are expected to identify and refactor
+    3. The code should reflect common student-level mistakes rather than
+      advanced architectural flaws
+    4. Limit scope:
+      - 2–4 classes
+      - Controller and service layers only
+      - No external APIs or databases (use in-memory data)
+    5. Clearly state the learning objectives and what students are expected to do
+
+    SECTION 2: TEST CASE GENERATION
+    1. Generate JUnit 5 test cases that define the correct external behavior
+    2. Tests should help students understand intended behavior, not trick them
+    3. Include:
+      - At least one normal case
+      - At least one edge or invalid input case
+    4. Use readable test names and simple assertions suitable for learners
+
+    SECTION 3: SOLUTION GENERATION
+    1. Provide a recommended refactored solution that removes {code_smell}
+    2. Show:
+      - The original (smelly) implementation
+      - The refactored implementation
+    3. Refactoring should:
+      - Preserve behavior
+      - Improve readability and structure
+      - Use concepts typically taught at undergraduate level
+    4. Ensure all provided tests pass
+
+    SECTION 4: REVIEW & PEDAGOGICAL CHECK
+    1. Review the problem, tests, and solution for correctness and clarity
+    2. Fix any inconsistencies or bugs
+    3. Provide a short contextual explanation that includes:
+      - What the code smell is
+      - Why it is a problem
+      - What students should learn from the refactoring
+
+    OUTPUT FORMAT:
+    1. Problem description and learning objectives
+    2. Original code (with code smell)
+    3. JUnit 5 test cases
+    4. Refactored solution
+    5. Short teaching explanation
+  expected_output: >
+    A complete, self-contained Spring Boot refactoring exercise suitable for university students
+  agent: all_in_one_agent

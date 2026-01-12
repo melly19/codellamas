@@ -1,0 +1,24 @@
+[project]
+name = "codellamas_backend"
+version = "0.1.0"
+description = "codellamas_backend using crewAI"
+authors = [{ name = "Your Name", email = "you@example.com" }]
+requires-python = ">=3.10,<3.14"
+dependencies = [
+    "crewai[tools]==1.8.0"
+]
+
+[project.scripts]
+codellamas_backend = "codellamas_backend.main:run"
+run_crew = "codellamas_backend.main:run"
+train = "codellamas_backend.main:train"
+replay = "codellamas_backend.main:replay"
+test = "codellamas_backend.main:test"
+run_with_trigger = "codellamas_backend.main:run_with_trigger"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.crewai]
+type = "crew"

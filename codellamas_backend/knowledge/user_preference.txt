@@ -1,0 +1,4 @@
+User is a Computer Science undergraduate.
+User is learning Java and Spring Boot.
+User is interested in practicing code smells and refactoring in the software engineering context.
+User is based in Singapore.
