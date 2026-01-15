@@ -6,19 +6,44 @@
   "engines": {
     "vscode": "^1.108.0"
   },
-  "categories": [
-    "Other"
+  "categories": ["Other"],
+
+  "activationEvents": [
+    "onView:codellamas_activityView",
+    "onCommand:code-llamas.helloWorld"
   ],
-  "activationEvents": [],
+
   "main": "./out/extension.js",
+
   "contributes": {
     "commands": [
       {
         "command": "code-llamas.helloWorld",
         "title": "Hello World"
       }
-    ]
+    ],
+
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "codellamas_activity",
+          "title": "CodeLlamas",
+          "icon": "media/code-llamas.png"
+        }
+      ]
+    },
+
+    "views": {
+      "codellamas_activity": [
+        {
+          "id": "codellamas_activityView",
+          "name": "Activity",
+          "type": "webview"
+        }
+      ]
+    }
   },
+
   "scripts": {
     "vscode:prepublish": "npm run compile",
     "compile": "tsc -p ./",
@@ -27,6 +52,7 @@
     "lint": "eslint src",
     "test": "vscode-test"
   },
+
   "devDependencies": {
     "@types/vscode": "^1.108.1",
     "@types/mocha": "^10.0.10",

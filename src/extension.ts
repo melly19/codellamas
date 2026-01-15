@@ -2,6 +2,8 @@
 // Import the module and reference it with the alias vscode in your code below
 import * as vscode from 'vscode';
 
+import { ActivityWebviewProvider } from './activityWebviewProvider';
+
 // This method is called when your extension is activated
 // Your extension is activated the very first time the command is executed
 export function activate(context: vscode.ExtensionContext) {
@@ -10,6 +12,15 @@ export function activate(context: vscode.ExtensionContext) {
 	// This line of code will only be executed once when your extension is activated
 	console.log('Congratulations, your extension "code-llamas" is now active!');
 
+
+	const provider = new ActivityWebviewProvider(context);
+
+	context.subscriptions.push(
+		vscode.window.registerWebviewViewProvider(
+			ActivityWebviewProvider.viewType,
+			provider
+		)
+	);
 	// The command has been defined in the package.json file
 	// Now provide the implementation of the command with registerCommand
 	// The commandId parameter must match the command field in package.json

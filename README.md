@@ -2,6 +2,9 @@
 
 This is the README for your extension "code-llamas". After writing up a brief description, we recommend including the following sections.
 
+# Credits
+<a href="https://www.flaticon.com/free-icons/llama" title="llama icons">Llama icons created by Icongeek26 - Flaticon</a>
+
 ## Features
 
 Describe specific features of your extension including screenshots of your extension in action. Image paths are relative to this README file.
