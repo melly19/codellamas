@@ -2,10 +2,11 @@
 name = "codellamas_backend"
 version = "0.1.0"
 description = "codellamas_backend using crewAI"
-authors = [{ name = "Your Name", email = "you@example.com" }]
+authors = [{ name = "Melanie Poon", email = "melaniehara1@gmail.com" }]
 requires-python = ">=3.10,<3.14"
 dependencies = [
-    "crewai[tools]==1.8.0"
+    "crewai[tools]==1.8.0",
+    "litellm>=1.75.3",
 ]
 
 [project.scripts]

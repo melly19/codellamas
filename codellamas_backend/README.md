@@ -18,9 +18,21 @@ Next, navigate to your project directory and install the dependencies:
 ```bash
 crewai install
 ```
+
+Lastly, install the Ollama model from your Terminal/Powershell:
+```bash
+ollama pull phi4
+ollama run phi4:latest
+```
+
+Use this command to check what models are currently running:
+```bash
+ollama ps
+```
+
 ### Customizing
 
-**Add your `OPENAI_API_KEY` into the `.env` file**
+**Add your `MODEL` and `API_BASE` into the `.env` file**
 
 - Modify `src/codellamas_backend/config/agents.yaml` to define your agents
 - Modify `src/codellamas_backend/config/tasks.yaml` to define your tasks
@@ -32,6 +44,7 @@ crewai install
 To kickstart your crew of AI agents and begin task execution, run this from the root folder of your project:
 
 ```bash
+$ uv add litellm
 $ crewai run
 ```
 

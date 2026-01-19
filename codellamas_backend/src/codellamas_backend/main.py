@@ -18,8 +18,8 @@ def run():
     Run the crew.
     """
     inputs = {
-        'topic': 'Shopping',
-        'code_smell': 'Long method'
+        'topic': 'Library',
+        'code_smell': 'Duplicate method'
     }
 
     try:
