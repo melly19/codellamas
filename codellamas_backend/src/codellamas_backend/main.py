@@ -13,19 +13,59 @@ warnings.filterwarnings("ignore", category=SyntaxWarning, module="pysbd")
 # Replace with inputs you want to test with, it will automatically
 # interpolate any tasks and agents information
 
-def run():
+def generate():
     """
-    Run the crew.
+    Step 1: Generate a new exercise.
     """
     inputs = {
-        'topic': 'Library',
-        'code_smell': 'Duplicate method'
+        'topic': 'Online Shopping',
+        'code_smell': 'Feature Envy'
     }
 
+    print(f"Generating exercise for {inputs['topic']}...")
+
     try:
-        CodellamasBackend().crew().kickoff(inputs=inputs)
+        result = CodellamasBackend().generation_crew().kickoff(inputs=inputs)
+        print("Exercise generated successfully!")
+        return result
     except Exception as e:
-        raise Exception(f"An error occurred while running the crew: {e}")
+        raise Exception(f"An error occurred while generating the exercise: {e}")
+
+
+def evaluate():
+    """
+    Step 2: Evaluate a student's solution.
+    """
+
+    inputs = {
+        'problem_description': 'asd',
+        'original_code': 'sdasd',
+        'student_code': '... (code passed from VS Code) ...',
+        'test_results': 'Tests passed: 5/5'
+    }
+
+    print("Evaluating student solution...")
+    
+    try:
+        result = CodellamasBackend().evaluation_crew().kickoff(inputs=inputs)
+        print("Evaluation completed!")
+        return result
+    except Exception as e:
+        raise Exception(f"An error occurred while evaluating the solution: {e}")
+
+# def run():
+#     """
+#     Run the crew.
+#     """
+#     inputs = {
+#         'topic': 'Library',
+#         'code_smell': 'Duplicate method'
+#     }
+
+#     try:
+#         CodellamasBackend().crew().kickoff(inputs=inputs)
+#     except Exception as e:
+#         raise Exception(f"An error occurred while running the crew: {e}")
 
 
 def train():

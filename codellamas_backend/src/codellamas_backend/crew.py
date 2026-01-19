@@ -23,9 +23,9 @@ class CodellamasBackend():
     # If you would like to add tools to your agents, you can learn more about it here:
     # https://docs.crewai.com/concepts/agents#agent-tools
     @agent
-    def all_in_one_agent(self) -> Agent:
+    def general_agent(self) -> Agent:
         return Agent(
-            config=self.agents_config['all_in_one_agent'], # type: ignore[index]
+            config=self.agents_config['general_agent'], # type: ignore[index]
             verbose=True
         )
 
@@ -33,21 +33,33 @@ class CodellamasBackend():
     # task dependencies, and task callbacks, check out the documentation:
     # https://docs.crewai.com/concepts/tasks#overview-of-a-task
     @task
-    def generate_full_exercise(self) -> Task:
+    def generate_exercise(self) -> Task:
         return Task(
-            config=self.tasks_config['generate_full_exercise'], # type: ignore[index]
+            config=self.tasks_config['generate_exercise'], # type: ignore[index]
+        )
+
+    @task
+    def review_solution(self) -> Task:
+        return Task(
+            config=self.tasks_config['review_solution'],
         )
 
     @crew
-    def crew(self) -> Crew:
-        """Creates the CodellamasBackend crew"""
-        # To learn how to add knowledge sources to your crew, check out the documentation:
-        # https://docs.crewai.com/concepts/knowledge#what-is-knowledge
-
+    def generation_crew(self) -> Crew:
+        """Creates the generation crew"""
         return Crew(
-            agents=self.agents, # Automatically created by the @agent decorator
-            tasks=self.tasks, # Automatically created by the @task decorator
+            agents=[self.agents_config['general_agent']],
+            tasks=[self.tasks_config['generate_exercise']],
             process=Process.sequential,
-            verbose=True,
-            # process=Process.hierarchical, # In case you wanna use that instead https://docs.crewai.com/how-to/Hierarchical/
+            verbose=True
+        )
+
+    @crew
+    def evaluation_crew(self) -> Crew:
+        """Creates the evaluation crew"""
+        return Crew(
+            agents=[self.agents_config['general_agent']],
+            tasks=[self.tasks_config['review_solution']],
+            process=Process.sequential,
+            verbose=True
         )
