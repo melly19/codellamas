@@ -26,7 +26,8 @@ class CodellamasBackend():
     def general_agent(self) -> Agent:
         return Agent(
             config=self.agents_config['general_agent'], # type: ignore[index]
-            verbose=True
+            verbose=True,
+            max_execution_time=180
         )
 
     # To learn more about structured task outputs,
@@ -48,18 +49,18 @@ class CodellamasBackend():
     def generation_crew(self) -> Crew:
         """Creates the generation crew"""
         return Crew(
-            agents=[self.agents_config['general_agent']],
-            tasks=[self.tasks_config['generate_exercise']],
+            agents=[self.general_agent()],
+            tasks=[self.generate_exercise()],
             process=Process.sequential,
             verbose=True
         )
 
     @crew
-    def evaluation_crew(self) -> Crew:
+    def review_crew(self) -> Crew:
         """Creates the evaluation crew"""
         return Crew(
-            agents=[self.agents_config['general_agent']],
-            tasks=[self.tasks_config['review_solution']],
+            agents=[self.general_agent()],
+            tasks=[self.review_solution()],
             process=Process.sequential,
             verbose=True
         )

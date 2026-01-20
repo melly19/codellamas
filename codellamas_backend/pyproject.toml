@@ -6,7 +6,9 @@ authors = [{ name = "Melanie Poon", email = "melaniehara1@gmail.com" }]
 requires-python = ">=3.10,<3.14"
 dependencies = [
     "crewai[tools]==1.8.0",
+    "fastapi>=0.128.0",
     "litellm>=1.75.3",
+    "pydantic>=2.11.10",
 ]
 
 [project.scripts]

@@ -15,7 +15,7 @@ warnings.filterwarnings("ignore", category=SyntaxWarning, module="pysbd")
 
 def generate():
     """
-    Step 1: Generate a new exercise.
+    Generate a new exercise.
     """
     inputs = {
         'topic': 'Online Shopping',
@@ -32,9 +32,9 @@ def generate():
         raise Exception(f"An error occurred while generating the exercise: {e}")
 
 
-def evaluate():
+def review():
     """
-    Step 2: Evaluate a student's solution.
+    Evaluate a student's solution.
     """
 
     inputs = {
@@ -47,7 +47,7 @@ def evaluate():
     print("Evaluating student solution...")
     
     try:
-        result = CodellamasBackend().evaluation_crew().kickoff(inputs=inputs)
+        result = CodellamasBackend().review_crew().kickoff(inputs=inputs)
         print("Evaluation completed!")
         return result
     except Exception as e:
