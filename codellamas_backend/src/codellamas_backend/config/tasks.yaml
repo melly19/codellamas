@@ -12,8 +12,7 @@ generate_exercise:
          advanced architectural flaws.
       4. Limit scope:
          - 2–4 classes
-         - Controller and service layers only
-         - No external APIs or databases (use in-memory data).
+         - No external APIs or databases
       5. Clearly state:
          - The refactoring task
          - Constraints (behavior must not change)
@@ -86,6 +85,7 @@ review_solution:
       2. Code quality review
       3. Actionable feedback
       4. Overall verdict
+      5. A rating of the solution out of 5
    expected_output: >
       An objective review of the student's refactoring, covering correctness,
       code quality, and adherence to refactoring principles.
