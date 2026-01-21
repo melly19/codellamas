@@ -167,10 +167,12 @@ async def evaluate_submission(body: EvaluateSubmissionRequest):
         "student_solution": "\n\n".join([f"### FILE: {f.path}\n{f.content}" for f in body.student_files]),
     }
 
+    llm = None
     try:
         review = CodellamasBackend().review_crew().kickoff(inputs=inputs)
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Review crew failed: {e}")
+        # raise HTTPException(status_code=500, detail=f"Review crew failed: {e}")
+        review = f"LLM review skipped: {e}"
 
     # 3) Return both execution result + LLM feedback
     return {
