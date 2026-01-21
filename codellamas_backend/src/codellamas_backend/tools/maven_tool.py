@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import shutil
+
 import os
 import re
 import subprocess
@@ -32,7 +34,7 @@ class MavenTool:
         timeout_sec: int = 120,
         quiet: bool = True,
     ):
-        self.mvn_cmd = mvn_cmd
+        self.mvn_cmd = mvn_cmd or self._detect_mvn()
         self.timeout_sec = timeout_sec
         self.quiet = quiet
 
@@ -94,6 +96,16 @@ class MavenTool:
                 errors=errors,
                 raw_log=raw,
             )
+
+    def _detect_mvn(self) -> str:
+        for candidate in ("mvn.cmd", "mvn.bat", "mvn"):
+            path = shutil.which(candidate)
+            if path:
+                return candidate
+        raise FileNotFoundError(
+            "Maven executable not found. Ensure Maven is installed and on PATH "
+            "(try running `mvn -version` in the same terminal)."
+        )
 
     def _safe_env(self) -> Dict[str, str]:
         """

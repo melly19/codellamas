@@ -1,6 +1,6 @@
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Literal, Any
 
 from codellamas_backend.crew import CodellamasBackend
 from codellamas_backend.tools.maven_tool import MavenTool
@@ -88,6 +88,9 @@ def _safe_json_extract(text: str) -> dict:
                 continue
     raise ValueError("Could not parse JSON from Crew output.")
 
+@app.get("/health")
+def health():
+    return {"ok": True}
 
 @app.post("/generate/exercise", response_model=GenerateExerciseResponse)
 async def generate_exercise(body: GenerateExerciseRequest):
@@ -138,7 +141,8 @@ async def generate_exercise(body: GenerateExerciseRequest):
 @app.post("/evaluate/submission")
 async def evaluate_submission(body: EvaluateSubmissionRequest):
     # 1) Run real mvn test in an isolated temp workspace
-    tool = MavenTool(mvn_cmd="mvn", timeout_sec=120, quiet=True)
+    # tool = MavenTool(mvn_cmd="mvn", timeout_sec=180, quiet=True)
+    tool = MavenTool(mvn_cmd = "mvn.cmd", timeout_sec=180, quiet=True)
 
     project_files = [FileLike(path=f.path, content=f.content) for f in body.project_files]
     student_files = [FileLike(path=f.path, content=f.content) for f in body.student_files]
