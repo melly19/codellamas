@@ -99,7 +99,6 @@ async def generate_exercise(body: GenerateExerciseRequest):
     inputs = {
         "topic": body.topic,
         # keep compatibility with existing YAML expecting `code_smell`
-        "code_smell": ", ".join(body.code_smells),
         "code_smells": body.code_smells,
         "seed": body.seed,
         # pack project context into a big string for the prompt (minimal for now)
@@ -187,8 +186,8 @@ async def evaluate_submission(body: EvaluateSubmissionRequest):
 
 
 class GenerateRequest(BaseModel):
-    topic: str = "Online Shopping"
-    code_smell: str = "Feature Envy"
+    topic: str
+    code_smells: List[str]
 
 
 class EvaluateRequest(BaseModel):
@@ -202,7 +201,7 @@ class EvaluateRequest(BaseModel):
 async def generate_exercise_legacy(body: GenerateRequest):
     upgraded = GenerateExerciseRequest(
         topic=body.topic,
-        code_smells=[body.code_smell],
+        code_smells=body.code_smells,
         project_files=[],
         mode="multi",
     )
