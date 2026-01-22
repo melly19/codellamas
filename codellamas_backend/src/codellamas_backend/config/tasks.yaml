@@ -95,8 +95,7 @@ generate_exercise:
   description: >
     INPUTS:
     - {topic}: Scenario theme (e.g., online shopping, traffic analysis)
-    - {code_smell}: A single code smell (legacy support)
-    - {code_smells}: A list of code smells (preferred)
+    - {code_smells}: A list of code smells
     - {seed}: Integer for reproducibility
     - {project_context}: The student's OPENED Maven Spring Boot project files (multiple files with paths + contents)
 
@@ -117,7 +116,7 @@ generate_exercise:
        - Use existing package names, class names, and project structure from project_context.
        - Choose 1–3 existing files to target (do not rewrite the whole project).
     2) Code smell alignment:
-       - Incorporate the selected smell(s) (use code_smells if present; else use code_smell).
+       - Incorporate the selected smell(s)
        - Ensure the "smelly" behavior exists in the CURRENT code (or introduce a small, realistic smell via minimal edits).
     3) Behavior preservation:
        - The refactor must preserve observable behavior.

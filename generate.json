@@ -1,5 +1,4 @@
 {
   "topic": "Library management",
-  "code_smells": ["duplicate code"],
-  "project_files": []
+  "code_smells": ["duplicate code"]
 }
