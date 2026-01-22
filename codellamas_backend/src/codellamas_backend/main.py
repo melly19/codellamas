@@ -18,8 +18,10 @@ def generate():
     Generate a new exercise.
     """
     inputs = {
-        'topic': 'Online Shopping',
-        'code_smell': 'Feature Envy'
+        "topic": "Online Shopping",
+        "code_smells": ["Feature Envy"],
+        "seed": 42,
+        "project_context": ""
     }
 
     print(f"Generating exercise for {inputs['topic']}...")
@@ -74,7 +76,9 @@ def train():
     """
     inputs = {
         'topic': 'Shopping',
-        'code_smell': 'Long method'
+        'code_smells': ['Long method'],
+        "seed": 42,
+        "project_context": ""
     }
     try:
         CodellamasBackend().crew().train(n_iterations=int(sys.argv[1]), filename=sys.argv[2], inputs=inputs)
@@ -98,7 +102,9 @@ def test():
     """
     inputs = {
         'topic': 'Shopping',
-        'code_smell': 'Long method'
+        'code_smells': ['Long method'],
+        "seed": 42,
+        "project_context": ""
     }
 
     try:
@@ -124,7 +130,9 @@ def run_with_trigger():
     inputs = {
         "crewai_trigger_payload": trigger_payload,
         "topic": "Shopping",
-        "code_smell": "Long method"
+        "code_smells": ["Long method"],
+        "seed": 42,
+        "project_context": ""
     }
 
     try:

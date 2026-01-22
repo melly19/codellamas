@@ -70,18 +70,20 @@ def _make_run_id() -> str:
 
 
 def _safe_json_extract(text: str) -> dict:
-    """
-    Very lightweight JSON extraction:
-    if your Crew output is already strict JSON, json.loads works.
-    If not, this tries to find the first {...} block.
-    """
     import json
-    start = text.find("{")
+    t = text.strip()
+
+    # 1) Best case: the whole output is JSON
+    if t.startswith("{") and t.endswith("}"):
+        return json.loads(t)
+
+    # 2) Fallback: find a JSON object inside larger text
+    start = t.find("{")
     if start == -1:
         raise ValueError("No JSON object found in Crew output.")
-    for end in range(len(text) - 1, start, -1):
-        if text[end] == "}":
-            candidate = text[start:end + 1]
+    for end in range(len(t) - 1, start, -1):
+        if t[end] == "}":
+            candidate = t[start:end + 1]
             try:
                 return json.loads(candidate)
             except Exception:
@@ -113,7 +115,26 @@ async def generate_exercise(body: GenerateExerciseRequest):
 
         # Expect your YAML task to output strict JSON with:
         # { problem_md, instructions_md, tests: {..}, solution: {..} }
-        obj = _safe_json_extract(raw_text)
+        try:
+            obj = _safe_json_extract(raw_text)
+        except Exception as e1:
+            repair_inputs = dict(inputs)
+            repair_inputs["non_json_output"] = raw_text
+            repair_raw = CodellamasBackend().repair_crew().kickoff(inputs=repair_inputs)
+            repair_text = str(repair_raw)
+            try:
+                obj = _safe_json_extract(repair_text)
+            except Exception as e2:
+                raise HTTPException(
+                    status_code=500,
+                    detail={
+                        "error": "Both generation and repair failed to produce JSON",
+                        "gen_error": str(e1),
+                        "repair_error": str(e2),
+                        "gen_output_head": raw_text[:2000],
+                        "repair_output_head": repair_text[:2000],
+                    },
+                )
 
         artifacts = GenerateExerciseArtifacts(
             problem_md=obj.get("problem_md", raw_text),
@@ -161,17 +182,18 @@ async def evaluate_submission(body: EvaluateSubmissionRequest):
         "original_code": body.original_code,
         "student_code": "\n\n".join([f"### FILE: {f.path}\n{f.content}" for f in body.student_files]),
         "test_results": test_result.raw_log_head(6000),
+        "seed": 42,
         # If your YAML uses these names instead:
         "tests": body.tests,
         "student_solution": "\n\n".join([f"### FILE: {f.path}\n{f.content}" for f in body.student_files]),
     }
 
-    llm = None
+    review_obj = None
     try:
-        review = CodellamasBackend().review_crew().kickoff(inputs=inputs)
+        review_raw = CodellamasBackend().review_crew().kickoff(inputs=inputs)
+        review_obj = _safe_json_extract(str(review_raw))
     except Exception as e:
-        # raise HTTPException(status_code=500, detail=f"Review crew failed: {e}")
-        review = f"LLM review skipped: {e}"
+        review_obj = {"error": f"LLM review failed: {e}"}
 
     # 3) Return both execution result + LLM feedback
     return {
@@ -180,7 +202,7 @@ async def evaluate_submission(body: EvaluateSubmissionRequest):
         "failed_tests": test_result.failed_tests,
         "errors": test_result.errors,
         "raw_log_head": test_result.raw_log_head(6000),
-        "llm_review": str(review),
+        "llm_review": review_obj,
     }
 
 
@@ -208,13 +230,30 @@ async def generate_exercise_legacy(body: GenerateRequest):
     return await generate_exercise(upgraded)
 
 
+# @app.post("/evaluate")
+# async def review_solution_legacy(body: EvaluateRequest):
+#     upgraded = EvaluateSubmissionRequest(
+#         problem_md=body.problem_description,
+#         student_files=[ProjectFile(path="STUDENT_CODE.java", content=body.student_code)],
+#     )
+#     return await evaluate_submission(upgraded)
+
 @app.post("/evaluate")
 async def review_solution_legacy(body: EvaluateRequest):
-    upgraded = EvaluateSubmissionRequest(
-        problem_md=body.problem_description,
-        student_files=[ProjectFile(path="STUDENT_CODE.java", content=body.student_code)],
-    )
-    return await evaluate_submission(upgraded)
+    inputs = {
+        "problem_description": body.problem_description,
+        "original_code": body.original_code,
+        "student_code": body.student_code,
+        "test_results": body.test_results,
+        "seed": 42,
+    }
+    try:
+        raw = CodellamasBackend().review_crew().kickoff(inputs=inputs)
+        # review_solution task is supposed to be strict JSON (your YAML already says that)
+        return _safe_json_extract(str(raw))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Review crew failed: {e}")
+
 
 
 @app.get("/")

@@ -43,6 +43,20 @@ class CodellamasBackend():
         )
 
     @task
+    def repair_exercise(self) -> Task:
+        return Task(config=self.tasks_config["repair_exercise"])  # type: ignore[index]
+
+    @crew
+    def repair_crew(self) -> Crew:
+        return Crew(
+            agents=[self.general_agent()],
+            tasks=[self.repair_exercise()],
+            process=Process.sequential,
+            verbose=True
+        )
+
+
+    @task
     def review_solution(self) -> Task:
         return Task(
             config=self.tasks_config['review_solution'],
