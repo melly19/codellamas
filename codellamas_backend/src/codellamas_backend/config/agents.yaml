@@ -25,5 +25,5 @@ general_agent:
 
     Student profile:
     - Undergraduate CS student learning Java + Spring Boot
-    - Practicing refactoring and code smells (Singapore context is fine but not required)
+    - Practicing refactoring and code smells in a supportive learning environment
   allow_delegation: false

@@ -1,92 +1,92 @@
 generate_exercise:
-  description: |
-    RETURN ONLY VALID JSON. NO MARKDOWN. NO EXTRA TEXT.
-    Start with "{" and end with "}".
-    All newlines inside strings must be escaped as "\n".
+   description: >
+      INPUTS:
+      - {topic}: The business domain for the Spring Boot project
+      - {code_smells}: Code smells that will be tested for this exercise
 
-    Inputs:
-    - topic: {topic}
-    - code_smells: {code_smells}
-    - seed: {seed}
-    - project_context: {project_context}
+      SECTION 1: PROBLEM GENERATION
+      1. Generate a small, realistic Java Spring Boot project based on {topic}.
+      2. Intentionally include the code smells {code_smells} in a way that students
+         are expected to identify and refactor.
+      3. The code should reflect common student-level mistakes rather than
+         advanced architectural flaws.
+      4. Limit scope:
+         - 2–4 classes
+         - No external APIs or databases
+      5. Clearly state:
+         - The refactoring task
+         - Constraints (behavior must not change)
 
-    You are generating a Java Spring Boot refactoring exercise for students.
-    Use ONE primary smell: if code_smells is non-empty, primary_smell = first element; else "General Refactoring".
+      SECTION 2: TEST CASE GENERATION
+      1. Generate JUnit 5 test cases that define the correct external behavior.
+      2. Tests must:
+         - Pass with the original implementation
+         - Pass with a correct refactoring.
+      3. Include:
+         - At least one normal case
+         - At least one edge or invalid input case.
+      4. Use readable test names and simple assertions suitable for advanced students.
 
-    REQUIRED JSON SCHEMA (exact keys):
-    {
-      "problem_md": "markdown string",
-      "instructions_md": "markdown string",
-      "tests": { "relative/path/Test.java": "file content" },
-      "solution": { "relative/path/File.java": "file content" },
-      "review_notes": "string"
-    }
+      SECTION 3: REFERENCE SOLUTION GENERATION
+      1. Provide a recommended refactored solution that removes {code_smells}.
+      2. Show:
+         - The original (smelly) implementation
+         - The refactored implementation.
+      3. Refactoring must:
+         - Preserve behavior
+         - Improve readability and structure
+         - Follow clean code principles taught at undergraduate level.
+      4. Ensure all provided tests pass.
 
-    Constraints:
-    - Keep changes small: 1–3 files in src/main/java/** and 1 file in src/test/java/**.
-    - Tests must be JUnit 5, runnable via "mvn test".
-    - No external dependencies (no DB, no network, no Spring context unless truly needed).
-    - Prefer using package names found in project_context; if missing assume com.example.demo.
-
-  expected_output: |
-    A single valid JSON object with keys: problem_md, instructions_md, tests, solution, review_notes.
-  agent: general_agent
-
-
-repair_exercise:
-  description: |
-    RETURN ONLY VALID JSON. NO MARKDOWN. NO EXTRA TEXT.
-    Start with "{" and end with "}".
-
-    Convert the text into a single JSON object with EXACT keys:
-    {
-      "problem_md": "markdown string",
-      "instructions_md": "markdown string",
-      "tests": { "path": "file content" },
-      "solution": { "path": "file content" },
-      "review_notes": "string"
-    }
-
-    Text to repair:
-    {non_json_output}
-
-    Rules:
-    - If missing, set strings to "" and maps to {}.
-    - tests and solution MUST be dicts of path -> full file contents.
-
-  expected_output: |
-    A single valid JSON object with the required keys.
-  agent: general_agent
-
+      OUTPUT FORMAT:
+      1. Problem description and constraints
+      2. Original code (with code smells)
+      3. JUnit 5 test cases
+      4. Recommended refactored solution
+   expected_output: >
+      A complete Spring Boot refactoring exercise with tests and a reference solution,
+      suitable for advanced university students.
+   agent: general_agent
 
 review_solution:
-  description: |
-    RETURN ONLY VALID JSON. NO MARKDOWN. NO EXTRA TEXT.
-    Start with "{" and end with "}".
+   description: >
+      INPUTS:
+      - {problem_description}: The original exercise description
+      - {original_code}: The initial code containing the code smells
+      - {tests}: JUnit 5 test cases defining expected behavior
+      - {student_solution}: The student's refactored code submission
 
-    Inputs:
-    - problem_description: {problem_description}
-    - original_code: {original_code}
-    - student_code: {student_code}
-    - test_results: {test_results}
-    - seed: {seed}
+      SECTION 1: FUNCTIONAL CORRECTNESS CHECK
+      1. Determine whether the student solution preserves the intended behavior.
+      2. Reason about whether all provided tests would pass.
+      3. Clearly state any functional regressions or violations.
 
-    Produce feedback comparing student_code to original_code and the test_results.
-    REQUIRED JSON SCHEMA:
-    {
-      "score": 0,
-      "passed_tests": [],
-      "failed_tests": [],
-      "feedback": "",
-      "suggestions": [],
-      "critical_issues": []
-    }
+      SECTION 2: CODE QUALITY REVIEW
+      1. Assess whether the targeted code smells has been adequately addressed.
+      2. Evaluate the solution based on clean code principles:
+         - Readability
+         - Separation of concerns
+         - Appropriate abstraction.
+      3. Accept multiple valid solutions if they adhere to good refactoring practices.
 
-    Rules:
-    - score is 0-100 integer.
-    - passed_tests/failed_tests should be inferred from test_results text.
-    - feedback should be concise and actionable.
+      SECTION 3: FEEDBACK GENERATION
+      1. Provide concise, constructive feedback covering:
+         - What was done well
+         - What could be improved.
+      2. Reference specific files or constructs where relevant.
+      3. Avoid teaching step-by-step refactoring; focus on review and evaluation.
 
-  expected_output: |
-    A single valid JSON object with keys: score, passed_tests, failed_tests, feedback, suggestions, critical_issues.
-  agent: general_agent
+      SECTION 4: SUMMARY ASSESSMENT
+      1. Provide a brief overall assessment of the submission.
+      2. Clearly indicate whether the solution is acceptable.
+
+      OUTPUT FORMAT:
+      1. Functional correctness assessment
+      2. Code quality review
+      3. Actionable feedback
+      4. Overall verdict
+      5. A rating of the solution out of 5
+   expected_output: >
+      An objective review of the student's refactoring, covering correctness,
+      code quality, and adherence to refactoring principles.
+   agent: general_agent

@@ -22,17 +22,9 @@ class GenerateExerciseRequest(BaseModel):
     project_files: List[ProjectFile] = Field(default_factory=list)
 
 
-class GenerateExerciseArtifacts(BaseModel):
-    problem_md: str
-    instructions_md: str = ""
-    tests: Dict[str, str] = Field(default_factory=dict)      # path -> content
-    solution: Dict[str, str] = Field(default_factory=dict)   # path -> content
-    review_notes: str = ""
-
-
 class GenerateExerciseResponse(BaseModel):
     run_id: str
-    artifacts: GenerateExerciseArtifacts
+    raw_output: str
     diagnostics: Dict[str, Any] = Field(default_factory=dict)
 
 
@@ -68,28 +60,6 @@ def _make_run_id() -> str:
     import uuid
     return str(uuid.uuid4())
 
-
-def _safe_json_extract(text: str) -> dict:
-    import json
-    t = text.strip()
-
-    # 1) Best case: the whole output is JSON
-    if t.startswith("{") and t.endswith("}"):
-        return json.loads(t)
-
-    # 2) Fallback: find a JSON object inside larger text
-    start = t.find("{")
-    if start == -1:
-        raise ValueError("No JSON object found in Crew output.")
-    for end in range(len(t) - 1, start, -1):
-        if t[end] == "}":
-            candidate = t[start:end + 1]
-            try:
-                return json.loads(candidate)
-            except Exception:
-                continue
-    raise ValueError("Could not parse JSON from Crew output.")
-
 @app.get("/health")
 def health():
     return {"ok": True}
@@ -113,50 +83,18 @@ async def generate_exercise(body: GenerateExerciseRequest):
         raw_result = CodellamasBackend().generation_crew().kickoff(inputs=inputs)
         raw_text = str(raw_result)
 
-        # Expect your YAML task to output strict JSON with:
-        # { problem_md, instructions_md, tests: {..}, solution: {..} }
-        try:
-            obj = _safe_json_extract(raw_text)
-        except Exception as e1:
-            repair_inputs = dict(inputs)
-            repair_inputs["non_json_output"] = raw_text
-            repair_raw = CodellamasBackend().repair_crew().kickoff(inputs=repair_inputs)
-            repair_text = str(repair_raw)
-            try:
-                obj = _safe_json_extract(repair_text)
-            except Exception as e2:
-                raise HTTPException(
-                    status_code=500,
-                    detail={
-                        "error": "Both generation and repair failed to produce JSON",
-                        "gen_error": str(e1),
-                        "repair_error": str(e2),
-                        "gen_output_head": raw_text[:2000],
-                        "repair_output_head": repair_text[:2000],
-                    },
-                )
-
-        artifacts = GenerateExerciseArtifacts(
-            problem_md=obj.get("problem_md", raw_text),
-            instructions_md=obj.get("instructions_md", ""),
-            tests=obj.get("tests", {}) or {},
-            solution=obj.get("solution", {}) or {},
-            review_notes=obj.get("review_notes", ""),
-        )
-
         return GenerateExerciseResponse(
             run_id=run_id,
-            artifacts=artifacts,
+            raw_output=raw_text,
             diagnostics={
                 "mode": body.mode,
                 "seed": body.seed,
-                "notes": "Execution/debug loop not wired yet (next step: Maven tool).",
+                "notes": "Returning raw LLM output (no JSON parsing / repair).",
             },
         )
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-
 
 @app.post("/evaluate/submission")
 async def evaluate_submission(body: EvaluateSubmissionRequest):
@@ -188,12 +126,14 @@ async def evaluate_submission(body: EvaluateSubmissionRequest):
         "student_solution": "\n\n".join([f"### FILE: {f.path}\n{f.content}" for f in body.student_files]),
     }
 
-    review_obj = None
+    review_text = ""
+
     try:
         review_raw = CodellamasBackend().review_crew().kickoff(inputs=inputs)
-        review_obj = _safe_json_extract(str(review_raw))
+        review_text = str(review_raw)
     except Exception as e:
-        review_obj = {"error": f"LLM review failed: {e}"}
+        review_text = f"LLM review failed: {e}"
+
 
     # 3) Return both execution result + LLM feedback
     return {
@@ -202,7 +142,7 @@ async def evaluate_submission(body: EvaluateSubmissionRequest):
         "failed_tests": test_result.failed_tests,
         "errors": test_result.errors,
         "raw_log_head": test_result.raw_log_head(6000),
-        "llm_review": review_obj,
+        "feedback": review_text,
     }
 
 
@@ -229,15 +169,6 @@ async def generate_exercise_legacy(body: GenerateRequest):
     )
     return await generate_exercise(upgraded)
 
-
-# @app.post("/evaluate")
-# async def review_solution_legacy(body: EvaluateRequest):
-#     upgraded = EvaluateSubmissionRequest(
-#         problem_md=body.problem_description,
-#         student_files=[ProjectFile(path="STUDENT_CODE.java", content=body.student_code)],
-#     )
-#     return await evaluate_submission(upgraded)
-
 @app.post("/evaluate")
 async def review_solution_legacy(body: EvaluateRequest):
     inputs = {
@@ -249,11 +180,9 @@ async def review_solution_legacy(body: EvaluateRequest):
     }
     try:
         raw = CodellamasBackend().review_crew().kickoff(inputs=inputs)
-        # review_solution task is supposed to be strict JSON (your YAML already says that)
-        return _safe_json_extract(str(raw))
+        return {"feedback": str(raw)}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Review crew failed: {e}")
-
 
 
 @app.get("/")

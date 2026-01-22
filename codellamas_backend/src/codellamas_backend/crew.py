@@ -28,7 +28,7 @@ class CodellamasBackend():
     def general_agent(self) -> Agent:
         return Agent(
             config=self.agents_config['general_agent'], # type: ignore[index]
-            llm=LLM(model="ollama/tinyllama", base_url="http://localhost:11434"),
+            llm=LLM(model="ollama/phi4", base_url="http://localhost:11434"),
             verbose=True,
             max_execution_time=300
         )
@@ -41,20 +41,6 @@ class CodellamasBackend():
         return Task(
             config=self.tasks_config['generate_exercise'], # type: ignore[index]
         )
-
-    @task
-    def repair_exercise(self) -> Task:
-        return Task(config=self.tasks_config["repair_exercise"])  # type: ignore[index]
-
-    @crew
-    def repair_crew(self) -> Crew:
-        return Crew(
-            agents=[self.general_agent()],
-            tasks=[self.repair_exercise()],
-            process=Process.sequential,
-            verbose=True
-        )
-
 
     @task
     def review_solution(self) -> Task:
