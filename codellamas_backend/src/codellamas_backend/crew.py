@@ -1,4 +1,4 @@
-from crewai import Agent, Crew, Process, Task
+from crewai import Agent, Crew, Process, Task, LLM
 from crewai.project import CrewBase, agent, crew, task
 from crewai.agents.agent_builder.base_agent import BaseAgent
 from typing import List
@@ -9,6 +9,7 @@ from typing import List
 
 @CrewBase
 class CodellamasBackend():
+
     """CodellamasBackend crew"""
 
     agents: List[BaseAgent]
@@ -27,7 +28,7 @@ class CodellamasBackend():
     def general_agent(self) -> Agent:
         return Agent(
             config=self.agents_config['general_agent'], # type: ignore[index]
-            llm="ollama/phi4",
+            llm=LLM(model="ollama/phi4", base_url="http://localhost:11434"),
             verbose=True,
             max_execution_time=300
         )
