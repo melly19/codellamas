@@ -93,11 +93,17 @@
 
 generate_exercise:
   description: >
+
+    YOU MUST OUTPUT ONLY A SINGLE JSON OBJECT AND NOTHING ELSE.
+    Do not explain. Do not include headings. Do not include markdown fences.
+    If you output anything other than JSON, the system will treat it as a failure.
+    Start your response with "{" and end with "}".
+
     INPUTS:
     - {topic}: Scenario theme (e.g., online shopping, traffic analysis)
     - {code_smells}: A list of code smells
     - {seed}: Integer for reproducibility
-    - {project_context}: The student's OPENED Maven Spring Boot project files (multiple files with paths + contents)
+    - {project_context}: The student's OPENED Maven Spring Boot project files
 
     GOAL:
     Generate a refactoring/code review exercise grounded in the provided project_context.

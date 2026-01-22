@@ -28,7 +28,7 @@ class CodellamasBackend():
     def general_agent(self) -> Agent:
         return Agent(
             config=self.agents_config['general_agent'], # type: ignore[index]
-            llm=LLM(model="ollama/phi4", base_url="http://localhost:11434"),
+            llm=LLM(model="ollama/tinyllama", base_url="http://localhost:11434"),
             verbose=True,
             max_execution_time=300
         )
