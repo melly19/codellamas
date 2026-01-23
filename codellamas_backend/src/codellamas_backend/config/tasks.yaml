@@ -11,8 +11,11 @@ generate_exercise:
       3. The code should reflect common student-level mistakes rather than
          advanced architectural flaws.
       4. Limit scope:
-         - 2–4 classes
+         - 2–4 classes (eg. Product.java, Account.java)
+         - 1 controller
+         - 1 service
          - No external APIs or databases
+         - All generated Java files should be packaged properly.
       5. Clearly state:
          - The refactoring task
          - Constraints (behavior must not change)
@@ -21,17 +24,19 @@ generate_exercise:
       1. Generate JUnit 5 test cases that define the correct external behavior.
       2. Tests must:
          - Pass with the original implementation
-         - Pass with a correct refactoring.
+         - Pass with a correct refactoring
+         - Be unchanged before and after refactoring
       3. Include:
          - At least one normal case
          - At least one edge or invalid input case.
       4. Use readable test names and simple assertions suitable for advanced students.
+      5. Tests should be packaged accordingly.
 
       SECTION 3: REFERENCE SOLUTION GENERATION
       1. Provide a recommended refactored solution that removes {code_smell}.
       2. Show:
          - The original (smelly) implementation
-         - The refactored implementation.
+         - Only the refactored implementation. Don't show any segments of code that remain unchanged.
       3. Refactoring must:
          - Preserve behavior
          - Improve readability and structure
@@ -53,13 +58,12 @@ review_solution:
       INPUTS:
       - {problem_description}: The original exercise description
       - {original_code}: The initial code containing the code smell
-      - {tests}: JUnit 5 test cases defining expected behavior
-      - {student_solution}: The student's refactored code submission
+      - {student_code}: The student's refactored code submission
+      - {test_results}: JUnit 5 test case results (pass or fail)
 
       SECTION 1: FUNCTIONAL CORRECTNESS CHECK
       1. Determine whether the student solution preserves the intended behavior.
-      2. Reason about whether all provided tests would pass.
-      3. Clearly state any functional regressions or violations.
+      2. Clearly state any functional regressions or violations.
 
       SECTION 2: CODE QUALITY REVIEW
       1. Assess whether the targeted code smell has been adequately addressed.

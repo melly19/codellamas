@@ -32,7 +32,7 @@ async def generate_exercise(body: GenerateRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@app.post("/evaluate")
+@app.post("/review")
 async def review_solution(body: EvaluateRequest):
     inputs = {
         "problem_description": body.problem_description,
