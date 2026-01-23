@@ -1,14 +1,3 @@
-### Thought
-
-To design an effective learning exercise that focuses on identifying and refactoring the "Feature Envy" code smell in a Spring Boot project, I'll follow these steps:
-1. **Project Setup**: Create a small, realistic Java Spring Boot application related to online shopping with 2–4 classes.
-2. **Introduce Feature Envy**: Implement a specific instance of Feature Envy that is commonly made by students and is easily identifiable.
-3. **Define the Refactoring Task**: Clearly state what needs to be refactored, emphasizing maintaining existing behavior.
-4. **Test Case Generation**: Write JUnit 5 test cases that cover both normal operations and edge cases to ensure behavior is unchanged post-refactor.
-5. **Reference Solution**: Provide a refactored solution following best practices for clean code.
-
-### Final Answer
-
 #### Problem Description and Constraints
 **Business Domain:** Online Shopping  
 **Code Smell:** Feature Envy
