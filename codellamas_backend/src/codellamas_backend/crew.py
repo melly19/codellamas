@@ -30,7 +30,7 @@ class CodellamasBackend():
             config=self.agents_config['general_agent'], # type: ignore[index]
             llm=LLM(model="ollama/phi4", base_url="http://localhost:11434"),
             verbose=True,
-            max_execution_time=300
+            max_execution_time=3000
         )
 
     # To learn more about structured task outputs,
