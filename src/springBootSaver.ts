@@ -1,4 +1,3 @@
-// springBootSaver.ts
 import * as vscode from "vscode";
 import * as fs from "fs";
 import * as path from "path";
@@ -6,7 +5,8 @@ import * as path from "path";
 export async function saveToSpringBootProject(
   topic: string,
   smells: string[],
-  questions: string, // AI-generated Java code
+  questionCode: string, // AI-generated main class code
+  //testCode: string, // AI-generated test case code
   panel: vscode.WebviewPanel
 ) {
   const workspaceFolder = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
@@ -16,8 +16,9 @@ export async function saveToSpringBootProject(
   }
 
   try {
-    // Detect src/main/java
+    // Detect src/main/java and src/test/java
     const srcMainJava = path.join(workspaceFolder, "src", "main", "java");
+    const srcTestJava = path.join(workspaceFolder, "src", "test", "java");
     const mainClass = findSpringBootMainClass(srcMainJava);
     if (!mainClass) {
       vscode.window.showErrorMessage("Could not find Spring Boot main class.");
@@ -31,30 +32,42 @@ export async function saveToSpringBootProject(
     }
 
     const packagePath = path.join(srcMainJava, ...packageName.split("."));
+    const testPackagePath = path.join(srcTestJava, ...packageName.split("."));
+    
+    // Create directories for main class and test case
     fs.mkdirSync(packagePath, { recursive: true });
+    fs.mkdirSync(testPackagePath, { recursive: true });
 
-    // Extract public class name from AI-generated code
-    const className = extractPublicClassName(questions);
+    // Extract public class name from AI-generated question code
+    const className = extractPublicClassName(questionCode);
     const javaFilePath = path.join(packagePath, `${className}.java`);
+    const testFilePath = path.join(testPackagePath, `${className}Test.java`);
 
-    // Wrap AI code in package declaration
-    const javaContent = `
-package ${packageName};
+    // Wrap AI code in package declaration for main class
+    const javaContent = `package ${packageName};
 
-${questions}
+${questionCode}
     `.trim();
 
-    fs.writeFileSync(javaFilePath, javaContent, "utf8");
+    // Wrap AI code in package declaration for the test case
+  //   const testContent = `package com.example.${packageName};
 
-    vscode.window.showInformationMessage(`Java file created at ${javaFilePath}`);
+  //   ${testCode}
+  //   `.trim();
+
+    // Write both main class and test case files
+    fs.writeFileSync(javaFilePath, javaContent, "utf8");
+  //   fs.writeFileSync(testFilePath, testContent, "utf8");
+
+    vscode.window.showInformationMessage(`Java files created at ${javaFilePath} and ${testFilePath}`);
 
     panel.webview.postMessage({
       type: "response",
-      data: { topic, smells, question: `Saved to ${javaFilePath}` },
+      data: { topic, smells, question: `Saved to ${javaFilePath} and ${testFilePath}` },
     });
   } catch (err) {
     console.error(err);
-    vscode.window.showErrorMessage("Failed to save Java file to Spring Boot project");
+    vscode.window.showErrorMessage("Failed to save Java files to Spring Boot project");
   }
 }
 
