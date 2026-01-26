@@ -7,8 +7,8 @@ app = FastAPI()
 
 
 class GenerateRequest(BaseModel):
-    topic: str = "Online Shopping"
-    code_smell: str = "Feature Envy"
+    topic: str
+    code_smell: str
 
 
 class EvaluateRequest(BaseModel):
@@ -16,6 +16,8 @@ class EvaluateRequest(BaseModel):
     original_code: str
     student_code: str
     test_results: str
+    reference_solution: str
+    code_smell: str
 
 
 @app.post("/generate")
@@ -39,6 +41,8 @@ async def review_solution(body: EvaluateRequest):
         "original_code": body.original_code,
         "student_code": body.student_code,
         "test_results": body.test_results,
+        "reference_solution": body.reference_solution,
+        "code_smell": body.code_smell
     }
 
     try:
