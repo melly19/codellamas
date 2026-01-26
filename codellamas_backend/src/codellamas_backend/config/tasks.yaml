@@ -57,7 +57,7 @@ generate_exercise:
       4. Recommended refactored solution
    expected_output: >
       A complete Spring Boot refactoring exercise with tests and a reference solution,
-      suitable for advanced university students.
+      suitable for undergraduate university students.
    agent: general_agent
 
 review_solution:

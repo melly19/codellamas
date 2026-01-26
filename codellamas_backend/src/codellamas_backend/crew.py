@@ -27,7 +27,7 @@ class CodellamasBackend():
         return Agent(
             config=self.agents_config['general_agent'], # type: ignore[index]
             verbose=True,
-            max_execution_time=300
+            # max_execution_time=300
         )
 
     # To learn more about structured task outputs,
