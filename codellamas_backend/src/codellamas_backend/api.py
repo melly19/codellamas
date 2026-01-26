@@ -124,6 +124,8 @@ async def evaluate_submission(body: EvaluateSubmissionRequest):
         # If your YAML uses these names instead:
         "tests": body.tests,
         "student_solution": "\n\n".join([f"### FILE: {f.path}\n{f.content}" for f in body.student_files]),
+        
+        # TODO: Add code smell and reference solution to be ingested as inputs
     }
 
     review_text = ""
