@@ -176,6 +176,8 @@ async def review_solution_legacy(body: EvaluateRequest):
         "original_code": body.original_code,
         "student_code": body.student_code,
         "test_results": body.test_results,
+        "reference_solution": body.reference_solution,
+        "code_smell": body.code_smell,
         "seed": 42,
     }
     try:

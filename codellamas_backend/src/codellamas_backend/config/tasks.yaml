@@ -2,17 +2,20 @@ generate_exercise:
    description: >
       INPUTS:
       - {topic}: The business domain for the Spring Boot project
-      - {code_smells}: Code smells that will be tested for this exercise
+      - {code_smell}: A specific code smell that will be tested for this exercise
 
       SECTION 1: PROBLEM GENERATION
       1. Generate a small, realistic Java Spring Boot project based on {topic}.
-      2. Intentionally include the code smells {code_smells} in a way that students
+      2. Intentionally include the code smell {code_smell} in a way that students
          are expected to identify and refactor.
       3. The code should reflect common student-level mistakes rather than
          advanced architectural flaws.
       4. Limit scope:
-         - 2–4 classes
+         - 2–4 classes (eg. Product.java, Account.java)
+         - 1 controller
+         - 1 service
          - No external APIs or databases
+         - All generated Java files should be packaged properly.
       5. Clearly state:
          - The refactoring task
          - Constraints (behavior must not change)
@@ -21,17 +24,19 @@ generate_exercise:
       1. Generate JUnit 5 test cases that define the correct external behavior.
       2. Tests must:
          - Pass with the original implementation
-         - Pass with a correct refactoring.
+         - Pass with a correct refactoring
+         - Be unchanged before and after refactoring
       3. Include:
          - At least one normal case
          - At least one edge or invalid input case.
       4. Use readable test names and simple assertions suitable for advanced students.
+      5. Tests should be packaged accordingly.
 
       SECTION 3: REFERENCE SOLUTION GENERATION
-      1. Provide a recommended refactored solution that removes {code_smells}.
+      1. Provide a recommended refactored solution that removes {code_smell}.
       2. Show:
          - The original (smelly) implementation
-         - The refactored implementation.
+         - Only the refactored implementation. Don't show any segments of code that remain unchanged.
       3. Refactoring must:
          - Preserve behavior
          - Improve readability and structure
@@ -40,7 +45,7 @@ generate_exercise:
 
       OUTPUT FORMAT:
       1. Problem description and constraints
-      2. Original code (with code smells)
+      2. Original code (with code smell)
       3. JUnit 5 test cases
       4. Recommended refactored solution
    expected_output: >
@@ -52,17 +57,18 @@ review_solution:
    description: >
       INPUTS:
       - {problem_description}: The original exercise description
-      - {original_code}: The initial code containing the code smells
-      - {tests}: JUnit 5 test cases defining expected behavior
-      - {student_solution}: The student's refactored code submission
+      - {original_code}: The initial code containing the code smell
+      - {student_code}: The student's refactored code submission
+      - {test_results}: JUnit 5 test case results (pass or fail)
+      - {reference_solution}: A model solution for the refactoring task
+      - {code_smell}: The code smell that was tested for the task
 
       SECTION 1: FUNCTIONAL CORRECTNESS CHECK
       1. Determine whether the student solution preserves the intended behavior.
-      2. Reason about whether all provided tests would pass.
-      3. Clearly state any functional regressions or violations.
+      2. Clearly state any functional regressions or violations.
 
       SECTION 2: CODE QUALITY REVIEW
-      1. Assess whether the targeted code smells has been adequately addressed.
+      1. Assess whether the targeted code smell has been adequately addressed.
       2. Evaluate the solution based on clean code principles:
          - Readability
          - Separation of concerns
