@@ -157,6 +157,8 @@ class EvaluateRequest(BaseModel):
     original_code: str
     student_code: str
     test_results: str
+    reference_solution: str
+    code_smell: str
 
 
 @app.post("/generate")
