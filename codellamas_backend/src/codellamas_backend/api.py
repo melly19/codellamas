@@ -9,6 +9,7 @@ app = FastAPI()
 class GenerateRequest(BaseModel):
     topic: str
     code_smell: str
+    existing_codebase: str = "NONE"
 
 
 class EvaluateRequest(BaseModel):
@@ -25,6 +26,7 @@ async def generate_exercise(body: GenerateRequest):
     inputs = {
         "topic": body.topic,
         "code_smell": body.code_smell,
+        "existing_codebase": body.existing_codebase
     }
 
     try:
