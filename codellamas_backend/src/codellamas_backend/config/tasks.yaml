@@ -2,7 +2,7 @@ generate_exercise:
    description: >
       INPUTS:
       - {topic}: The business domain for the Spring Boot project (e.g., "e-commerce inventory")
-      - {code_smell}: A specific code smell that will be tested for this exercise (e.g., "Long Method")
+      - {code_smells}: A list of specific code smells that will be tested for this exercise (e.g., "Long Method")
       - {existing_codebase}: OPTIONAL. A structured string containing the file paths and content of an existing Spring Boot project. Use "NONE" if a new project should be generated.
 
       SECTION 1: PROJECT AND PROBLEM GENERATION
@@ -18,7 +18,7 @@ generate_exercise:
             c. The exercise must be generated within the context of the existing project.
 
       2. **Code Smell Injection (Applicable to both new and existing projects):**
-         - Intentionally include the code smell {code_smell} in a way that students are expected to identify and refactor.
+         - Intentionally include the code smells {code_smells} in a way that students are expected to identify and refactor.
          - For existing projects, the injection should be subtle and fit naturally into the existing code logic.
          - The code should reflect common student-level mistakes rather than advanced architectural flaws.
 
@@ -26,6 +26,7 @@ generate_exercise:
          - Clearly state:
             - The refactoring task
             - Constraints (behavior must not change)
+         - Never write any comments.
 
       SECTION 2: TEST CASE GENERATION
       1. Generate JUnit 5 test cases that define the correct external behavior.
@@ -40,7 +41,7 @@ generate_exercise:
       5. Tests should be packaged accordingly.
 
       SECTION 3: REFERENCE SOLUTION GENERATION
-      1. Provide a recommended refactored solution that removes {code_smell}.
+      1. Provide a recommended refactored solution that removes {code_smells}.
       2. Show:
          - The original (smelly) implementation (only the files/segments that contain the smell)
          - Only the refactored implementation. Don't show any segments of code that remain unchanged.
@@ -56,8 +57,8 @@ generate_exercise:
       3. JUnit 5 test cases
       4. Recommended refactored solution
    expected_output: >
-      A complete Spring Boot refactoring exercise with tests and a reference solution,
-      suitable for undergraduate university students.
+      A structured JSON object containing the problem description, project files with their package paths, 
+      test files, and a reference solution.
    agent: general_agent
 
 review_solution:
@@ -68,7 +69,7 @@ review_solution:
       - {student_code}: The student's refactored code submission
       - {test_results}: JUnit 5 test case results (pass or fail)
       - {reference_solution}: A model solution for the refactoring task
-      - {code_smell}: The code smell that was tested for the task
+      - {code_smells}: The code smells that were tested for the task
 
       SECTION 1: FUNCTIONAL CORRECTNESS CHECK
       1. Determine whether the student solution preserves the intended behavior.
