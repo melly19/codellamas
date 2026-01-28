@@ -2,50 +2,45 @@ from crewai import Agent, Crew, Process, Task, LLM
 from crewai.project import CrewBase, agent, crew, task
 from crewai.agents.agent_builder.base_agent import BaseAgent
 from typing import List
+from pydantic import BaseModel, Field
 
-# If you want to run a snippet of code before or after the crew starts,
-# you can use the @before_kickoff and @after_kickoff decorators
-# https://docs.crewai.com/concepts/crews#example-crew-class-with-decorators
+class ProjectFile(BaseModel):
+    path: str = Field(..., description="Relative path including package (e.g., 'src/main/java/com/example/demo/App.java')")
+    content: str
+
+class SpringBootExercise(BaseModel):
+    problem_description: str
+    project_files: List[ProjectFile]
+    test_files: List[ProjectFile]
+    reference_solution_markdown: str
 
 @CrewBase
 class CodellamasBackend():
 
     """CodellamasBackend crew"""
 
-    agents: List[BaseAgent]
-    tasks: List[Task]
-
     agents_config = "config/agents.yaml"
     tasks_config = "config/tasks.yaml"
 
-    # Learn more about YAML configuration files here:
-    # Agents: https://docs.crewai.com/concepts/agents#yaml-configuration-recommended
-    # Tasks: https://docs.crewai.com/concepts/tasks#yaml-configuration-recommended
-    
-    # If you would like to add tools to your agents, you can learn more about it here:
-    # https://docs.crewai.com/concepts/agents#agent-tools
     @agent
     def general_agent(self) -> Agent:
         return Agent(
             config=self.agents_config['general_agent'], # type: ignore[index]
             llm=LLM(model="ollama/phi4", base_url="http://localhost:11434"),
             verbose=True,
-            max_execution_time=3000
         )
 
-    # To learn more about structured task outputs,
-    # task dependencies, and task callbacks, check out the documentation:
-    # https://docs.crewai.com/concepts/tasks#overview-of-a-task
     @task
     def generate_exercise(self) -> Task:
         return Task(
             config=self.tasks_config['generate_exercise'], # type: ignore[index]
+            output_json=SpringBootExercise
         )
 
     @task
     def review_solution(self) -> Task:
         return Task(
-            config=self.tasks_config['review_solution'],
+            config=self.tasks_config['review_solution'], # type: ignore[index]
         )
 
     @crew
