@@ -1,34 +1,49 @@
 # CodellamasBackend Crew
 
-Welcome to the CodellamasBackend Crew project, powered by [crewAI](https://crewai.com). This template is designed to help you set up a multi-agent AI system with ease, leveraging the powerful and flexible framework provided by crewAI. Our goal is to enable your agents to collaborate effectively on complex tasks, maximizing their collective intelligence and capabilities.
+Welcome to the CodellamasBackend Crew project, powered by [crewAI](https://crewai.com).
 
 ## Installation
 
-Ensure you have Python >=3.10 <3.14 installed on your system. This project uses [UV](https://docs.astral.sh/uv/) for dependency management and package handling, offering a seamless setup and execution experience.
+Ensure you have Python >=3.10 <3.14 installed on your system. This project uses [UV](https://docs.astral.sh/uv/) 
+
+
 
 First, if you haven't already, install uv:
-
 ```bash
 pip install uv
+pip3 instal uv #Mac
 ```
 
-Next, navigate to your project directory and install the dependencies:
-
-(Optional) Lock the dependencies and install them by using the CLI command:
+Next, navigate to your project directory and install the dependencies
+crewai install will create virtual environment:
 ```bash
+cd backend
 crewai install
+uv add litellm
 ```
 
-Lastly, install the Ollama model from your Terminal/Powershell:
+activate the 
+```bash
+source .venv/bin/activate  #FOR MAC
+.venv\Scripts\activate     #FOR WINDOWS
+```
+
+In a separate terminal run:
 ```bash
 ollama pull phi4
 ollama run phi4:latest
 ```
-
-Use this command to check what models are currently running:
+To Check what models are currently running:
 ```bash
 ollama ps
 ```
+
+Run the backend with uvicorn
+```bash
+cd src/codellamas_backend
+uvicorn api:app
+```
+
 
 ### Customizing
 
