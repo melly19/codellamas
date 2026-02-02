@@ -230,7 +230,7 @@ private async fetchAiQuestionsFromBackend(topic: string, smells: string[]): Prom
         <input id="topic" type="text" placeholder="Enter topic" />
 
         <div class="submit-container">
-          <button onclick="submit()">Submit</button>
+          <button onclick="submit()">Generate Questions</button>
         </div>
 
         <script>

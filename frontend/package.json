@@ -6,16 +6,15 @@
   "engines": {
     "vscode": "^1.108.0"
   },
-  "categories": ["Other"],
-
+  "categories": [
+    "Other"
+  ],
   "activationEvents": [
     "onView:codellamas_activityView",
     "onCommand:code-llamas.helloWorld",
     "onCommand:code-llamas.submitCode"
-  ],
-
+    ],
   "main": "./out/extension.js",
-
   "contributes": {
     "commands": [
       {
@@ -23,12 +22,11 @@
         "title": "Hello World"
       },
       {
-        "command": "code-llamas.submitCode", 
+        "command": "code-llamas.submitCode",
         "title": "Submit Code",
         "icon": "$(cloud-upload)"
       }
     ],
-
     "menus": {
       "editor/title": [
         {
@@ -38,7 +36,6 @@
         }
       ]
     },
-
     "viewsContainers": {
       "activitybar": [
         {
@@ -48,7 +45,6 @@
         }
       ]
     },
-
     "views": {
       "codellamas_activity": [
         {
@@ -59,7 +55,6 @@
       ]
     }
   },
-
   "scripts": {
     "vscode:prepublish": "npm run compile",
     "compile": "tsc -p ./",
@@ -68,15 +63,18 @@
     "lint": "eslint src",
     "test": "vscode-test"
   },
-
   "devDependencies": {
-    "@types/vscode": "^1.108.1",
     "@types/mocha": "^10.0.10",
     "@types/node": "22.x",
-    "typescript-eslint": "^8.52.0",
+    "@types/unzipper": "^0.10.11",
+    "@types/vscode": "^1.108.1",
+    "@vscode/test-cli": "^0.0.12",
+    "@vscode/test-electron": "^2.5.2",
     "eslint": "^9.39.2",
     "typescript": "^5.9.3",
-    "@vscode/test-cli": "^0.0.12",
-    "@vscode/test-electron": "^2.5.2"
+    "typescript-eslint": "^8.52.0"
+  },
+  "dependencies": {
+    "unzipper": "^0.12.3"
   }
 }
