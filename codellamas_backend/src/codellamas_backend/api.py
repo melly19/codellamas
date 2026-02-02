@@ -1,11 +1,14 @@
 import os
 import datetime
+import json
+import csv
 from typing import List
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from codellamas_backend.crew import CodellamasBackend, SpringBootExercise
 
 app = FastAPI()
+CSV_FILE_PATH = "output/exercises_evaluation.csv"
 
 class GenerateRequest(BaseModel):
     topic: str
@@ -27,6 +30,37 @@ def ingest_code_smells(code_smells: List[str]) -> str:
     if not code_smells:
         return "None"
     return ", ".join(code_smells)
+
+def append_to_csv(exercise: SpringBootExercise, topic: str):
+    """
+    Appends the generated exercise fields to a CSV file for evaluation.
+    """
+    timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+    project_files_str = json.dumps([{ "path": f.path, "content": f.content } for f in exercise.project_files])
+    test_files_str = json.dumps([{ "path": f.path, "content": f.content } for f in exercise.test_files])
+
+    row = {
+        "timestamp": timestamp,
+        "topic": topic,
+        "problem_description": exercise.problem_description,
+        "project_files": project_files_str,
+        "test_files": test_files_str,
+        "reference_solution": exercise.reference_solution_markdown
+    }
+
+    file_exists = os.path.isfile(CSV_FILE_PATH)
+
+    with open(CSV_FILE_PATH, mode='a', newline='', encoding='utf-8') as csvfile:
+        fieldnames = ["timestamp", "topic", "problem_description", "project_files", "test_files", "reference_solution"]
+        writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+        
+        if not file_exists:
+            writer.writeheader()
+            
+        writer.writerow(row)
+
+    return os.path.abspath(CSV_FILE_PATH)
 
 def save_exercise_to_repo(exercise: SpringBootExercise, topic: str):
     timestamp = datetime.datetime.now().strftime("%d%m_%M%S")
@@ -67,6 +101,7 @@ async def generate_exercise(body: GenerateRequest):
         })
 
         exercise_data = SpringBootExercise(**result.json_dict)
+        append_to_csv(exercise_data, body.topic)
         saved_path = save_exercise_to_repo(exercise_data, body.topic)
 
         return {
