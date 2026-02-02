@@ -11,6 +11,7 @@ Ensure you have Python >=3.10 <3.14 installed on your system. This project uses 
 First, if you haven't already, install uv:
 ```bash
 pip install uv
+pip3 instal uv #Mac
 ```
 
 (Optional) Create a virtual environment:
@@ -23,7 +24,18 @@ python -m venv .venv
 Next, navigate to your project directory and install the dependencies:
 ```bash
 cd backend
+Next, navigate to your project directory and install the dependencies
+crewai install will create virtual environment:
+```bash
+cd backend
 crewai install
+uv add litellm
+```
+
+activate the 
+```bash
+source .venv/bin/activate  #FOR MAC
+.venv\Scripts\activate     #FOR WINDOWS
 ```
 
 In a separate terminal run:
@@ -36,6 +48,13 @@ Check what models are currently running:
 ollama ps
 ```
 Run the backend  
+```bash
+cd src/codellamas_backend
+uvicorn api:app
+```
+
+
+Run the backend with uvicorn
 ```bash
 cd src/codellamas_backend
 uvicorn api:app
