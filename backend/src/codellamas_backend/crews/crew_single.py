@@ -19,8 +19,8 @@ class CodellamasBackend():
 
     """CodellamasBackend crew"""
 
-    agents_config = "config/agents.yaml"
-    tasks_config = "config/tasks.yaml"
+    agents_config = "config/agents_single.yaml"
+    tasks_config = "config/tasks_single.yaml"
 
     @agent
     def general_agent(self) -> Agent:

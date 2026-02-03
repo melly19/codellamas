@@ -5,7 +5,7 @@ import csv
 from typing import List, Optional, Dict, Any
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
-from codellamas_backend.crew import CodellamasBackend, SpringBootExercise
+from backend.src.codellamas_backend.crews.crew_single import CodellamasBackend, SpringBootExercise
 from codellamas_backend.tools.maven_tool import MavenTool
 from codellamas_backend.tools.workspace import FileLike
 
