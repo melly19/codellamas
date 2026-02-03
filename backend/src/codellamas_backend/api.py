@@ -6,6 +6,7 @@ from typing import List, Optional, Dict, Any
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from backend.src.codellamas_backend.crews.crew_single import CodellamasBackend, SpringBootExercise
+from backend.src.codellamas_backend.crews.crew_multi import CodellamasBackendMulti
 from codellamas_backend.tools.maven_tool import MavenTool
 from codellamas_backend.tools.workspace import FileLike
 
@@ -16,10 +17,14 @@ class ProjectFile(BaseModel):
     path: str
     content: str
 
+def get_backend(mode: str):
+    return CodellamasBackendMulti() if mode == "multi" else CodellamasBackend()
+
 class GenerateRequest(BaseModel):
     topic: str
     code_smells: List[str]
     existing_codebase: str = "NONE"
+    mode: str = "single" # "single" or "multi"
     # optional
     verify_maven: bool = False
     project_files: List[ProjectFile] = []
@@ -32,6 +37,7 @@ class EvaluateRequest(BaseModel):
     test_results: str
     reference_solution: str
     code_smells: List[str]
+    mode: str = "single"
 
     # optional
     verify_maven: bool = False
@@ -114,7 +120,8 @@ async def generate_exercise(body: GenerateRequest):
     formatted_code_smells = ingest_code_smells(body.code_smells)
 
     try:
-        result = CodellamasBackend().generation_crew().kickoff(inputs={
+        backend = get_backend(body.mode)
+        result = backend.generation_crew().kickoff(inputs={
             "topic": body.topic,
             "code_smells": formatted_code_smells,
             "existing_codebase": body.existing_codebase
@@ -223,7 +230,8 @@ async def review_solution(body: EvaluateRequest):
                 # IMPORTANT: feed real test result into LLM
                 inputs["test_results"] = test_result.raw_log_head(4000)
 
-        raw = CodellamasBackend().review_crew().kickoff(inputs=inputs)
+        backend = get_backend(body.mode)
+        raw = backend.review_crew().kickoff(inputs=inputs)
         return {
             "feedback": str(raw),
             "maven_verification": maven_verification

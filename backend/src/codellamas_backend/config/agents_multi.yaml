@@ -1,0 +1,29 @@
+Agents to define
+
+Problem Designer Agent
+
+Produces: problem statement + constraints + files to touch
+
+Smell Injector Agent
+
+Produces: “smelly” version of 2–4 classes (grounded to scaffold)
+
+Test Author Agent
+
+Produces: JUnit5 tests that pass on smelly code
+
+Reference Solution Agent
+
+Produces: refactored solution that passes tests and fixes smells
+
+Runner / Debug Agent
+
+Uses MavenTool output logs; identifies failures
+
+Fixer Agent
+
+Patches either solution or tests to resolve failures
+
+Reviewer / Critic Agent (optional but recommended)
+
+Checks: clarity, pedagogical value, smell alignment, and feasibility
