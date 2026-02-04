@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Refactoring Studio</title>
+
+  <link rel="stylesheet" href="{{BASE_URI}}/style.css" />
+  <script defer src="{{BASE_URI}}/main.js"></script>
+</head>
+
+<body>
+  <header class="header">
+    <h1>🦙 Refactoring Studio</h1>
+    <p class="subtitle">Practise refactoring through guided questions</p>
+  </header>
+
+  <main class="container">
+
+    <section class="card code-smells">
+
+  <!-- Section Header -->
+  <header class="card-header">
+    <h2 class="card-title">Select Code Smells</h2>
+    <p class="card-subtitle">Choose one or more refactoring topics to practise</p>
+  </header>
+
+  <!-- Smell Groups -->
+  <div class="smell-groups">
+
+    <!-- Bloaters -->
+    <details class="smell-group" open>
+      <summary class="smell-group-title">Bloaters</summary>
+
+      <div class="smell-options">
+        <label class="smell-option">
+          <input type="checkbox" value="Long Method" />
+          <span>Long Method</span>
+        </label>
+
+        <label class="smell-option">
+          <input type="checkbox" value="Large Class" />
+          <span>Large Class</span>
+        </label>
+
+        <label class="smell-option">
+          <input type="checkbox" value="Primitive Obsession" />
+          <span>Primitive Obsession</span>
+        </label>
+      </div>
+    </details>
+
+    <!-- Object-Oriented Abusers -->
+    <details class="smell-group">
+      <summary class="smell-group-title">Object-Oriented Abusers</summary>
+
+      <div class="smell-options">
+        <label class="smell-option">
+          <input type="checkbox" value="Switch Statements" />
+          <span>Switch Statements</span>
+        </label>
+
+        <label class="smell-option">
+          <input type="checkbox" value="Refused Bequest" />
+          <span>Refused Bequest</span>
+        </label>
+      </div>
+    </details>
+
+    <!-- Change Preventers -->
+    <details class="smell-group">
+      <summary class="smell-group-title">Change Preventers</summary>
+
+      <div class="smell-options">
+        <label class="smell-option">
+          <input type="checkbox" value="Shotgun Surgery" />
+          <span>Shotgun Surgery</span>
+        </label>
+
+        <label class="smell-option">
+          <input type="checkbox" value="Divergent Change" />
+          <span>Divergent Change</span>
+        </label>
+      </div>
+    </details>
+
+    <!-- Dispensables -->
+    <details class="smell-group">
+      <summary class="smell-group-title">Dispensables</summary>
+
+      <div class="smell-options">
+        <label class="smell-option">
+          <input type="checkbox" value="Duplicate Code" />
+          <span>Duplicate Code</span>
+        </label>
+
+        <label class="smell-option">
+          <input type="checkbox" value="Dead Code" />
+          <span>Dead Code</span>
+        </label>
+      </div>
+    </details>
+
+    <!-- Couplers -->
+    <details class="smell-group">
+      <summary class="smell-group-title">Couplers</summary>
+
+      <div class="smell-options">
+        <label class="smell-option">
+          <input type="checkbox" value="Feature Envy" />
+          <span>Feature Envy</span>
+        </label>
+
+        <label class="smell-option">
+          <input type="checkbox" value="Message Chains" />
+          <span>Message Chains</span>
+        </label>
+      </div>
+    </details>
+
+  </div>
+</section>
+
+
+    <!-- Context -->
+    <section class="card">
+      <h2> Learning Context</h2>
+
+      <label>
+        Topic / Language
+        <input 
+         id="topic"
+         type="text"
+         placeholder="e.g. Banking, E-Commerce etc."
+         list="topic-suggestions"
+        />
+      </label>
+    </section>
+
+    <!-- Action -->
+    <section class="actions">
+      <button id="generateBtn">Generate Question</button>
+    </section>
+
+    <!-- Output -->
+    <section class="card output">
+      <h2>📘 Generated Refactoring Questions</h2>
+      <ul id="questionList">
+        <li class="placeholder">No questions generated yet.</li>
+      </ul>
+    </section>
+
+  </main>
+   
+
+</body>
+</html>
