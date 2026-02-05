@@ -2,9 +2,9 @@
 define_problem:
   description: >
     INPUTS:
-      - {topic}: The business domain for the Spring Boot project (e.g., "e-commerce")
-      - {code_smells}: A list of specific code smells that will be tested for this exercise (e.g., "Long Method")
-      - {existing_codebase}: OPTIONAL. A structured string containing the file paths and content of an existing Spring Boot project. Use "NONE" if a new project should be generated.
+    - {topic}: The business domain for the Spring Boot project (e.g., "e-commerce")
+    - {code_smells}: A list of specific code smells that will be tested for this exercise (e.g., "Long Method")
+    - {existing_codebase}: OPTIONAL. A structured string containing the file paths and content of an existing Spring Boot project. Use "NONE" if a new project should be generated.
 
     Generate a realistic software problem description in the given business domain. 
     If an existing codebase is provided, adapt the problem to its structure.

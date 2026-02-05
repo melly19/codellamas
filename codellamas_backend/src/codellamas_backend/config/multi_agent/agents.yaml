@@ -65,8 +65,6 @@ test_runner:
     You simulate an automated CI pipeline. You do not interpret intent or suggest improvements -
     you only report factual results: compiler errors, stack traces, and assertion failures.
     Your output is used verbatim by downstream agents.
-  tools:
-    - java_junit_test_runner
 
 debug_specialist:
   role: >

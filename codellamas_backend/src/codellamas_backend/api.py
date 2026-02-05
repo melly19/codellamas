@@ -6,8 +6,8 @@ from typing import List, Optional
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 
-from codellamas.codellamas_backend.src.codellamas_backend.crews.single_agent_crew import SingleAgentBackend, SpringBootExercise
-from codellamas.codellamas_backend.src.codellamas_backend.crews.multi_agent_crew import MultiAgentBackend
+from crews.single_agent_crew import SingleAgentBackend, SpringBootExercise
+from crews.multi_agent_crew import MultiAgentBackend
 
 app = FastAPI()
 CSV_FILE_PATH = "generated_exercises/exercises_evaluation.csv"
