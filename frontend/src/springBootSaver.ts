@@ -9,16 +9,23 @@ export async function saveToSpringBootProject(
   //testCode: string, // AI-generated test case code
   panel: vscode.WebviewPanel
 ) {
-  const workspaceFolder = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
-  if (!workspaceFolder) {
-    vscode.window.showErrorMessage("No Spring Boot project detected!");
+  const workspaceFolders = vscode.workspace.workspaceFolders;
+  if (!workspaceFolders || workspaceFolders.length === 0) {
+    vscode.window.showErrorMessage("No workspace folder open!");
+    return;
+  }
+
+  // Search recursively for Spring Boot project
+  const projectRoot = findSpringBootProjectRoot(workspaceFolders[0].uri.fsPath);
+  if (!projectRoot) {
+    vscode.window.showErrorMessage("No Spring Boot project detected in workspace!");
     return;
   }
 
   try {
     // Detect src/main/java and src/test/java
-    const srcMainJava = path.join(workspaceFolder, "src", "main", "java");
-    const srcTestJava = path.join(workspaceFolder, "src", "test", "java");
+    const srcMainJava = path.join(projectRoot, "src", "main", "java");
+    const srcTestJava = path.join(projectRoot, "src", "test", "java");
     const mainClass = findSpringBootMainClass(srcMainJava);
     if (!mainClass) {
       vscode.window.showErrorMessage("Could not find Spring Boot main class.");
@@ -72,6 +79,32 @@ ${questionCode}
 }
 
 // --- Helpers ---
+function findSpringBootProjectRoot(dir: string): string | null {
+  // Check if current directory is a Spring Boot project
+  const hasPom = fs.existsSync(path.join(dir, "pom.xml"));
+  const hasGradle = fs.existsSync(path.join(dir, "build.gradle")) || fs.existsSync(path.join(dir, "build.gradle.kts"));
+  const hasSrcMainJava = fs.existsSync(path.join(dir, "src", "main", "java"));
+
+  if ((hasPom || hasGradle) && hasSrcMainJava) {
+    return dir;
+  }
+
+  // Recursively search subdirectories
+  try {
+    const entries = fs.readdirSync(dir, { withFileTypes: true });
+    for (const entry of entries) {
+      if (entry.isDirectory() && !entry.name.startsWith(".") && entry.name !== "node_modules") {
+        const found = findSpringBootProjectRoot(path.join(dir, entry.name));
+        if (found) return found;
+      }
+    }
+  } catch (err) {
+    // Skip directories we can't read
+  }
+
+  return null;
+}
+
 function findSpringBootMainClass(dir: string): string | null {
   const files = fs.readdirSync(dir, { withFileTypes: true });
   for (const file of files) {
