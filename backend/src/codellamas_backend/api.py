@@ -121,6 +121,24 @@ async def generate_exercise(body: GenerateRequest):
     try:
         # 1) Generate via CrewAI (same behavior, but respect mode)
         backend = get_backend(body.mode)
+
+        # NEW: multi + verify triggers fix-loop generation
+        if body.mode == "multi" and body.verify_maven and body.project_files:
+            exercise_data, loop_meta = backend.generate_with_fix_loop(
+                topic=body.topic,
+                code_smells=body.code_smells,
+                existing_codebase=body.existing_codebase,
+                project_files=body.project_files,
+            )
+            # You can keep your existing save_to_repo and response formatting
+            saved_path = save_exercise_to_repo(exercise_data, body.topic)
+            return {
+                "status": "success",
+                "message": f"Exercise generated and saved to {saved_path}",
+                "data": exercise_data.model_dump(),
+                "meta": loop_meta
+            }
+
         result = backend.generation_crew().kickoff(inputs={
             "topic": body.topic,
             "code_smells": formatted_code_smells,
@@ -249,6 +267,7 @@ async def review_solution(body: EvaluateRequest):
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Review crew failed: {e}")
+
 
 @app.get("/")
 async def root():
