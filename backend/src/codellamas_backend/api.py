@@ -2,12 +2,12 @@ import os
 import datetime
 import json
 import csv
-from typing import List, Optional, Dict, Any
+from typing import List, Dict, Any
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
-from codellamas_backend.crew import CodellamasBackend, SpringBootExercise
-from codellamas_backend.tools.maven_tool import MavenTool
-from codellamas_backend.tools.workspace import FileLike
+from codellamas_backend.crews.crew_single import CodellamasBackend, SpringBootExercise
+from codellamas_backend.crews.crew_multi import CodellamasBackendMulti
+from codellamas_backend.runtime.verifier import MavenVerifier, to_filelikes
 
 app = FastAPI()
 CSV_FILE_PATH = "output/exercises_evaluation.csv"
@@ -16,14 +16,22 @@ class ProjectFile(BaseModel):
     path: str
     content: str
 
+def get_backend(mode: str):
+    if mode not in {"single", "multi"}:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid mode '{mode}'. Use 'single' or 'multi'."
+        )
+    return CodellamasBackendMulti() if mode == "multi" else CodellamasBackend()
+
 class GenerateRequest(BaseModel):
     topic: str
     code_smells: List[str]
     existing_codebase: str = "NONE"
+    mode: str = "single" # "single" or "multi"
     # optional
     verify_maven: bool = False
     project_files: List[ProjectFile] = []
-    save_full_project: bool = False
 
 class EvaluateRequest(BaseModel):
     problem_description: str
@@ -32,16 +40,13 @@ class EvaluateRequest(BaseModel):
     test_results: str
     reference_solution: str
     code_smells: List[str]
+    mode: str = "single"
 
     # optional
     verify_maven: bool = False
     project_files: List[ProjectFile] = [] # base Spring Boot project
     student_files: List[ProjectFile] = [] # overrides (what student changed)
     injected_tests: List[ProjectFile] = [] # generated tests you want to enforce
-
-def to_filelikes(files: List[ProjectFile]) -> List[FileLike]:
-    return [FileLike(path=f.path, content=f.content) for f in files]
-
 
 def ingest_code_smells(code_smells: List[str]) -> str:
     """
@@ -114,68 +119,94 @@ async def generate_exercise(body: GenerateRequest):
     formatted_code_smells = ingest_code_smells(body.code_smells)
 
     try:
-        result = CodellamasBackend().generation_crew().kickoff(inputs={
+        # 1) Generate via CrewAI (same behavior, but respect mode)
+        backend = get_backend(body.mode)
+
+        # NEW: multi + verify triggers fix-loop generation
+        if body.mode == "multi" and body.verify_maven and body.project_files:
+            exercise_data, loop_meta = backend.generate_with_fix_loop(
+                topic=body.topic,
+                code_smells=body.code_smells,
+                existing_codebase=body.existing_codebase,
+                project_files=body.project_files,
+            )
+            # You can keep your existing save_to_repo and response formatting
+            saved_path = save_exercise_to_repo(exercise_data, body.topic)
+            return {
+                "status": "success",
+                "message": f"Exercise generated and saved to {saved_path}",
+                "data": exercise_data.model_dump(),
+                "meta": loop_meta
+            }
+
+        result = backend.generation_crew().kickoff(inputs={
             "topic": body.topic,
             "code_smells": formatted_code_smells,
             "existing_codebase": body.existing_codebase
         })
 
+        # 2) Convert Crew output to structured exercise (unchanged)
         exercise_data = SpringBootExercise(**result.json_dict)
-        append_to_csv(exercise_data, body.topic)
+
+        # 3) Save the generated exercise to your repo (unchanged)
         saved_path = save_exercise_to_repo(exercise_data, body.topic)
 
-        maven_verification: Dict[str, Any] = {"enabled": False}
+        # Also append to CSV for easier evaluation
+        csv_path = append_to_csv(exercise_data, body.topic)
 
-        if getattr(body, "verify_maven", False):
+        # 4) Optional Maven verification (using verifier layer)
+        maven_verification: dict = {"enabled": False}
+
+        if body.verify_maven:
             maven_verification["enabled"] = True
 
-            if not getattr(body, "project_files", []):
+            if not body.project_files:
                 maven_verification.update({
                     "status": "SKIPPED",
-                    "reason": "verify_maven=true but no project_files provided"
+                    "reason": "verify_maven=true but no project_files provided (Spring Initializr scaffold required)."
                 })
             else:
-                mvn = MavenTool(timeout_sec=180, quiet=True)
+                verifier = MavenVerifier(timeout_sec=180, quiet=True)
 
-                base_project = to_filelikes(body.project_files)
+                # Convert scaffold files to FileLike using verifier helper
+                base_project = to_filelikes(body.project_files)  # from verifier.py :contentReference[oaicite:4]{index=4}
 
-                # Generated Java files override scaffold
-                override_files = [
-                    FileLike(path=f.path, content=f.content)
-                    for f in exercise_data.project_files
-                ]
+                # Convert generated project files to FileLike (same helper)
+                override_files = to_filelikes(exercise_data.project_files)
 
-                # Generated tests are injected
-                inject_tests = {
-                    f.path: f.content
-                    for f in exercise_data.test_files
-                }
+                # Inject generated tests (dict[path -> content])
+                inject_tests = {f.path: f.content for f in exercise_data.test_files}
 
-                test_result = mvn.run_tests(
-                    project_files=base_project,
+                verification = verifier.verify(
+                    base_project=base_project,
                     override_files=override_files,
-                    inject_tests=inject_tests
+                    injected_tests=inject_tests
                 )
 
                 maven_verification.update({
-                    "status": test_result.status,
-                    "failed_tests": test_result.failed_tests,
-                    "errors": test_result.errors,
-                    "raw_log_head": test_result.raw_log_head(4000)
+                    "status": verification.status,
+                    "failed_tests": verification.failed_tests,
+                    "errors": verification.errors,
+                    "raw_log_head": verification.summary()
                 })
 
+        # 5) Return response (unchanged + additive verification)
         return {
             "status": "success",
             "message": f"Exercise generated and saved to {saved_path}",
             "data": result.json_dict,
-            "maven_verification": maven_verification
+            "maven_verification": maven_verification,
+            "csv_log_path": csv_path
         }
+
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
 
 @app.post("/review")
 async def review_solution(body: EvaluateRequest):
     formatted_code_smells = ingest_code_smells(body.code_smells)
+
     inputs = {
         "problem_description": body.problem_description,
         "original_code": body.original_code,
@@ -188,48 +219,55 @@ async def review_solution(body: EvaluateRequest):
     maven_verification: Dict[str, Any] = {"enabled": False}
 
     try:
-        if getattr(body, "verify_maven", False):
+        # Optional runtime verification (compile + mvn test)
+        if body.verify_maven:
             maven_verification["enabled"] = True
 
-            if not getattr(body, "project_files", []):
+            if not body.project_files:
                 maven_verification.update({
                     "status": "SKIPPED",
                     "reason": "verify_maven=true but no project_files provided"
                 })
             else:
-                mvn = MavenTool(timeout_sec=180, quiet=True)
+                verifier = MavenVerifier(timeout_sec=180, quiet=True)
 
+                # Convert base project scaffold (Spring Initializr) to FileLike[]
                 base_project = to_filelikes(body.project_files)
+
+                # Apply student's modified files as overrides
                 student_overrides = to_filelikes(body.student_files or [])
 
-                inject_tests = {
-                    f.path: f.content
-                    for f in (body.injected_tests or [])
-                }
+                # Inject tests (typically generated tests for the exercise)
+                inject_tests = {f.path: f.content for f in (body.injected_tests or [])}
 
-                test_result = mvn.run_tests(
-                    project_files=base_project,
+                verification = verifier.verify(
+                    base_project=base_project,
                     override_files=student_overrides,
-                    inject_tests=inject_tests
+                    injected_tests=inject_tests
                 )
 
                 maven_verification.update({
-                    "status": test_result.status,
-                    "failed_tests": test_result.failed_tests,
-                    "errors": test_result.errors,
-                    "raw_log_head": test_result.raw_log_head(4000)
+                    "status": verification.status,
+                    "failed_tests": verification.failed_tests,
+                    "errors": verification.errors,
+                    "raw_log_head": verification.summary()
                 })
 
-                # IMPORTANT: feed real test result into LLM
-                inputs["test_results"] = test_result.raw_log_head(4000)
+                # Feed *real* execution log into the LLM reviewer
+                inputs["test_results"] = verification.summary()
 
-        raw = CodellamasBackend().review_crew().kickoff(inputs=inputs)
+        # Run review crew based on selected mode
+        backend = get_backend(body.mode)
+        raw = backend.review_crew().kickoff(inputs=inputs)
+
         return {
             "feedback": str(raw),
             "maven_verification": maven_verification
         }
+
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Review crew failed: {e}")
+
 
 @app.get("/")
 async def root():

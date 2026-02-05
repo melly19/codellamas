@@ -1,0 +1,15 @@
+Use CrewAI sequential process as follows
+
+design_problem
+
+inject_smells
+
+write_tests
+
+write_solution
+
+run_maven_and_report
+
+fix_until_pass (or fix_once)
+
+final_review_and_packaging
