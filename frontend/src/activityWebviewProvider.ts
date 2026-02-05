@@ -25,6 +25,10 @@ export class ActivityWebviewProvider implements vscode.WebviewViewProvider {
       { enableScripts: true }
     );
 
+    panel.iconPath = vscode.Uri.file(
+    this.context.asAbsolutePath("media/code-llamas.png")
+    );
+
     panel.webview.html = this.getGeneratorHtml(panel.webview);
 
     panel.webview.onDidReceiveMessage(async (msg) => {
@@ -181,75 +185,138 @@ private async fetchAiQuestionsFromBackend(topic: string, smells: string[]): Prom
 
   private getGeneratorHtml(webview: vscode.Webview): string {
     return /* html */ `
-      <!DOCTYPE html>
-      <html lang="en">
-      <head>
-        <meta charset="UTF-8" />
-        <title>Code Smells</title>
-        <style>
-          body { font-family: var(--vscode-font-family); padding: 16px; }
-          .header { text-align: center; margin-bottom: 20px; }
-          input[type="text"] {
-            width: 60%;
-            max-width: 400px;
-            min-width: 260px;
-            padding: 10px;
-            border: 1px solid var(--vscode-input-border);
-            border-radius: 2px;
-          }
-          .submit-container {
-            position: fixed;
-            bottom: 20px;
-            right: 20px;
-          }
-          button {
-            background-color: #8ecbff;
-            border: none;
-            padding: 10px 14px;
-            border-radius: 6px;
-            font-weight: bold;
-            cursor: pointer;
-          }
-        </style>
-      </head>
-      <body>
-        <div class="header">
-          <h1>Generating Code Smell Activity</h1>
-        </div>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Code Smells</title>
+  <style>
+    body { 
+      font-family: var(--vscode-font-family); 
+      padding: 16px; 
+      background-color: #f0f0f0;
+    }
 
-        <h2>Code Smells</h2>
-        <div class="section">
-          <label><input type="checkbox" value="Bloaters"> Bloaters</label><br />
-          <label><input type="checkbox" value="Object-Orientation Abusers"> Object-Orientation Abusers</label><br />
-          <label><input type="checkbox" value="Change Preventers"> Change Preventers</label><br />         
-          <label><input type="checkbox" value="Dispensables"> Dispensables</label><br />
-          <label><input type="checkbox" value="Couplers"> Couplers</label><br />
-        </div>
+    .header { 
+      text-align: center; 
+      margin-bottom: 20px; 
+    }
 
-        <h3>Topic</h3>
-        <input id="topic" type="text" placeholder="Enter topic" />
+    /* Input text styling */
+    input[type="text"] {
+      color: black;       /* text color */
+      background-color: white; 
+      border: 1px solid var(--vscode-input-border);
+      border-radius: 2px;
+      padding: 10px;
+      width: 60%;
+      max-width: 400px;
+      min-width: 260px;
+    }
 
-        <div class="submit-container">
-          <button onclick="submit()">Generate Questions</button>
-        </div>
+    .submit-container {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+    }
 
-        <script>
-          const vscode = acquireVsCodeApi();
+    button {
+      background-color: #8ecbff;
+      border: none;
+      padding: 10px 14px;
+      border-radius: 6px;
+      font-weight: bold;
+      cursor: pointer;
+    }
 
-          function submit() {
-            const smells = Array.from(
-              document.querySelectorAll('input[type="checkbox"]:checked')
-            ).map(cb => cb.value);
+    /* Attention Box Styles */
+    .attention-box {
+      background-color: white;
+      border-radius: 12px;
+      padding: 16px;
+      margin-bottom: 20px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+    }
 
-            vscode.postMessage({
-              type: "submit",
-              topic: document.getElementById("topic").value,
-              smells
-            });
-          }
-        </script>
-      </body>
-      </html>
+    .attention-box h2 {
+      color: red;
+      margin-top: 0;
+      margin-bottom: 10px;
+    }
+
+    .attention-box a {
+      color: #007acc; /* dark link color */
+      text-decoration: none;
+    }
+
+    .attention-box a:hover {
+      text-decoration: underline;
+    }
+
+    /* Make all other headers black */
+    h1, h3, h2:not(.attention-box h2) {
+      color: black;
+    }
+
+    /* Paragraph text black */
+    p {
+      color: black;
+    }
+
+    /* Checkbox labels black */
+    .section label {
+      color: black;
+      font-weight: normal;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>Generating Code Smell Activity</h1>
+  </div>
+
+  <!-- Attention Box -->
+  <div class="attention-box">
+    <h2>Attention!</h2>
+    <p>
+      In order to use this extension you are required to have an opened Spring Boot project. 
+      Please visit <a href="https://start.spring.io/" target="_blank">https://start.spring.io/</a> to create a Spring Boot project.
+    </p>
+  </div>
+
+  <h2>Code Smells</h2>
+  <div class="section">
+    <label><input type="checkbox" value="Bloaters"> Bloaters</label><br />
+    <label><input type="checkbox" value="Object-Orientation Abusers"> Object-Orientation Abusers</label><br />
+    <label><input type="checkbox" value="Change Preventers"> Change Preventers</label><br />         
+    <label><input type="checkbox" value="Dispensables"> Dispensables</label><br />
+    <label><input type="checkbox" value="Couplers"> Couplers</label><br />
+  </div>
+
+  <h3>Topic</h3>
+  <input id="topic" type="text" placeholder="Enter topic" />
+
+  <div class="submit-container">
+    <button onclick="submit()">Generate Questions</button>
+  </div>
+
+  <script>
+    const vscode = acquireVsCodeApi();
+
+    function submit() {
+      const smells = Array.from(
+        document.querySelectorAll('input[type="checkbox"]:checked')
+      ).map(cb => cb.value);
+
+      vscode.postMessage({
+        type: "submit",
+        topic: document.getElementById("topic").value,
+        smells
+      });
+    }
+  </script>
+</body>
+</html>
     `;
   }
 }
