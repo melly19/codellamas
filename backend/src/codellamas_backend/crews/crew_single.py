@@ -19,14 +19,15 @@ class CodellamasBackend():
 
     """CodellamasBackend crew"""
 
-    agents_config = "config/agents_single.yaml"
-    tasks_config = "config/tasks_single.yaml"
+    agents_config = "../config/agents_single.yaml"
+    tasks_config = "../config/tasks_single.yaml"
 
     @agent
     def general_agent(self) -> Agent:
         return Agent(
             config=self.agents_config['general_agent'], # type: ignore[index]
             llm=LLM(model="ollama/phi4", base_url="http://localhost:11434"),
+            timeout="1800s",
             verbose=True,
         )
 

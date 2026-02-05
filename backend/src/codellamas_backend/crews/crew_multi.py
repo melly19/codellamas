@@ -38,8 +38,8 @@ class CodellamasBackendMulti:
     """
 
     # Uses a DIFFERENT config set from single agent
-    agents_config = "config/agents_multi.yaml"
-    tasks_config = "config/tasks_multi.yaml"
+    agents_config = "../config/agents_multi.yaml"
+    tasks_config = "../config/tasks_multi.yaml"
 
     # -------------------------
     # Agents

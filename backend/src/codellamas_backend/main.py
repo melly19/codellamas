@@ -2,8 +2,6 @@
 import sys
 import warnings
 
-from datetime import datetime
-
 from backend.src.codellamas_backend.crews.crew_single import CodellamasBackend
 
 warnings.filterwarnings("ignore", category=SyntaxWarning, module="pysbd")
@@ -54,21 +52,6 @@ def review():
         return result
     except Exception as e:
         raise Exception(f"An error occurred while evaluating the solution: {e}")
-
-# def run():
-#     """
-#     Run the crew.
-#     """
-#     inputs = {
-#         'topic': 'Library',
-#         'code_smell': 'Duplicate method'
-#     }
-
-#     try:
-#         CodellamasBackend().crew().kickoff(inputs=inputs)
-#     except Exception as e:
-#         raise Exception(f"An error occurred while running the crew: {e}")
-
 
 def train():
     """

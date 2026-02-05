@@ -2,11 +2,11 @@ import os
 import datetime
 import json
 import csv
-from typing import List, Optional, Dict, Any
+from typing import List, Dict, Any
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
-from backend.src.codellamas_backend.crews.crew_single import CodellamasBackend, SpringBootExercise
-from backend.src.codellamas_backend.crews.crew_multi import CodellamasBackendMulti
+from codellamas_backend.crews.crew_single import CodellamasBackend, SpringBootExercise
+from codellamas_backend.crews.crew_multi import CodellamasBackendMulti
 from codellamas_backend.runtime.verifier import MavenVerifier, to_filelikes
 
 app = FastAPI()
@@ -249,7 +249,6 @@ async def review_solution(body: EvaluateRequest):
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Review crew failed: {e}")
-
 
 @app.get("/")
 async def root():
