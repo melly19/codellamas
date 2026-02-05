@@ -1,6 +1,7 @@
 from crewai import Agent, Crew, Process, Task
 from crewai.project import CrewBase, agent, crew, task
 from crewai.agents.agent_builder.base_agent import BaseAgent
+from tools.custom_tool import JavaTestRunnerTool
 from typing import List
 from pydantic import BaseModel, Field
 
@@ -15,17 +16,18 @@ class SpringBootExercise(BaseModel):
     reference_solution_markdown: str
 
 @CrewBase
-class CodellamasBackend():
-    """CodellamasBackend crew"""
+class SingleAgentBackend():
+    """CodellamasBackend crew with single-agent implementation"""
 
-    agents_config = "config/agents.yaml"
-    tasks_config = "config/tasks.yaml"
+    agents_config = "../config/single_agent/agents.yaml"
+    tasks_config = "../config/single_agent/tasks.yaml"
 
     @agent
     def general_agent(self) -> Agent:
         return Agent(
             config=self.agents_config['general_agent'], # type: ignore[index]
             verbose=True,
+            tools=[JavaTestRunnerTool()],
         )
 
     @task

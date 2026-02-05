@@ -4,7 +4,7 @@ import warnings
 
 from datetime import datetime
 
-from codellamas_backend.crew import CodellamasBackend
+from codellamas.codellamas_backend.src.codellamas_backend.crews.single_agent_crew import CodellamasBackend
 
 warnings.filterwarnings("ignore", category=SyntaxWarning, module="pysbd")
 

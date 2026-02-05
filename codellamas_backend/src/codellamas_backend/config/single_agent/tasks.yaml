@@ -1,7 +1,7 @@
 generate_exercise:
    description: >
       INPUTS:
-      - {topic}: The business domain for the Spring Boot project (e.g., "e-commerce inventory")
+      - {topic}: The business domain for the Spring Boot project (e.g., "e-commerce")
       - {code_smells}: A list of specific code smells that will be tested for this exercise (e.g., "Long Method")
       - {existing_codebase}: OPTIONAL. A structured string containing the file paths and content of an existing Spring Boot project. Use "NONE" if a new project should be generated.
 
@@ -67,7 +67,7 @@ review_solution:
       - {problem_description}: The original exercise description
       - {original_code}: The initial code containing the code smell
       - {student_code}: The student's refactored code submission
-      - {test_results}: JUnit 5 test case results (pass or fail)
+      - {test_suite}: JUnit 5 test cases
       - {reference_solution}: A model solution for the refactoring task
       - {code_smells}: The code smells that were tested for the task
 
