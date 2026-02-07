@@ -14,43 +14,49 @@ pip install uv
 pip3 instal uv #Mac
 ```
 
-(Optional) Create a virtual environment:
+
+Uninstall old venv if needed
 ```bash
 cd backend
-python -m venv .venv
-.\.venv\Scripts\Activate.ps1
+deactivate
+rm -rf .venv
+rm uv.lock
+
 ```
 
-Next, navigate to your project directory and install the dependencies:
-```bash
-cd backend
 Next, navigate to your project directory and install the dependencies
 crewai install will create virtual environment:
 ```bash
 cd backend
 crewai install
-uv add litellm
+
 ```
 
 activate the 
 ```bash
 source .venv/bin/activate  #FOR MAC
 .venv\Scripts\activate     #FOR WINDOWS
+uv add litellm
 ```
 
 In a separate terminal run:
 ```bash
 ollama pull phi4
 ollama run phi4:latest
+/bye
 ```
 Check what models are currently running:
 ```bash
 ollama ps
 ```
+
+
 Run the backend  
 ```bash
+source .venv/bin/activate  #FOR MAC
+.venv\Scripts\activate     #FOR WINDOWS
 cd src/codellamas_backend
-uvicorn api:app
+uvicorn api:app 
 ```
 
 
