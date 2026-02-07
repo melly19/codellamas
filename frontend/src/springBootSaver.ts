@@ -79,7 +79,7 @@ ${questionCode}
 }
 
 // --- Helpers ---
-function findSpringBootProjectRoot(dir: string): string | null {
+export function findSpringBootProjectRoot(dir: string): string | null {
   // Check if current directory is a Spring Boot project
   const hasPom = fs.existsSync(path.join(dir, "pom.xml"));
   const hasGradle = fs.existsSync(path.join(dir, "build.gradle")) || fs.existsSync(path.join(dir, "build.gradle.kts"));
@@ -92,8 +92,9 @@ function findSpringBootProjectRoot(dir: string): string | null {
   // Recursively search subdirectories
   try {
     const entries = fs.readdirSync(dir, { withFileTypes: true });
+    const excludedDirs = ["node_modules", "target", "build", "dist", "out", ".git", ".svn", ".vscode"];
     for (const entry of entries) {
-      if (entry.isDirectory() && !entry.name.startsWith(".") && entry.name !== "node_modules") {
+      if (entry.isDirectory() && !entry.name.startsWith(".") && !excludedDirs.includes(entry.name)) {
         const found = findSpringBootProjectRoot(path.join(dir, entry.name));
         if (found) return found;
       }
