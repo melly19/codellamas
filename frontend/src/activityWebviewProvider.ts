@@ -92,21 +92,23 @@ export class ActivityWebviewProvider implements vscode.WebviewViewProvider {
     this.generatorPanel.webview.onDidReceiveMessage(async (msg) => {
       if (msg.type === "submit") {
         try {
-          const aiQuestions = await this.fetchAiQuestionsFromBackend(
+          const responseData = await this.fetchAiQuestionsFromBackend(
             msg.topic,
             msg.smells
           );
 
           await saveToSpringBootProject(
-            msg.topic,
-            msg.smells,
-            aiQuestions,
+            responseData,
             this.generatorPanel!
           );
         } catch (error) {
           vscode.window.showErrorMessage(
             "Error generating questions: " + String(error)
           );
+        } finally {
+          this.generatorPanel?.webview.postMessage({
+            type: "generateComplete"
+          });
         }
       }
     });
@@ -123,19 +125,38 @@ export class ActivityWebviewProvider implements vscode.WebviewViewProvider {
   private async fetchAiQuestionsFromBackend(
     topic: string,
     smells: string[]
-  ): Promise<string> {
-    const response = await fetch("http://localhost:8000/generate", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ topic, smells })
-    });
+  ): Promise<any> {
+    const controller = new AbortController();
+    const timeoutMs = 20 * 60 * 1000; // 20 minutes
+    const timeout = setTimeout(() => controller.abort(), timeoutMs);
 
-    if (!response.ok) {
-      throw new Error(`Backend error: ${response.statusText}`);
+    try {
+      const response = await fetch("http://localhost:8000/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ topic, code_smells: smells }),
+        signal: controller.signal
+      });
+
+      clearTimeout(timeout);
+
+      if (!response.ok) {
+        throw new Error(`Backend error: ${response.statusText}`);
+      }
+
+      const data: any = await response.json();
+      
+      if (data.status !== "success") {
+        throw new Error(data.message || "Failed to generate exercise");
+      }
+
+      return data;
+    } catch (err: any) {
+      if (err && err.name === "AbortError") {
+        throw new Error("Request timed out after 20 minutes. Please try again later.");
+      }
+      throw err;
     }
-
-    const data = (await response.json()) as { questions: string };
-    return data.questions;
   }
 
   /* =========================
@@ -283,6 +304,31 @@ export class ActivityWebviewProvider implements vscode.WebviewViewProvider {
       background-color: #f5f5f5;
     }
 
+    button:disabled {
+      opacity: 0.7;
+      cursor: not-allowed;
+    }
+
+    button:disabled:hover {
+      background-color: #ffffff;
+    }
+
+    .spinner {
+      display: inline-block;
+      width: 14px;
+      height: 14px;
+      border: 2px solid #cfcfcf;
+      border-top-color: #007acc;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      margin-right: 6px;
+      vertical-align: middle;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
     /* Tree container */
 .tree-group {
   margin: 16px 0;
@@ -337,17 +383,7 @@ export class ActivityWebviewProvider implements vscode.WebviewViewProvider {
 
   <h1>Generating Code Smell Activity</h1>
 
-  <div class="attention-box">
-    <h2>Attention!</h2>
-    <p>
-      You must have a Spring Boot project open.
-      Visit
-      <a href="https://start.spring.io/" target="_blank">
-        https://start.spring.io/
-      </a>
-      to create one.
-    </p>
-  </div>
+
 
   <div class="section-title">Select Code Smells</div>
   <div class="section-subtitle">
@@ -400,25 +436,38 @@ export class ActivityWebviewProvider implements vscode.WebviewViewProvider {
   </div>
 
   <div class="submit-container">
-    <button onclick="submit()">Generate Question</button>
+    <button id="generateBtn" onclick="submit()">Generate Question</button>
   </div>
 
-  <div class="output">
-  <h2 class="output-title">📘 Generated Refactoring Questions</h2>
-
-  <ul id="questionList" class="question-list">
-    <li class="placeholder">No questions generated yet.</li>
-  </ul>
 </div>
 
 
   <script>
     const vscode = acquireVsCodeApi();
+    const generateBtn = document.getElementById("generateBtn");
+
+    function setGenerating(isGenerating) {
+      generateBtn.disabled = isGenerating;
+      generateBtn.innerHTML = isGenerating
+        ? '<span class="spinner"></span> Generating...'
+        : "Generate Question";
+    }
+
+    window.addEventListener("message", (event) => {
+      const msg = event.data;
+      if (msg.type === "generateComplete") {
+        setGenerating(false);
+      }
+    });
 
     function submit() {
+      if (generateBtn.disabled) return;
+
       const smells = Array.from(
         document.querySelectorAll('input[type="checkbox"]:checked')
       ).map(cb => cb.value);
+
+      setGenerating(true);
 
       vscode.postMessage({
         type: "submit",

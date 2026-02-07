@@ -1,0 +1,102 @@
+generate_exercise:
+   description: >
+      INPUTS:
+      - {topic}: The business domain for the Spring Boot project (e.g., "e-commerce inventory")
+      - {code_smells}: A list of specific code smells that will be tested for this exercise (e.g., "Long Method")
+      - {existing_codebase}: OPTIONAL. A structured string containing the file paths and content of an existing Spring Boot project. Use "NONE" if a new project should be generated.
+
+      SECTION 1: PROJECT AND PROBLEM GENERATION
+      1. 
+        a. Generate a small, realistic Java Spring Boot project based on {topic}.
+        b. Include necessary project files (e.g., pom.xml, main application class).
+        c. Limit scope: 2–4 classes, 1 controller, 1 service, no external APIs or databases.
+        d. All generated Java files should be packaged properly.
+
+
+      2. **Code Smell Injection (Applicable to both new and existing projects):**
+         - Intentionally include the code smells {code_smells} in a way that students are expected to identify and refactor.
+         - For existing projects, the injection should be subtle and fit naturally into the existing code logic.
+         - The code should reflect common student-level mistakes rather than advanced architectural flaws.
+
+      3. **Exercise Definition:**
+         - Clearly state:
+            - The refactoring task
+            - Constraints (behavior must not change)
+         - Never write any comments.
+
+      SECTION 2: TEST CASE GENERATION
+      1. Generate JUnit 5 test cases that define the correct external behavior.
+      2. Tests must:
+         - Pass with the original implementation (with the code smell)
+         - Pass with a correct refactoring
+         - Be unchanged before and after refactoring
+      3. Include:
+         - At least one normal case
+         - At least one edge or invalid input case.
+      4. Use readable test names and simple assertions suitable for advanced students.
+      5. Tests should be packaged accordingly.
+
+      SECTION 3: REFERENCE SOLUTION GENERATION
+      1. Provide a recommended refactored solution that removes {code_smells}.
+      2. Show:
+         - The original (smelly) implementation (only the files/segments that contain the smell)
+         - Only the refactored implementation. Don't show any segments of code that remain unchanged.
+      3. Refactoring must:
+         - Preserve behavior
+         - Improve readability and structure
+         - Follow clean code principles taught at undergraduate level.
+      4. Ensure all provided tests pass.
+
+      OUTPUT FORMAT:
+      1. Problem description and constraints
+      2. Original code (with code smell) - This will be the full set of files for a new project, or the modified/new files for an existing project.
+      3. JUnit 5 test cases
+      4. Recommended refactored solution
+   expected_output: >
+      A structured JSON object containing the problem description, project files with their package paths, 
+      test files, and a reference solution.
+   agent: general_agent
+
+review_solution:
+   description: >
+      INPUTS:
+      - {problem_description}: The original exercise description
+      - {original_code}: The initial code containing the code smell
+      - {student_code}: The student's refactored code submission
+      - {test_results}: JUnit 5 test case results (pass or fail)
+      - {reference_solution}: A model solution for the refactoring task
+      - {code_smells}: The code smells that were tested for the task
+
+      SECTION 1: FUNCTIONAL CORRECTNESS CHECK
+      1. Determine whether the student solution preserves the intended behavior.
+      2. Clearly state any functional regressions or violations.
+
+      SECTION 2: CODE QUALITY REVIEW
+      1. Assess whether the targeted code smells has been adequately addressed.
+      2. Evaluate the solution based on clean code principles:
+         - Readability
+         - Separation of concerns
+         - Appropriate abstraction.
+      3. Accept multiple valid solutions if they adhere to good refactoring practices.
+
+      SECTION 3: FEEDBACK GENERATION
+      1. Provide concise, constructive feedback covering:
+         - What was done well
+         - What could be improved.
+      2. Reference specific files or constructs where relevant.
+      3. Avoid teaching step-by-step refactoring; focus on review and evaluation.
+
+      SECTION 4: SUMMARY ASSESSMENT
+      1. Provide a brief overall assessment of the submission.
+      2. Clearly indicate whether the solution is acceptable.
+
+      OUTPUT FORMAT:
+      1. Functional correctness assessment
+      2. Code quality review
+      3. Actionable feedback
+      4. Overall verdict
+      5. A rating of the solution out of 5
+   expected_output: >
+      An objective review of the student's refactoring, covering correctness,
+      code quality, and adherence to refactoring principles.
+   agent: general_agent
