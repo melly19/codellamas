@@ -8,6 +8,15 @@ from crewai.project import CrewBase, agent, task, crew
 from crewai.tools import BaseTool
 
 from codellamas_backend.runtime.verifier import MavenVerifier, to_filelikes
+import os
+
+OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
+BASE_URL = "https://openrouter.ai/api/v1"
+MODEL = "openrouter/qwen/qwen3-coder-30b-a3b-instruct"
+
+# =========================
+# Shared output models
+# =========================
 
 class ProjectFile(BaseModel):
     path: str = Field(..., description="Relative path (e.g., src/main/java/... or pom.xml)")
@@ -92,11 +101,15 @@ class CodellamasBackendMulti:
     max_patch_iters: int = 2
 
     def __init__(self):
-        self.llm = LLM(
-            model="ollama/phi4",
-            base_url="http://localhost:11434",
-            request_timeout=self.request_timeout_sec,
-        )
+        # self.llm = LLM(
+        #     model="ollama/phi4",
+        #     base_url="http://localhost:11434",
+        #     request_timeout=self.request_timeout_sec,
+        # )
+        # self.llm = LLM(model=self.model, base_url=self.ollama_base_url)
+        # change to OpenRouter LLM
+        self.llm = LLM(model=MODEL, base_url=BASE_URL, api_key=OPENROUTER_API_KEY, request_timeout=self.request_timeout_sec,)
+
 
         self.verify_tool = MavenVerifyTool()
 
