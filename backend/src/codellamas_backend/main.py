@@ -2,7 +2,11 @@
 import sys
 import warnings
 
+from dotenv import BaseModel, Field
+import os
 from backend.src.codellamas_backend.crews.crew_single import CodellamasBackend
+
+load_dotenv()
 
 warnings.filterwarnings("ignore", category=SyntaxWarning, module="pysbd")
 

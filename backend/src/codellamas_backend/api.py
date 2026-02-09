@@ -54,7 +54,7 @@ def ingest_code_smells(code_smells: List[str]) -> str:
         return "None"
     return ", ".join(code_smells)
 
-def append_to_csv(exercise: SpringBootExercise, topic: str, code_smells: List[str], generation_time_sec: float, response_data: dict = None):
+def append_to_csv(exercise: SpringBootExercise, topic: str, code_smells: List[str], generation_time_sec: float, model: str, response_data: dict = None):
     timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
     row = {
@@ -64,6 +64,7 @@ def append_to_csv(exercise: SpringBootExercise, topic: str, code_smells: List[st
         "problem_description": exercise.problem_description,
         "single_or_multi": model,
         "response_json": json.dumps(response_data),
+        "generation_time_sec": generation_time_sec
     }
 
     file_exists = os.path.isfile(CSV_FILE_PATH)
@@ -142,8 +143,6 @@ async def generate_exercise(body: GenerateRequest):
         end_time = time.perf_counter()
         generation_time_sec = round(end_time - start_time, 3)
 
-        csv_path = append_to_csv(exercise_data, body.topic, body.code_smells, generation_time_sec)
-
         exercise_data = SpringBootExercise(**result.json_dict)
 
         saved_path = save_exercise_to_repo(exercise_data, body.topic)
@@ -192,7 +191,7 @@ async def generate_exercise(body: GenerateRequest):
             "maven_verification": maven_verification,
         }
 
-        append_to_csv(exercise_data, body.topic, model=body.mode, response_data=response_data)
+        append_to_csv(exercise_data, body.topic, body.code_smells, generation_time_sec, model=body.mode, response_data=response_data)
 
         return response_data
 
