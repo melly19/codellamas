@@ -9,14 +9,9 @@ from crewai.tools import BaseTool
 
 from codellamas_backend.runtime.verifier import MavenVerifier, to_filelikes
 
-# =========================
-# Shared models
-# =========================
-
 class ProjectFile(BaseModel):
     path: str = Field(..., description="Relative path (e.g., src/main/java/... or pom.xml)")
     content: str
-
 
 class SpringBootExercise(BaseModel):
     problem_description: str
@@ -49,9 +44,6 @@ class VerifyToolOutput(BaseModel):
     errors: List[str]
     raw_log_head: str
 
-# =========================
-# Tool: Maven verifier wrapped as a CrewAI tool
-# =========================
 
 class MavenVerifyTool(BaseTool):
     name: str = "maven_verify"
@@ -92,7 +84,6 @@ class MavenVerifyTool(BaseTool):
 
 @CrewBase
 class CodellamasBackendMulti:
-
     agents_config = "../config/agents_multi.yaml"
     tasks_config = "../config/tasks_multi.yaml"
 
@@ -107,7 +98,6 @@ class CodellamasBackendMulti:
             request_timeout=self.request_timeout_sec,
         )
 
-        # Single tool instance is fine
         self.verify_tool = MavenVerifyTool()
 
     @agent
@@ -160,10 +150,6 @@ class CodellamasBackendMulti:
             verbose=True
         )
 
-    # -------------------------
-    # Tasks (same stage set as other-branch)
-    # -------------------------
-
     @task
     def define_problem(self) -> Task:
         return Task(
@@ -185,7 +171,6 @@ class CodellamasBackendMulti:
             config=self.tasks_config['implement_smelly_code'],
             agent=self.smelly_developer()
         )
-
 
     @task
     def run_tests_on_smelly_code(self) -> Task:
@@ -296,10 +281,6 @@ class CodellamasBackendMulti:
             process=Process.sequential,
             verbose=True,
         )
-
-    # -------------------------
-    # Optional: reliable Python fix-loop using verifier (recommended)
-    # -------------------------
 
     def generate_with_fix_loop(
         self,

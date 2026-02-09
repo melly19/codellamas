@@ -16,9 +16,6 @@ class SpringBootExercise(BaseModel):
 
 @CrewBase
 class CodellamasBackend():
-
-    """CodellamasBackend crew"""
-
     agents_config = "../config/agents_single.yaml"
     tasks_config = "../config/tasks_single.yaml"
 
