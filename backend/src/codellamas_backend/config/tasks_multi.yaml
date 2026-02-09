@@ -1,15 +1,138 @@
-Use CrewAI sequential process as follows
+# --- GENERATION CREW TASKS ---
+define_problem:
+  description: >
+    INPUTS:
+    - {topic}: The business domain for the Spring Boot project (e.g., "e-commerce")
+    - {code_smells}: A list of specific code smells that will be tested for this exercise (e.g., "Long Method")
+    - {existing_codebase}: OPTIONAL. A structured string containing the file paths and content of an existing Spring Boot project. Use "NONE" if a new project should be generated.
 
-design_problem
+    Generate a realistic software problem description in the given business domain. 
+    If an existing codebase is provided, adapt the problem to its structure.
+    Clearly state the refactoring task and constraints. Do not write any code or tests.
+  expected_output: >
+    A problem description with refactoring goals and constraints.
+  agent: problem_architect
 
-inject_smells
+define_tests:
+  description: >
+    Using the **Problem Description** provided in the previous task, design a JUnit 5 test suite that defines the expected external behaviour.
+    
+    Invent all required class names, method signatures, and edge cases based on the requirements.
+    Tests must be robust enough to serve as the "Contract" that both the smelly code and clean code must satisfy.
+  expected_output: >
+    A complete set of JUnit 5 test files with package declarations.
+  agent: test_engineer
 
-write_tests
+implement_smelly_code:
+  description: >
+    Review the **Problem Description** and the **JUnit 5 Test Suite** from the previous tasks.
+    
+    Implement Java code that:
+    1. PASSES all the provided tests.
+    2. Uses the EXACT class names and method signatures defined in the tests.
+    3. Intentionally exhibits the specific **Code Smells** requested in the problem description.
+  expected_output: >
+    Java source files containing the functional but smelly implementation.
+  agent: smelly_developer
 
-write_solution
+run_tests_on_smelly_code:
+  description: >
+    Using the **JUnit Test Suite** and the **Smelly Code** implementation from the previous tasks:
+    
+    1. Compile the code.
+    2. Execute the tests.
+    3. Analyze the output.
+    
+    Report any compilation errors or test failures with full diagnostics (stack traces/error messages).
+  expected_output: >
+    A test report including errors, stack traces, or success confirmation.
+  agent: test_runner
 
-run_maven_and_report
+patch_smelly_code:
+  description: >
+    Review the **Test Report** from the previous task. 
+    
+    If there are failures, fix the **Smelly Code** to make the tests pass.
+    CRITICAL: Fix only what is required for correctness. Do NOT refactor or clean up the code smells; they must remain for the student to fix.
+  expected_output: >
+    Updated smelly Java source files that pass all tests.
+  agent: debug_specialist
 
-fix_until_pass (or fix_once)
+generate_reference_solution:
+  description: >
+    Using the **Problem Description** and the **JUnit 5 Test Suite** (the authoritative source of truth):
+    
+    Produce a CLEAN, refactored "Reference Solution" implementation.
+    1. It must remove the code smells present in the smelly version.
+    2. It must use the EXACT same public API (class names/methods) so it passes the same tests.
+    3. Use Design Patterns and SOLID principles.
+  expected_output: >
+    Refactored Java source files representing the reference solution.
+  agent: reference_solution_developer
 
-final_review_and_packaging
+run_tests_on_reference_solution:
+  description: >
+    Using the **JUnit Test Suite** and the **Reference Solution** code from the previous task:
+    
+    Compile and execute the tests. Report any compilation errors or failing tests with full diagnostics.
+  expected_output: >
+    A test report indicating success or detailing compilation/test failures.
+  agent: test_runner
+
+patch_reference_solution:
+  description: >
+    Review the **Test Report** for the **Reference Solution**.
+    
+    If there are failures, fix the code to ensure all tests pass.
+    Maintain clean code principles. Refactoring for clarity is allowed if required to fix correctness.
+  expected_output: >
+    Updated reference solution that passes all tests.
+  agent: debug_specialist
+
+audit_exercise:
+  description: >
+    Review the entire exercise package created by the crew:
+    1. The **Smelly Code** (Student Version).
+    2. The **Reference Solution** (Teacher Version).
+    3. The **Test Suite**.
+    
+    Verify functional equivalence (do they both do the same thing?) and pedagogical contrast (is the smelly code actually messy compared to the clean code?).
+    Ensure the specific **Code Smells** requested by the Architect are present.
+  expected_output: >
+    A quality assurance report validating the educational value of the exercise.
+  agent: quality_assurance
+
+# --- REVIEW CREW TASKS ---
+check_functional_correctness:
+  description: >
+    INPUTS:
+    - {student_code}: The student's submitted code
+    - {test_suite}: The original test suite
+    
+    Compile and run the tests against the student code. Identify any functional regressions.
+  expected_output: >
+    A functional correctness assessment.
+  agent: test_runner
+
+evaluate_code_quality:
+  description: >
+    INPUTS:
+    - {problem_description}: The original exercise description
+    - {original_code}: The initial smelly code
+    - {student_code}: The student's submission
+    - {reference_solution}: The model solution
+    - {code_smells}: A list of code smells that were tested in the question
+    
+    Evaluate whether the targeted smells were mitigated and assess overall code quality compared to the reference solution.
+  expected_output: >
+    A structured code quality review.
+  agent: quality_assurance
+
+generate_review_feedback:
+  description: >
+    Using the **Functional Assessment** and **Code Quality Review** from the previous tasks:
+    
+    Produce concise feedback for the student, an overall verdict (Pass/Fail), and a numerical rating.
+  expected_output: >
+    Final review feedback, verdict, and rating.
+  agent: quality_assurance

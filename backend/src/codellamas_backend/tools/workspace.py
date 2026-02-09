@@ -22,7 +22,7 @@ class Workspace:
       - injecting generated tests
     """
 
-    def __init__(self, prefix: str = "codelamas_"):
+    def __init__(self, prefix: str = "codellamas_"):
         self.root = tempfile.mkdtemp(prefix=prefix)
 
     def write_files(self, files: Iterable[FileLike]) -> None:
