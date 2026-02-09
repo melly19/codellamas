@@ -34,7 +34,7 @@ export function activate(context: vscode.ExtensionContext) {
 	context.subscriptions.push(helloWorldDisposable);
 
 	// =====================================================
-	// 🦙 NEW: Submit Code command
+	//  Submit Code command
 	// =====================================================
 	const submitCodeDisposable = vscode.commands.registerCommand(
 		'code-llamas.submitCode',
@@ -67,7 +67,7 @@ export function activate(context: vscode.ExtensionContext) {
 	context.subscriptions.push(submitCodeDisposable);
 
 	// =====================================================
-	// 🦙 NEW: Status bar button
+	// Status bar button
 	// =====================================================
 	const submitButton = vscode.window.createStatusBarItem(
 		vscode.StatusBarAlignment.Right,

@@ -431,7 +431,7 @@ export class ActivityWebviewProvider implements vscode.WebviewViewProvider {
   </details>
   
   <div class="topic">
-    <label for="topic">Topic / Language</label>
+    <label for="topic">Topic </label>
     <input id="topic" type="text" placeholder="e.g. Banking, E-Commerce" />
   </div>
 
