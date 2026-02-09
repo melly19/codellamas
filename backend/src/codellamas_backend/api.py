@@ -2,6 +2,7 @@ import os
 import datetime
 import json
 import csv
+import time
 from typing import List, Dict, Any
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
@@ -53,21 +54,23 @@ def ingest_code_smells(code_smells: List[str]) -> str:
         return "None"
     return ", ".join(code_smells)
 
-def append_to_csv(exercise: SpringBootExercise, topic: str, model: str, response_data: dict = None):
+def append_to_csv(exercise: SpringBootExercise, topic: str, model: str, response_data: dict = None, code_smells: List[str], generation_time_sec: float):
     timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
     row = {
         "timestamp": timestamp,
         "topic": topic,
+        "code_smells": code_smells,
         "problem_description": exercise.problem_description,
         "single_or_multi": model,
         "response_json": json.dumps(response_data),
+        "generation_time_sec": generation_time_sec
     }
 
     file_exists = os.path.isfile(CSV_FILE_PATH)
 
     with open(CSV_FILE_PATH, mode='a', newline='', encoding='utf-8') as csvfile:
-        fieldnames = ["timestamp", "topic", "problem_description", "single_or_multi", "response_json"]
+        fieldnames = ["timestamp", "topic", "problem_description", "single_or_multi", "response_json", "generation_time_sec"]
         writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
         
         if not file_exists:
@@ -129,11 +132,16 @@ async def generate_exercise(body: GenerateRequest):
                 "meta": loop_meta
             }
 
+        start_time = time.perf_counter()
+
         result = backend.generation_crew().kickoff(inputs={
             "topic": body.topic,
             "code_smells": formatted_code_smells,
             "existing_codebase": body.existing_codebase
         })
+
+        end_time = time.perf_counter()
+        generation_time_sec = round(end_time - start_time, 3)
 
         exercise_data = SpringBootExercise(**result.json_dict)
 
