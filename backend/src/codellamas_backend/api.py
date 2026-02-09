@@ -2,6 +2,7 @@ import os
 import datetime
 import json
 import csv
+import time
 from typing import List, Dict, Any
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
@@ -53,7 +54,7 @@ def ingest_code_smells(code_smells: List[str]) -> str:
         return "None"
     return ", ".join(code_smells)
 
-def append_to_csv(exercise: SpringBootExercise, topic: str):
+def append_to_csv(exercise: SpringBootExercise, topic: str, code_smells: List[str], generation_time_sec: float):
     timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
     project_files_str = json.dumps([{ "path": f.path, "content": f.content } for f in exercise.project_files])
@@ -62,16 +63,18 @@ def append_to_csv(exercise: SpringBootExercise, topic: str):
     row = {
         "timestamp": timestamp,
         "topic": topic,
+        "code_smells": code_smells,
         "problem_description": exercise.problem_description,
         "project_files": project_files_str,
         "test_files": test_files_str,
-        "reference_solution": exercise.reference_solution_markdown
+        "reference_solution": exercise.reference_solution_markdown,
+        "generation_time_sec": generation_time_sec
     }
 
     file_exists = os.path.isfile(CSV_FILE_PATH)
 
     with open(CSV_FILE_PATH, mode='a', newline='', encoding='utf-8') as csvfile:
-        fieldnames = ["timestamp", "topic", "problem_description", "project_files", "test_files", "reference_solution"]
+        fieldnames = ["timestamp", "topic", "code_smells", "problem_description", "project_files", "test_files", "reference_solution", "generation_time_sec"]
         writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
         
         if not file_exists:
@@ -133,17 +136,22 @@ async def generate_exercise(body: GenerateRequest):
                 "meta": loop_meta
             }
 
+        start_time = time.perf_counter()
+
         result = backend.generation_crew().kickoff(inputs={
             "topic": body.topic,
             "code_smells": formatted_code_smells,
             "existing_codebase": body.existing_codebase
         })
 
+        end_time = time.perf_counter()
+        generation_time_sec = round(end_time - start_time, 3)
+
         exercise_data = SpringBootExercise(**result.json_dict)
 
         saved_path = save_exercise_to_repo(exercise_data, body.topic)
 
-        csv_path = append_to_csv(exercise_data, body.topic)
+        csv_path = append_to_csv(exercise_data, body.topic, body.code_smells, generation_time_sec)
 
         # Optional Maven verification (using verifier layer)   
         maven_verification: dict = {"enabled": False}
