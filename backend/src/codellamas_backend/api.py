@@ -49,17 +49,11 @@ class EvaluateRequest(BaseModel):
     injected_tests: List[ProjectFile] = [] # generated tests you want to enforce
 
 def ingest_code_smells(code_smells: List[str]) -> str:
-    """
-    Transforms a list of code smells into a single formatted string.
-    """
     if not code_smells:
         return "None"
     return ", ".join(code_smells)
 
 def append_to_csv(exercise: SpringBootExercise, topic: str):
-    """
-    Appends the generated exercise fields to a CSV file for evaluation.
-    """
     timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
     project_files_str = json.dumps([{ "path": f.path, "content": f.content } for f in exercise.project_files])
@@ -114,15 +108,16 @@ def save_exercise_to_repo(exercise: SpringBootExercise, topic: str):
     
     return base_repo_dir
 
+@app.get("/")
+async def root():
+    return {"status": "ok", "backends": ["single-agent", "multi-agent"]}
+
 @app.post("/generate")
 async def generate_exercise(body: GenerateRequest):
     formatted_code_smells = ingest_code_smells(body.code_smells)
-
     try:
-        # 1) Generate via CrewAI (same behavior, but respect mode)
         backend = get_backend(body.mode)
 
-        # NEW: multi + verify triggers fix-loop generation
         if body.mode == "multi" and body.verify_maven and body.project_files:
             exercise_data, loop_meta = backend.generate_with_fix_loop(
                 topic=body.topic,
@@ -130,7 +125,6 @@ async def generate_exercise(body: GenerateRequest):
                 existing_codebase=body.existing_codebase,
                 project_files=body.project_files,
             )
-            # You can keep your existing save_to_repo and response formatting
             saved_path = save_exercise_to_repo(exercise_data, body.topic)
             return {
                 "status": "success",
@@ -145,16 +139,13 @@ async def generate_exercise(body: GenerateRequest):
             "existing_codebase": body.existing_codebase
         })
 
-        # 2) Convert Crew output to structured exercise (unchanged)
         exercise_data = SpringBootExercise(**result.json_dict)
 
-        # 3) Save the generated exercise to your repo (unchanged)
         saved_path = save_exercise_to_repo(exercise_data, body.topic)
 
-        # Also append to CSV for easier evaluation
         csv_path = append_to_csv(exercise_data, body.topic)
 
-        # 4) Optional Maven verification (using verifier layer)
+        # Optional Maven verification (using verifier layer)   
         maven_verification: dict = {"enabled": False}
 
         if body.verify_maven:
@@ -267,8 +258,3 @@ async def review_solution(body: EvaluateRequest):
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Review crew failed: {e}")
-
-
-@app.get("/")
-async def root():
-    return {"status": "ok"}
