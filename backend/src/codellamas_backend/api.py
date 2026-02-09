@@ -54,7 +54,7 @@ def ingest_code_smells(code_smells: List[str]) -> str:
         return "None"
     return ", ".join(code_smells)
 
-def append_to_csv(exercise: SpringBootExercise, topic: str, model: str, response_data: dict = None, code_smells: List[str], generation_time_sec: float):
+def append_to_csv(exercise: SpringBootExercise, topic: str, code_smells: List[str], generation_time_sec: float, response_data: dict = None):
     timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
     row = {
@@ -64,13 +64,12 @@ def append_to_csv(exercise: SpringBootExercise, topic: str, model: str, response
         "problem_description": exercise.problem_description,
         "single_or_multi": model,
         "response_json": json.dumps(response_data),
-        "generation_time_sec": generation_time_sec
     }
 
     file_exists = os.path.isfile(CSV_FILE_PATH)
 
     with open(CSV_FILE_PATH, mode='a', newline='', encoding='utf-8') as csvfile:
-        fieldnames = ["timestamp", "topic", "problem_description", "single_or_multi", "response_json", "generation_time_sec"]
+        fieldnames = ["timestamp", "topic", "code_smells", "problem_description", "single_or_multi", "response_json", "generation_time_sec"]
         writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
         
         if not file_exists:
@@ -142,6 +141,8 @@ async def generate_exercise(body: GenerateRequest):
 
         end_time = time.perf_counter()
         generation_time_sec = round(end_time - start_time, 3)
+
+        csv_path = append_to_csv(exercise_data, body.topic, body.code_smells, generation_time_sec)
 
         exercise_data = SpringBootExercise(**result.json_dict)
 
