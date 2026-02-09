@@ -1,16 +1,20 @@
 from __future__ import annotations
-from typing import Any, Dict, List, Optional, Tuple
+
+from typing import Any, Dict, List, Optional, Type
+
 from pydantic import BaseModel, Field
 from crewai import Agent, Crew, Process, Task, LLM
+from crewai.project import CrewBase, agent, task, crew
+from crewai.tools import BaseTool
+
 from codellamas_backend.runtime.verifier import MavenVerifier, to_filelikes
 
-
 # =========================
-# Shared output models
+# Shared models
 # =========================
 
 class ProjectFile(BaseModel):
-    path: str = Field(..., description="Relative file path (e.g., src/main/java/... or pom.xml)")
+    path: str = Field(..., description="Relative path (e.g., src/main/java/... or pom.xml)")
     content: str
 
 
@@ -22,165 +26,279 @@ class SpringBootExercise(BaseModel):
 
 
 class PatchOutput(BaseModel):
-    """
-    Fixer output: can update code files and/or tests. Keep it simple:
-    - Provide full updated project_files and test_files (not diffs)
-    - reference_solution_markdown may be updated if needed
-    """
+    """Debug/patch agent output."""
     project_files: List[ProjectFile] = Field(default_factory=list)
     test_files: List[ProjectFile] = Field(default_factory=list)
     reference_solution_markdown: str = ""
 
-class CodellamasBackendMulti:
-    """
-    Multi-agent backend. Provides:
-    - generation_crew(): basic multi-agent one-shot crew
-    - review_crew(): review crew
-    - generate_with_fix_loop(): Python-orchestrated multi-agent loop with MavenVerifier
-    """
 
-    def __init__(
+class VerifyToolInput(BaseModel):
+    """
+    Minimal runtime inputs for verification.
+    IMPORTANT: `base_project_files` must be the Spring Initializr scaffold.
+    """
+    base_project_files: List[ProjectFile]
+    override_project_files: List[ProjectFile] = Field(default_factory=list)
+    injected_tests: List[ProjectFile] = Field(default_factory=list)
+    timeout_sec: int = 180
+
+
+class VerifyToolOutput(BaseModel):
+    status: str
+    failed_tests: List[str]
+    errors: List[str]
+    raw_log_head: str
+
+# =========================
+# Tool: Maven verifier wrapped as a CrewAI tool
+# =========================
+
+class MavenVerifyTool(BaseTool):
+    name: str = "maven_verify"
+    description: str = (
+        "Runs mvn test in an isolated workspace (includes compilation) and returns PASS/FAIL plus a log head."
+    )
+    args_schema: Type[BaseModel] = VerifyToolInput
+
+    def _run(
         self,
-        ollama_base_url: str = "http://localhost:11434",
-        model: str = "ollama/phi4",
-        max_iters: int = 3,
-        maven_timeout_sec: int = 180,
-    ):
-        self.ollama_base_url = ollama_base_url
-        self.model = model
-        self.max_iters = max_iters
-        self.maven_timeout_sec = maven_timeout_sec
+        base_project_files: List[Dict[str, str]],
+        override_project_files: Optional[List[Dict[str, str]]] = None,
+        injected_tests: Optional[List[Dict[str, str]]] = None,
+        timeout_sec: int = 180,
+    ) -> str:
+        override_project_files = override_project_files or []
+        injected_tests = injected_tests or []
 
-        self.llm = LLM(model=self.model, base_url=self.ollama_base_url)
+        base_pf = [ProjectFile(path=f["path"], content=f["content"]) for f in base_project_files]
+        override_pf = [ProjectFile(path=f["path"], content=f["content"]) for f in override_project_files]
+        test_pf = [ProjectFile(path=f["path"], content=f["content"]) for f in injected_tests]
 
-        # Runtime verifier (ground truth)
-        self.verifier = MavenVerifier(timeout_sec=self.maven_timeout_sec, quiet=True)
+        verifier = MavenVerifier(timeout_sec=timeout_sec, quiet=True)
+        verification = verifier.verify(
+            base_project=to_filelikes(base_pf),
+            override_files=to_filelikes(override_pf),
+            injected_tests={f.path: f.content for f in test_pf},
+        )
+
+        out = VerifyToolOutput(
+            status=verification.status,
+            failed_tests=verification.failed_tests,
+            errors=verification.errors,
+            raw_log_head=verification.summary()[:2000],
+        )
+
+        return out.model_dump_json()
+
+@CrewBase
+class CodellamasBackendMulti:
+
+    agents_config = "../config/agents_multi.yaml"
+    tasks_config = "../config/tasks_multi.yaml"
+
+    request_timeout_sec: int = 1800
+    maven_timeout_sec: int = 180
+    max_patch_iters: int = 2
+
+    def __init__(self):
+        self.llm = LLM(
+            model="ollama/phi4",
+            base_url="http://localhost:11434",
+            request_timeout=self.request_timeout_sec,
+        )
+
+        # Single tool instance is fine
+        self.verify_tool = MavenVerifyTool()
+
+    @agent
+    def problem_architect(self) -> Agent:
+        return Agent(
+            config=self.agents_config['problem_architect'],
+            verbose=True
+        )
+
+    @agent
+    def test_engineer(self) -> Agent:
+        return Agent(
+            config=self.agents_config['test_engineer'],
+            verbose=True
+        )
+
+    @agent
+    def smelly_developer(self) -> Agent:
+        return Agent(
+            config=self.agents_config['smelly_developer'],
+            verbose=True
+        )
+
+    @agent
+    def reference_solution_developer(self) -> Agent:
+        return Agent(
+            config=self.agents_config['reference_solution_developer'],
+            verbose=True
+        )
+
+    @agent
+    def test_runner(self) -> Agent:
+        return Agent(
+            config=self.agents_config['test_runner'],
+            verbose=True,
+            tools=[self.verify_tool]
+        )
+
+    @agent
+    def debug_specialist(self) -> Agent:
+        return Agent(
+            config=self.agents_config['debug_specialist'],
+            verbose=True
+        )
+
+    @agent
+    def quality_assurance(self) -> Agent:
+        return Agent(
+            config=self.agents_config['quality_assurance'],
+            verbose=True
+        )
 
     # -------------------------
-    # Agents (programmatic; no YAML)
+    # Tasks (same stage set as other-branch)
     # -------------------------
 
-    def _problem_agent(self) -> Agent:
-        return Agent(
-            role="Problem Designer",
-            goal="Design a small Spring Boot exercise domain and constraints.",
-            backstory="You create realistic student-level refactoring exercises with clear requirements.",
-            llm=self.llm,
-            verbose=True,
+    @task
+    def define_problem(self) -> Task:
+        return Task(
+            config=self.tasks_config['define_problem'],
+            agent=self.problem_architect()
         )
 
-    def _test_agent(self) -> Agent:
-        return Agent(
-            role="Test Author",
-            goal="Write JUnit 5 tests defining expected behavior that must remain unchanged after refactoring.",
-            backstory="You write concise, deterministic unit tests for Java code without external services.",
-            llm=self.llm,
-            verbose=True,
+    @task
+    def define_tests(self) -> Task:
+        return Task(
+            config=self.tasks_config['define_tests'],
+            agent=self.test_engineer()
         )
 
-    def _solution_agent(self) -> Agent:
-        return Agent(
-            role="Exercise Generator",
-            goal="Produce a small Spring Boot codebase containing the requested smells, plus a refactored reference solution.",
-            backstory="You generate 2–4 classes with intentional smells and provide clean refactoring.",
-            llm=self.llm,
-            verbose=True,
+
+    @task
+    def implement_smelly_code(self) -> Task:
+        return Task(
+            config=self.tasks_config['implement_smelly_code'],
+            agent=self.smelly_developer()
         )
 
-    def _fixer_agent(self) -> Agent:
-        return Agent(
-            role="Bug Fixer",
-            goal="Fix compilation/test failures while preserving intended behavior and keeping the smells/refactoring objectives.",
-            backstory="You patch Java code/tests based on Maven logs. You do not invent dependencies or external services.",
-            llm=self.llm,
-            verbose=True,
+
+    @task
+    def run_tests_on_smelly_code(self) -> Task:
+        return Task(
+            config=self.tasks_config['run_tests_on_smelly_code'],
+            agent=self.test_runner()
         )
 
-    def _review_agent(self) -> Agent:
-        return Agent(
-            role="Reviewer",
-            goal="Provide concise feedback on student solutions relative to smells and tests.",
-            backstory="You assess refactoring quality and correctness at undergraduate level.",
-            llm=self.llm,
-            verbose=True,
+    @task
+    def patch_smelly_code(self) -> Task:
+        return Task(
+            config=self.tasks_config['patch_smelly_code'],
+            agent=self.debug_specialist(),
+            output_json=PatchOutput
         )
 
-    # -------------------------
-    # Crews (one-shot mode)
-    # -------------------------
+    @task
+    def generate_reference_solution(self) -> Task:
+        return Task(
+            config=self.tasks_config['generate_reference_solution'],
+            agent=self.reference_solution_developer(),
+            output_json=PatchOutput
+        )
 
+    @task
+    def run_tests_on_reference_solution(self) -> Task:
+        return Task(
+            config=self.tasks_config['run_tests_on_reference_solution'],
+            agent=self.test_runner()
+        )
+
+    @task
+    def patch_reference_solution(self) -> Task:
+        return Task(
+            config=self.tasks_config['patch_reference_solution'],
+            agent=self.debug_specialist(),
+            output_json=PatchOutput
+        )
+
+    @task
+    def audit_exercise(self) -> Task:
+        return Task(
+            config=self.tasks_config['audit_exercise'],
+            agent=self.quality_assurance(),
+            output_json=SpringBootExercise
+        )
+
+    @task
+    def check_functional_correctness(self) -> Task:
+        return Task(
+            config=self.tasks_config['check_functional_correctness'],
+            agent=self.test_runner()
+        )
+
+    @task
+    def evaluate_code_quality(self) -> Task:
+        return Task(
+            config=self.tasks_config['evaluate_code_quality'],
+            agent=self.quality_assurance()
+        )
+
+    @task
+    def generate_review_feedback(self) -> Task:
+        return Task(
+            config=self.tasks_config['generate_review_feedback'],
+            agent=self.quality_assurance()
+        )
+
+    @crew
     def generation_crew(self) -> Crew:
-        """
-        Basic multi-agent pipeline without execution loop.
-        Keeps compatibility with existing api.py routing for multi-mode if verify_maven=false.
-        """
-        problem_task = Task(
-            description=(
-                "Design a refactoring exercise scenario.\n"
-                "Inputs:\n"
-                "- topic: {topic}\n"
-                "- code_smells: {code_smells}\n"
-                "- existing_codebase: {existing_codebase}\n"
-                "Output: a clear problem description and constraints.\n"
-            ),
-            agent=self._problem_agent(),
-        )
-
-        tests_task = Task(
-            description=(
-                "Write JUnit 5 tests for the described behavior.\n"
-                "Inputs:\n"
-                "- topic: {topic}\n"
-                "- code_smells: {code_smells}\n"
-                "- existing_codebase: {existing_codebase}\n"
-                "Output: tests requirements and test code ideas.\n"
-            ),
-            agent=self._test_agent(),
-        )
-
-        solution_task = Task(
-            description=(
-                "Generate the full exercise artifacts.\n"
-                "Inputs:\n"
-                "- topic: {topic}\n"
-                "- code_smells: {code_smells}\n"
-                "- existing_codebase: {existing_codebase}\n"
-                "Return a SpringBootExercise object.\n"
-            ),
-            agent=self._solution_agent(),
-            output_json=SpringBootExercise,
-        )
-
         return Crew(
-            agents=[self._problem_agent(), self._test_agent(), self._solution_agent()],
-            tasks=[problem_task, tests_task, solution_task],
+            agents=[
+                self.problem_architect(),
+                self.test_engineer(),
+                self.smelly_developer(),
+                self.test_runner(),
+                self.debug_specialist(),
+                self.reference_solution_developer(),
+                self.quality_assurance(),
+            ],
+            tasks=[
+                self.define_problem(),
+                self.define_tests(),
+                self.implement_smelly_code(),
+                self.run_tests_on_smelly_code(),
+                self.patch_smelly_code(),
+                self.generate_reference_solution(),
+                self.run_tests_on_reference_solution(),
+                self.patch_reference_solution(),
+                self.audit_exercise(),
+            ],
             process=Process.sequential,
             verbose=True,
         )
 
+    @crew
     def review_crew(self) -> Crew:
-        review_task = Task(
-            description=(
-                "Review the student submission.\n"
-                "Inputs:\n"
-                "- problem_description: {problem_description}\n"
-                "- original_code: {original_code}\n"
-                "- student_code: {student_code}\n"
-                "- test_results: {test_results}\n"
-                "- reference_solution: {reference_solution}\n"
-                "- code_smells: {code_smells}\n"
-            ),
-            agent=self._review_agent(),
-        )
         return Crew(
-            agents=[self._review_agent()],
-            tasks=[review_task],
+            agents=[
+                self.test_runner(),
+                self.quality_assurance(),
+            ],
+            tasks=[
+                self.check_functional_correctness(),
+                self.evaluate_code_quality(),
+                self.generate_review_feedback(),
+            ],
             process=Process.sequential,
             verbose=True,
         )
 
     # -------------------------
-    # Fix-loop (Python orchestration)
+    # Optional: reliable Python fix-loop using verifier (recommended)
     # -------------------------
 
     def generate_with_fix_loop(
@@ -189,114 +307,135 @@ class CodellamasBackendMulti:
         topic: str,
         code_smells: List[str],
         existing_codebase: str,
-        project_files: List[Any],  # accepts your Pydantic ProjectFile objects from api.py
-        max_iters: Optional[int] = None,
-    ) -> Tuple[SpringBootExercise, Dict[str, Any]]:
+        project_files: List[Any],  # scaffold from API (ProjectFile-like)
+    ) -> tuple[SpringBootExercise, Dict[str, Any]]:
         """
-        Orchestrates:
-        1) multi-agent generation
-        2) mvn test verify
-        3) if fail => fixer agent patches artifacts
-        4) repeat up to max_iters
+        A simpler + more reliable implementation of the same stage functionality as generation_crew,
+        but with deterministic verification + patching loops in Python.
 
-        Returns:
-          (exercise_data, meta)
+        Use this from api.py when:
+          mode == "multi" AND verify_maven == True AND project_files provided
         """
-        max_iters = max_iters or self.max_iters
-
-        # Step 1: initial generation (one-shot crew)
-        crew = self.generation_crew()
-        kickoff_result = crew.kickoff(inputs={
-            "topic": topic,
-            "code_smells": code_smells,
-            "existing_codebase": existing_codebase,
-        })
-
-        # CrewAI returns an object; SpringBootExercise is in kickoff_result.json_dict if output_json is used.
-        exercise = SpringBootExercise(**kickoff_result.json_dict)
-
-        # Prepare base scaffold and run verifier
-        base_project = to_filelikes(project_files)
+        base_project_files = [ProjectFile(path=f.path, content=f.content) for f in project_files]
+        base_filelikes = to_filelikes(base_project_files)
 
         meta: Dict[str, Any] = {
             "mode": "multi",
             "fix_loop": True,
-            "iterations": 0,
-            "maven": None,
+            "smelly_iterations": 0,
+            "reference_iterations": 0,
+            "smelly_maven": None,
+            "reference_maven": None,
         }
 
-        def _exercise_to_override_files(ex: SpringBootExercise):
-            return to_filelikes(ex.project_files)
+        # 1) One-shot for initial exercise artifacts
+        kickoff = self.implement_smelly_code().agent  # for clarity: we just kickoff a small crew
+        initial = Crew(
+            agents=[self.problem_architect(), self.test_engineer(), self.smelly_developer()],
+            tasks=[self.define_problem(), self.define_tests(), self.implement_smelly_code()],
+            process=Process.sequential,
+            verbose=True,
+        ).kickoff(inputs={"topic": topic, "code_smells": code_smells, "existing_codebase": existing_codebase})
 
-        def _exercise_tests_dict(ex: SpringBootExercise) -> Dict[str, str]:
-            return {f.path: f.content for f in ex.test_files}
+        exercise = SpringBootExercise(**initial.json_dict)
 
-        # Loop
-        for i in range(1, max_iters + 1):
-            meta["iterations"] = i
-
-            verification = self.verifier.verify(
-                base_project=base_project,
-                override_files=_exercise_to_override_files(exercise),
-                injected_tests=_exercise_tests_dict(exercise),
+        # 2) Verify + patch smelly
+        for i in range(1, self.max_patch_iters + 1):
+            meta["smelly_iterations"] = i
+            ver = MavenVerifier(timeout_sec=self.maven_timeout_sec, quiet=True).verify(
+                base_project=base_filelikes,
+                override_files=to_filelikes(exercise.project_files),
+                injected_tests={t.path: t.content for t in exercise.test_files},
             )
-
-            meta["maven"] = {
-                "status": verification.status,
-                "failed_tests": verification.failed_tests,
-                "errors": verification.errors,
-                "raw_log_head": verification.summary(),
+            meta["smelly_maven"] = {
+                "status": ver.status,
+                "failed_tests": ver.failed_tests,
+                "errors": ver.errors,
+                "raw_log_head": ver.summary()[:2000],
             }
+            if ver.status == "PASS":
+                break
 
-            if verification.status == "PASS":
-                return exercise, meta
-
-            # Step: Fix once based on logs
-            fix_task = Task(
-                description=(
-                    "You must fix compilation/test failures based on Maven output.\n\n"
-                    "INPUTS:\n"
-                    f"- topic: {topic}\n"
-                    f"- code_smells: {code_smells}\n"
-                    f"- existing_codebase: {existing_codebase}\n\n"
-                    "CURRENT ARTIFACTS:\n"
-                    f"- problem_description:\n{exercise.problem_description}\n\n"
-                    f"- reference_solution_markdown:\n{exercise.reference_solution_markdown}\n\n"
-                    "CURRENT PROJECT FILES (path then content):\n"
-                    + "\n".join([f"\n### {pf.path}\n{pf.content}" for pf in exercise.project_files])
-                    + "\n\nCURRENT TEST FILES (path then content):\n"
-                    + "\n".join([f"\n### {tf.path}\n{tf.content}" for tf in exercise.test_files])
-                    + "\n\nMAVEN OUTPUT (HEAD):\n"
-                    + verification.summary()
-                    + "\n\nTASK:\n"
-                      "- Update project_files and/or test_files so that `mvn test` passes.\n"
-                      "- Do NOT add external dependencies.\n"
-                      "- Keep scope small (2–4 classes + tests).\n"
-                      "- Preserve intended behavior.\n"
-                      "- Return full updated artifacts (not diffs).\n"
-                ),
-                agent=self._fixer_agent(),
-                output_json=PatchOutput,
-            )
-
-            fix_crew = Crew(
-                agents=[self._fixer_agent()],
-                tasks=[fix_task],
+            patch = Crew(
+                agents=[self.debug_specialist()],
+                tasks=[self.patch_smelly_code()],
                 process=Process.sequential,
                 verbose=True,
+            ).kickoff(inputs={
+                "maven_log_head": ver.summary()[:2000],
+                "smelly_project_files": [p.model_dump() for p in exercise.project_files],
+                "test_files": [t.model_dump() for t in exercise.test_files],
+            })
+            p = PatchOutput(**patch.json_dict)
+            if p.project_files:
+                exercise.project_files = p.project_files
+            if p.test_files:
+                exercise.test_files = p.test_files
+
+        # 3) Generate reference solution
+        ref = Crew(
+            agents=[self.reference_solution_developer()],
+            tasks=[self.generate_reference_solution()],
+            process=Process.sequential,
+            verbose=True,
+        ).kickoff(inputs={
+            "problem_description": exercise.problem_description,
+            "smelly_project_files": [p.model_dump() for p in exercise.project_files],
+            "test_files": [t.model_dump() for t in exercise.test_files],
+        })
+        ref_patch = PatchOutput(**ref.json_dict)
+        reference_project_files = ref_patch.project_files or exercise.project_files
+        reference_test_files = ref_patch.test_files or exercise.test_files
+        reference_md = ref_patch.reference_solution_markdown or exercise.reference_solution_markdown
+
+        # 4) Verify + patch reference
+        for i in range(1, self.max_patch_iters + 1):
+            meta["reference_iterations"] = i
+            ver = MavenVerifier(timeout_sec=self.maven_timeout_sec, quiet=True).verify(
+                base_project=base_filelikes,
+                override_files=to_filelikes(reference_project_files),
+                injected_tests={t.path: t.content for t in reference_test_files},
             )
+            meta["reference_maven"] = {
+                "status": ver.status,
+                "failed_tests": ver.failed_tests,
+                "errors": ver.errors,
+                "raw_log_head": ver.summary()[:2000],
+            }
+            if ver.status == "PASS":
+                break
 
-            fix_result = fix_crew.kickoff(inputs={})
-            patch = PatchOutput(**fix_result.json_dict)
+            patch = Crew(
+                agents=[self.debug_specialist()],
+                tasks=[self.patch_reference_solution()],
+                process=Process.sequential,
+                verbose=True,
+            ).kickoff(inputs={
+                "maven_log_head": ver.summary()[:2000],
+                "reference_project_files": [p.model_dump() for p in reference_project_files],
+                "reference_test_files": [t.model_dump() for t in reference_test_files],
+                "reference_solution_markdown": reference_md,
+            })
+            p = PatchOutput(**patch.json_dict)
+            if p.project_files:
+                reference_project_files = p.project_files
+            if p.test_files:
+                reference_test_files = p.test_files
+            if p.reference_solution_markdown.strip():
+                reference_md = p.reference_solution_markdown
 
-            # Apply patch (only replace if provided; otherwise keep old)
-            if patch.project_files:
-                exercise.project_files = patch.project_files
-            if patch.test_files:
-                exercise.test_files = patch.test_files
-            if patch.reference_solution_markdown.strip():
-                exercise.reference_solution_markdown = patch.reference_solution_markdown
+        # 5) Audit + package final
+        audited = Crew(
+            agents=[self.quality_assurance()],
+            tasks=[self.audit_exercise()],
+            process=Process.sequential,
+            verbose=True,
+        ).kickoff(inputs={
+            "problem_description": exercise.problem_description,
+            "smelly_project_files": [p.model_dump() for p in exercise.project_files],
+            "test_files": [t.model_dump() for t in exercise.test_files],
+            "reference_solution_markdown": reference_md,
+        })
 
-        # If still failing after max_iters, return last attempt + meta
-        meta["note"] = f"Reached max fix iterations ({max_iters}) without PASS."
-        return exercise, meta
+        final_exercise = SpringBootExercise(**audited.json_dict)
+        return final_exercise, meta
