@@ -5,6 +5,7 @@ from typing import List
 from pydantic import BaseModel, Field
 import os
 
+
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
 BASE_URL = "https://openrouter.ai/api/v1"
 MODEL = "openrouter/qwen/qwen3-coder-30b-a3b-instruct"
