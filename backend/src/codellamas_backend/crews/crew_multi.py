@@ -1,10 +1,7 @@
 from __future__ import annotations
-
 from typing import Any, Dict, List, Optional, Tuple
-
 from pydantic import BaseModel, Field
 from crewai import Agent, Crew, Process, Task, LLM
-
 from codellamas_backend.runtime.verifier import MavenVerifier, to_filelikes
 
 
@@ -33,11 +30,6 @@ class PatchOutput(BaseModel):
     project_files: List[ProjectFile] = Field(default_factory=list)
     test_files: List[ProjectFile] = Field(default_factory=list)
     reference_solution_markdown: str = ""
-
-
-# =========================
-# Multi-agent backend with fix loop
-# =========================
 
 class CodellamasBackendMulti:
     """
