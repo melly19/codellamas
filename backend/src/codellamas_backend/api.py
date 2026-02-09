@@ -53,25 +53,21 @@ def ingest_code_smells(code_smells: List[str]) -> str:
         return "None"
     return ", ".join(code_smells)
 
-def append_to_csv(exercise: SpringBootExercise, topic: str):
+def append_to_csv(exercise: SpringBootExercise, topic: str, model: str, response_data: dict = None):
     timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-
-    project_files_str = json.dumps([{ "path": f.path, "content": f.content } for f in exercise.project_files])
-    test_files_str = json.dumps([{ "path": f.path, "content": f.content } for f in exercise.test_files])
 
     row = {
         "timestamp": timestamp,
         "topic": topic,
         "problem_description": exercise.problem_description,
-        "project_files": project_files_str,
-        "test_files": test_files_str,
-        "reference_solution": exercise.reference_solution_markdown
+        "single_or_multi": model,
+        "response_json": json.dumps(response_data),
     }
 
     file_exists = os.path.isfile(CSV_FILE_PATH)
 
     with open(CSV_FILE_PATH, mode='a', newline='', encoding='utf-8') as csvfile:
-        fieldnames = ["timestamp", "topic", "problem_description", "project_files", "test_files", "reference_solution"]
+        fieldnames = ["timestamp", "topic", "problem_description", "single_or_multi", "response_json"]
         writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
         
         if not file_exists:
@@ -143,8 +139,6 @@ async def generate_exercise(body: GenerateRequest):
 
         saved_path = save_exercise_to_repo(exercise_data, body.topic)
 
-        csv_path = append_to_csv(exercise_data, body.topic)
-
         # Optional Maven verification (using verifier layer)   
         maven_verification: dict = {"enabled": False}
 
@@ -181,14 +175,17 @@ async def generate_exercise(body: GenerateRequest):
                     "raw_log_head": verification.summary()
                 })
 
-        # 5) Return response (unchanged + additive verification)
-        return {
+        # 5) Compile response early to save to CSV
+        response_data = {
             "status": "success",
             "message": f"Exercise generated and saved to {saved_path}",
             "data": result.json_dict,
             "maven_verification": maven_verification,
-            "csv_log_path": csv_path
         }
+
+        append_to_csv(exercise_data, body.topic, model=body.mode, response_data=response_data)
+
+        return response_data
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
