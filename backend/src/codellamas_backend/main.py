@@ -1,7 +1,10 @@
 #!/usr/bin/env python
 import sys
 import warnings
+from dotenv import load_dotenv
+import os
 
+load_dotenv()
 from backend.src.codellamas_backend.crews.crew_single import CodellamasBackend
 
 warnings.filterwarnings("ignore", category=SyntaxWarning, module="pysbd")

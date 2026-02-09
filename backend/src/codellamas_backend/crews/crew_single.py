@@ -4,10 +4,6 @@ from crewai.agents.agent_builder.base_agent import BaseAgent
 from typing import List
 from pydantic import BaseModel, Field
 import os
-from dotenv import load_dotenv
-import os
-
-load_dotenv()  # loads .env into os.environ
 
 
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
