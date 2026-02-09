@@ -4,4 +4,4 @@ __pycache__/
 .venv
 generated_exercises
 output
-
+.csv
