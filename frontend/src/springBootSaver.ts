@@ -19,7 +19,7 @@ interface ResponseData {
 
 export async function saveToSpringBootProject(
   responseData: ResponseData,
-  panel: vscode.WebviewPanel
+  webviewHost: vscode.WebviewPanel | vscode.WebviewView
 ) {
   const workspaceFolders = vscode.workspace.workspaceFolders;
   if (!workspaceFolders || workspaceFolders.length === 0) {
@@ -79,7 +79,7 @@ export async function saveToSpringBootProject(
       await vscode.window.showTextDocument(doc);
     }
 
-    panel.webview.postMessage({
+    webviewHost.webview.postMessage({
       type: "response",
       data: { 
         message: `Created ${createdFiles.length} files`,

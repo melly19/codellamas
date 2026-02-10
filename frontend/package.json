@@ -40,7 +40,7 @@
       "activitybar": [
         {
           "id": "codellamas_activity",
-          "title": "CodeLlamas",
+          "title": "Codellamas",
           "icon": "media/code-llamas.png"
         }
       ]
@@ -49,7 +49,7 @@
       "codellamas_activity": [
         {
           "id": "codellamas_activityView",
-          "name": "Activity",
+          "name": "Codellamas",
           "type": "webview"
         }
       ]
