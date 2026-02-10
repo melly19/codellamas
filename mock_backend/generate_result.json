@@ -1,0 +1,37 @@
+{
+    "status": "success",
+    "message": "Exercise generated and saved to /Users/frederickliau/Desktop/School/codellamas/backend/src/codellamas_backend/generated_exercises/Bookstore_0702_2805",
+    "data": {
+        "problem_description": "Refactor the provided Spring Boot application by identifying and resolving the 'Feature Envy' code smell. The task involves moving methods that excessively interact with other objects into the class where those objects reside.",
+        "project_files": [
+            {
+                "path": "src/main/java/com/bookstore/BookController.java",
+                "content": "package com.bookstore;\n\nimport org.springframework.beans.factory.annotation.Autowired;\nimport org.springframework.web.bind.annotation.*;\nimport java.util.List;\n\nclass BookController {\n    @Autowired\n    private BookService bookService;\n\n    @GetMapping(\"/books\")\n    public List<Book> getAllBooks() {\n        return bookService.findAll();\n    }\n\n    @PostMapping(\"/books\")\n    public Book addBook(@RequestBody Book book) {\n        if (book == null || book.getTitle().isEmpty()) {\n            throw new IllegalArgumentException(\"Invalid book data\");\n        }\n        return bookService.save(book);\n    }\n}\n"
+            },
+            {
+                "path": "src/main/java/com/bookstore/BookService.java",
+                "content": "package com.bookstore;\n\nimport java.util.ArrayList;\nimport java.util.List;\n\nclass BookService {\n    private List<Book> books = new ArrayList<>();\n\n    public List<Book> findAll() {\n        return books;\n    }\n\n    public Book save(Book book) {\n        if (book.getId() == null) {\n            book.setId((long) (books.size() + 1));\n        }\n        books.add(book);\n        return book;\n    }\n}\n"
+            },
+            {
+                "path": "src/main/java/com/bookstore/BookRepository.java",
+                "content": "package com.bookstore;\n\nimport java.util.List;\n\ninterface BookRepository {\n    List<Book> findAll();\n    Book save(Book book);\n}\n"
+            },
+            {
+                "path": "src/main/java/com/bookstore/Book.java",
+                "content": "package com.bookstore;\n\nclass Book {\n    private Long id;\n    private String title;\n\n    public Long getId() { return id; }\n    public void setId(Long id) { this.id = id; }\n    public String getTitle() { return title; }\n    public void setTitle(String title) { this.title = title; }\n}\n"
+            }
+        ],
+        "test_files": [
+            {
+                "path": "src/test/java/com/bookstore/BookControllerTest.java",
+                "content": "package com.bookstore;\n\nimport org.junit.jupiter.api.*;\nimport static org.mockito.Mockito.*;\nimport java.util.Collections;\n\nclass BookControllerTest {\n    private BookService bookService = mock(BookService.class);\n    private BookController controller = new BookController();\n\n    @BeforeEach\n    void setUp() {\n        controller.setBookService(bookService);\n    }\n\n    @Test\n    void getAllBooks_returnsAllBooks() {\n        when(bookService.findAll()).thenReturn(Collections.singletonList(new Book()));\n        List<Book> result = controller.getAllBooks();\n        Assertions.assertEquals(1, result.size());\n    }\n\n    @Test\n    void addBook_addsBookSuccessfully() {\n        Book book = new Book();\n        when(bookService.save(any(Book.class))).thenReturn(book);\n        Book result = controller.addBook(book);\n        Assertions.assertNotNull(result.getId());\n    }\n\n    @Test\n    void addBook_invalidData_throwsException() {\n        Assertions.assertThrows(IllegalArgumentException.class, () -> {\n            controller.addBook(null);\n        });\n    }\n}\n"
+            }
+        ],
+        "reference_solution_markdown": "```java\npackage com.bookstore;\n\nimport org.springframework.beans.factory.annotation.Autowired;\nimport org.springframework.web.bind.annotation.*;\nimport java.util.List;\n\nclass BookController {\n    @Autowired\n    private BookService bookService;\n\n    @GetMapping(\"/books\")\n    public List<Book> getAllBooks() {\n        return bookService.findAll();\n    }\n\n    @PostMapping(\"/books\")\n    public Book addBook(@RequestBody Book book) {\n        return bookService.save(book);\n    }\n}\n\npackage com.bookstore;\n\nimport java.util.ArrayList;\nimport java.util.List;\n\nclass BookService {\n    private List<Book> books = new ArrayList<>();\n\n    public List<Book> findAll() {\n        return books;\n    }\n\n    public Book save(Book book) {\n        if (book.getId() == null) {\n            book.setId((long) (books.size() + 1));\n        }\n        books.add(book);\n        return book;\n    }\n}\n```"
+    },
+    "maven_verification": {
+        "enabled": false
+    },
+    "csv_log_path": "/Users/frederickliau/Desktop/School/codellamas/backend/src/codellamas_backend/output/exercises_evaluation.csv"
+ }
+ 
