@@ -2,15 +2,22 @@
 define_problem:
   description: >
     INPUTS:
-    - {topic}: The business domain for the Spring Boot project (e.g., "e-commerce")
-    - {code_smells}: A list of specific code smells that will be tested for this exercise (e.g., "Long Method")
-    - {existing_codebase}: OPTIONAL. A structured string containing the file paths and content of an existing Spring Boot project. Use "NONE" if a new project should be generated.
+    - {topic}: The business domain (e.g., "e-commerce")
+    - {code_smells}: The STRICT list of code smells to embed.
+    - {existing_codebase}: "NONE" or file paths.
 
-    Generate a realistic software problem description in the given business domain. 
-    If an existing codebase is provided, adapt the problem to its structure.
-    Clearly state the refactoring task and constraints. Do not write any code or tests.
+    Create a concise, technical problem description for a undergraduate-level software engineering exercise.
+
+    GUIDELINES:
+    1. **Domain Focus**: Describe a subsystem for {topic} (e.g., "Inventory Service"). Focus on logic/features, not business hype.
+    2. **Smell Integration**: Design the feature requirements such that a lazy developer would naturally commit the following specific errors: {code_smells}.
+    3. **Constraint Checklist**:
+        - DO NOT invent arbitrary metrics (e.g., "10,000 orders/day", "4 week deadline").
+        - DO NOT invent new code smells outside this: {code_smells}.
+        - DO NOT include conversational filler or "Here is the output" prefixes.
+        - DO NOT write code.
   expected_output: >
-    A problem description with refactoring goals and constraints.
+    A pure markdown text block describing the system requirements and the specific flaws to look for, without conversational filler.
   agent: problem_architect
 
 define_tests:
