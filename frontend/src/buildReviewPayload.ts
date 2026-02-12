@@ -13,7 +13,8 @@ interface ReviewPayload {
 }
 
 export async function buildReviewPayload(
-  provider: ActivityWebviewProvider
+  provider: ActivityWebviewProvider,
+  codeSmells: string[] = []
 ): Promise<ReviewPayload | null> {
   const workspaceFolders = vscode.workspace.workspaceFolders;
   if (!workspaceFolders || workspaceFolders.length === 0) {
@@ -22,9 +23,6 @@ export async function buildReviewPayload(
   }
   const workspaceRoot = workspaceFolders[0].uri.fsPath;
 
-  // ----------------------------
-  // Helper: extract Java code from markdown or array
-  // ----------------------------
   function extractJavaCode(markdown: string | { path: string; content: string }[] | null): string {
     if (!markdown) return "";
 
@@ -47,9 +45,6 @@ export async function buildReviewPayload(
     return code.trim();
   }
 
-  // ----------------------------
-  // 1. Problem description (PROBLEM.md)
-  // ----------------------------
   let problemDescription = "";
   const problemMdPath = path.join(workspaceRoot, "PROBLEM.md");
   if (fs.existsSync(problemMdPath)) {
@@ -58,9 +53,6 @@ export async function buildReviewPayload(
     vscode.window.showWarningMessage("PROBLEM.md not found in workspace root. Using empty description.");
   }
 
-  // ----------------------------
-  // 2. Current editor / student code
-  // ----------------------------
   const editor = vscode.window.activeTextEditor;
   if (!editor) {
     vscode.window.showErrorMessage("No active editor found!");
@@ -70,9 +62,6 @@ export async function buildReviewPayload(
   const relPath = path.relative(workspaceRoot, studentFilePath);
   const studentCode = editor.document.getText();
 
-  // ----------------------------
-  // 3. Original starter code
-  // ----------------------------
   const starterFilePath = path.join(workspaceRoot, "starter", relPath);
   let originalCode = "";
   if (fs.existsSync(starterFilePath)) {
@@ -81,21 +70,20 @@ export async function buildReviewPayload(
     vscode.window.showWarningMessage(`Starter file not found for ${relPath}. Using empty string.`);
   }
 
-  // ----------------------------
-  // 4. Reference solution (Java code)
-  // ----------------------------
   const ref = provider.getReferenceSolution();
-  const referenceSolution = extractJavaCode(ref); // will be empty string if missing
+  const referenceSolution = extractJavaCode(ref); 
 
-  // ----------------------------
-  // 5. Other required fields
-  // ----------------------------
-  const testResults = "BUILD SUCCESS"; // default placeholder
-  const codeSmells: string[] = [];     // empty array by default
+  const testResults = "BUILD SUCCESS"; 
 
-  // ----------------------------
-  // 6. Build payload
-  // ----------------------------
+ // DEBUGGING OUTPUT
+  console.log("=== Review Payload Inputs ===");
+  console.log("Problem Description:", problemDescription);
+  console.log("Original Code:", originalCode);
+  console.log("Student Code:", studentCode);
+  console.log("Reference Solution:", referenceSolution);
+  console.log("Test Results:", testResults);
+  console.log("Code Smells:", codeSmells);
+
   return {
     problem_description: problemDescription,
     original_code: originalCode,
