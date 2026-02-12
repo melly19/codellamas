@@ -40,6 +40,7 @@ class EvaluateRequest(BaseModel):
     test_results: str
     reference_solution: str
     code_smells: List[str]
+    query: str = ""
     mode: str = "single"
 
     # optional
@@ -136,7 +137,7 @@ def run_maven_verification(*, verify_maven: bool, project_files: List[ProjectFil
             "errors": verification.errors,
             "raw_log_head": verification.summary(),
     })
-    
+
     return maven_verification
 
 @app.get("/")
@@ -177,9 +178,6 @@ async def generate_exercise(body: GenerateRequest):
         exercise_data = SpringBootExercise(**result.json_dict)
         saved_path = save_exercise_to_repo(exercise_data, body.topic)
 
-        # Optional Maven verification
-        maven_verification: dict = {"enabled": False}
-
         # Optional Maven verification (deduped)
         maven_verification = run_maven_verification(
             verify_maven=body.verify_maven,
@@ -214,7 +212,8 @@ async def review_solution(body: EvaluateRequest):
         "student_code": body.student_code,
         "test_results": body.test_results,
         "reference_solution": body.reference_solution,
-        "code_smells": formatted_code_smells
+        "code_smells": formatted_code_smells,
+        "query": body.query
     }
 
     try:
@@ -227,12 +226,8 @@ async def review_solution(body: EvaluateRequest):
             skipped_reason="verify_maven=true but no project_files provided",
         )
 
-        # Feed *real* execution log into the LLM reviewer (only if Maven actually ran)
-        if (
-            maven_verification.get("enabled")
-            and maven_verification.get("status") not in (None, "SKIPPED")
-            and maven_verification.get("raw_log_head")
-        ):
+        if (maven_verification.get("enabled") and maven_verification.get("status") not in (None, "SKIPPED")
+            and maven_verification.get("raw_log_head")):
             inputs["test_results"] = maven_verification["raw_log_head"]
 
         backend = get_backend(body.mode)
