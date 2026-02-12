@@ -104,6 +104,41 @@ def save_exercise_to_repo(exercise: SpringBootExercise, topic: str):
     
     return base_repo_dir
 
+def run_maven_verification(*, verify_maven: bool, project_files: List[ProjectFile], override_files: List[Any], injected_tests: List[Any],
+    timeout_sec: int = 180, skipped_reason: str = "verify_maven=true but no project_files provided (Spring Initializr scaffold required).") -> Dict[str, Any]:
+    
+    maven_verification: Dict[str, Any] = {"enabled": False}
+
+    if not verify_maven:
+        return maven_verification
+
+    maven_verification["enabled"] = True
+
+    if not project_files:
+        maven_verification.update({"status": "SKIPPED", "reason": skipped_reason})
+        return maven_verification
+
+    verifier = MavenVerifier(timeout_sec=timeout_sec, quiet=True)
+
+    base_project = to_filelikes(project_files)
+    overrides = to_filelikes(override_files or [])
+    inject_tests = {f.path: f.content for f in (injected_tests or [])}
+
+    verification = verifier.verify(
+        base_project=base_project,
+        override_files=overrides,
+        injected_tests=inject_tests,
+    )
+
+    maven_verification.update({
+            "status": verification.status,
+            "failed_tests": verification.failed_tests,
+            "errors": verification.errors,
+            "raw_log_head": verification.summary(),
+    })
+    
+    return maven_verification
+
 @app.get("/")
 async def root():
     return {"status": "ok", "backends": ["single-agent", "multi-agent"]}
@@ -122,13 +157,16 @@ async def generate_exercise(body: GenerateRequest):
                 project_files=body.project_files,
             )
             saved_path = save_exercise_to_repo(exercise_data, body.topic)
-            return {
+            response_data = {
                 "status": "success",
                 "message": f"Exercise generated and saved to {saved_path}",
                 "data": exercise_data.model_dump(),
                 "reference_solution": exercise_data.reference_solution_markdown,
                 "meta": loop_meta
             }
+        
+            append_to_csv(exercise_data, body.topic, model=body.mode, response_data=response_data)
+            return response_data
 
         result = backend.generation_crew().kickoff(inputs={
             "topic": body.topic,
@@ -137,46 +175,20 @@ async def generate_exercise(body: GenerateRequest):
         })
 
         exercise_data = SpringBootExercise(**result.json_dict)
-
         saved_path = save_exercise_to_repo(exercise_data, body.topic)
 
-        # Optional Maven verification (using verifier layer)   
+        # Optional Maven verification
         maven_verification: dict = {"enabled": False}
 
-        if body.verify_maven:
-            maven_verification["enabled"] = True
+        # Optional Maven verification (deduped)
+        maven_verification = run_maven_verification(
+            verify_maven=body.verify_maven,
+            project_files=body.project_files,
+            override_files=exercise_data.project_files,
+            injected_tests=exercise_data.test_files,
+            timeout_sec=180,
+        )
 
-            if not body.project_files:
-                maven_verification.update({
-                    "status": "SKIPPED",
-                    "reason": "verify_maven=true but no project_files provided (Spring Initializr scaffold required)."
-                })
-            else:
-                verifier = MavenVerifier(timeout_sec=180, quiet=True)
-
-                # Convert scaffold files to FileLike using verifier helper
-                base_project = to_filelikes(body.project_files)  # from verifier.py :contentReference[oaicite:4]{index=4}
-
-                # Convert generated project files to FileLike (same helper)
-                override_files = to_filelikes(exercise_data.project_files)
-
-                # Inject generated tests (dict[path -> content])
-                inject_tests = {f.path: f.content for f in exercise_data.test_files}
-
-                verification = verifier.verify(
-                    base_project=base_project,
-                    override_files=override_files,
-                    injected_tests=inject_tests
-                )
-
-                maven_verification.update({
-                    "status": verification.status,
-                    "failed_tests": verification.failed_tests,
-                    "errors": verification.errors,
-                    "raw_log_head": verification.summary()
-                })
-
-        # 5) Compile response early to save to CSV
         response_data = {
             "status": "success",
             "message": f"Exercise generated and saved to {saved_path}",
@@ -186,7 +198,6 @@ async def generate_exercise(body: GenerateRequest):
         }
 
         append_to_csv(exercise_data, body.topic, model=body.mode, response_data=response_data)
-
         return response_data
 
     except Exception as e:
@@ -206,54 +217,28 @@ async def review_solution(body: EvaluateRequest):
         "code_smells": formatted_code_smells
     }
 
-    maven_verification: Dict[str, Any] = {"enabled": False}
-
     try:
-        # Optional runtime verification (compile + mvn test)
-        if body.verify_maven:
-            maven_verification["enabled"] = True
+        maven_verification = run_maven_verification(
+            verify_maven=body.verify_maven,
+            project_files=body.project_files,
+            override_files=body.student_files or [],
+            injected_tests=body.injected_tests or [],
+            timeout_sec=180,
+            skipped_reason="verify_maven=true but no project_files provided",
+        )
 
-            if not body.project_files:
-                maven_verification.update({
-                    "status": "SKIPPED",
-                    "reason": "verify_maven=true but no project_files provided"
-                })
-            else:
-                verifier = MavenVerifier(timeout_sec=180, quiet=True)
+        # Feed *real* execution log into the LLM reviewer (only if Maven actually ran)
+        if (
+            maven_verification.get("enabled")
+            and maven_verification.get("status") not in (None, "SKIPPED")
+            and maven_verification.get("raw_log_head")
+        ):
+            inputs["test_results"] = maven_verification["raw_log_head"]
 
-                # Convert base project scaffold (Spring Initializr) to FileLike[]
-                base_project = to_filelikes(body.project_files)
-
-                # Apply student's modified files as overrides
-                student_overrides = to_filelikes(body.student_files or [])
-
-                # Inject tests (typically generated tests for the exercise)
-                inject_tests = {f.path: f.content for f in (body.injected_tests or [])}
-
-                verification = verifier.verify(
-                    base_project=base_project,
-                    override_files=student_overrides,
-                    injected_tests=inject_tests
-                )
-
-                maven_verification.update({
-                    "status": verification.status,
-                    "failed_tests": verification.failed_tests,
-                    "errors": verification.errors,
-                    "raw_log_head": verification.summary()
-                })
-
-                # Feed *real* execution log into the LLM reviewer
-                inputs["test_results"] = verification.summary()
-
-        # Run review crew based on selected mode
         backend = get_backend(body.mode)
         raw = backend.review_crew().kickoff(inputs=inputs)
 
-        return {
-            "feedback": str(raw),
-            "maven_verification": maven_verification
-        }
+        return {"feedback": str(raw), "maven_verification": maven_verification}
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Review crew failed: {e}")
