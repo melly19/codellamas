@@ -40,9 +40,9 @@ export async function saveToSpringBootProject(
 
     const createdFiles: string[] = [];
 
-    const writeFiles = (files: ProjectFile[]) => {
+    const writeFiles = (files: ProjectFile[], baseDir: string) => {
       for (const file of files) {
-        const fullPath = path.join(workspaceRoot, file.path);
+        const fullPath = path.join(baseDir, file.path);
         const directory = path.dirname(fullPath);
 
         // Create directory structure if it doesn't exist
@@ -52,16 +52,20 @@ export async function saveToSpringBootProject(
 
         // Write the file content
         fs.writeFileSync(fullPath, file.content, "utf8");
-        createdFiles.push(file.path);
+        createdFiles.push(path.relative(workspaceRoot, fullPath));
       }
     };
 
+    const starterDir = path.join(workspaceRoot, "starter");
+    writeFiles(project_files, starterDir);
+
+    const workingDir = workspaceRoot;
     // Create each file from the project_files array
-    writeFiles(project_files);
+    writeFiles(project_files, workingDir);
 
     // Create each file from the test_files array (same format as project_files)
     if (test_files && test_files.length > 0) {
-      writeFiles(test_files);
+      writeFiles(test_files, workingDir);
     }
 
     vscode.window.showInformationMessage(

@@ -3,6 +3,7 @@
 import * as vscode from 'vscode';
 
 import { ActivityWebviewProvider } from './activityWebviewProvider';
+import { buildReviewPayload } from "./buildReviewPayload";
 
 // This method is called when your extension is activated
 export function activate(context: vscode.ExtensionContext) {
@@ -37,30 +38,51 @@ export function activate(context: vscode.ExtensionContext) {
 	//  Submit Code command
 	// =====================================================
 	const submitCodeDisposable = vscode.commands.registerCommand(
-		'code-llamas.submitCode',
-		() => {
-			const editor = vscode.window.activeTextEditor;
+		"code-llamas.submitCode",
+		async () => {
+			const payload = await buildReviewPayload(provider);
+			console.log("Review payload:", JSON.stringify(payload, null, 2));
+			if (!payload) return;
 
-			if (!editor) {
-				vscode.window.showWarningMessage('No active editor to submit.');
-				return;
+			try {
+				const response = await fetch("http://localhost:8000/review", {
+					method: "POST",
+					headers: { "Content-Type": "application/json" },
+					body: JSON.stringify(payload),
+				});
+				if (!response.ok) throw new Error(`Backend error: ${response.statusText}`);
+
+				const reviewResultsRaw = await response.json() as Record<string, any>;
+				// Parse the nested feedback JSON
+				const feedback = JSON.parse(reviewResultsRaw.feedback);
+
+				// Build a string to show in the editor
+				const content = `=== Code Review Feedback ===
+Functional Correctness: ${feedback.functional_correctness_assessment}
+Rating: ${feedback.rating}
+
+Maven Verification: ${JSON.stringify(reviewResultsRaw.maven_verification, null, 2)}
+`;
+
+				// Create a new untitled document
+				const doc = await vscode.workspace.openTextDocument({
+					content,
+					language: "markdown", // optional, gives nice formatting
+				});
+
+				// Show it in a new editor tab
+				await vscode.window.showTextDocument(doc, { preview: false });
+
+
+
+				// provider.revealReviewPanel();
+				// provider.postMessage({ type: "reviewResponse", ...reviewResults });
+				// console.log("Response status:", response.status);
+				// console.log(reviewResults);
+				vscode.window.showInformationMessage("Code submitted successfully!");
+			} catch (err: any) {
+				vscode.window.showErrorMessage("Failed to submit code: " + String(err));
 			}
-
-			const document = editor.document;
-
-			const payload = {
-				fileName: document.fileName,
-				language: document.languageId,
-				text: document.getText()
-			};
-
-			// TODO: replace this with real submission logic
-			console.log('Submitting code:', payload);
-
-			vscode.window.showInformationMessage('🦙 Code submitted to Code Llamas!');
-			
-			// OPTIONAL: send to your webview
-			// provider.postMessage?.({ type: 'submitCode', payload });
 		}
 	);
 
@@ -85,4 +107,4 @@ export function activate(context: vscode.ExtensionContext) {
 }
 
 // This method is called when your extension is deactivated
-export function deactivate() {}
+export function deactivate() { }

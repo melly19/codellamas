@@ -5,7 +5,17 @@ export class ActivityWebviewProvider implements vscode.WebviewViewProvider {
   public static readonly viewType = "codellamas_activityView";
 
   private referenceSolution: any[] | string | null = null;
+  private webviewView: vscode.WebviewView | undefined;
 
+  public revealReviewPanel() {
+  if (this.webviewView) {
+    this.webviewView.show?.(true); // true = focus
+  }
+}
+
+  public getReferenceSolution(): any[] | string | null {
+    return this.referenceSolution;
+  }
   constructor(private readonly context: vscode.ExtensionContext) { }
 
   /* =========================
@@ -13,6 +23,7 @@ export class ActivityWebviewProvider implements vscode.WebviewViewProvider {
      ========================= */
 
   resolveWebviewView(webviewView: vscode.WebviewView) {
+    this.webviewView = webviewView;
     webviewView.webview.options = { enableScripts: true };
     webviewView.webview.html = this.getActivityHtml();
 
@@ -118,6 +129,16 @@ export class ActivityWebviewProvider implements vscode.WebviewViewProvider {
     await vscode.window.showTextDocument(doc);
 
     vscode.window.showInformationMessage("Reference solution opened as code!");
+  }
+
+    public postMessage(message: any) {
+    if (this.webviewView) {
+      this.webviewView.webview.postMessage(message);
+    } else {
+      vscode.window.showWarningMessage(
+        "Activity webview not open. Message cannot be sent."
+      );
+    }
   }
 
   private getActivityHtml(): string {
