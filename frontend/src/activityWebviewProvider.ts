@@ -60,10 +60,8 @@ export class ActivityWebviewProvider implements vscode.WebviewViewProvider {
         }
         try {
           if (typeof this.referenceSolution === "string") {
-            // backend returned single markdown string
             await this.showReferenceSolutionAsCode(this.referenceSolution);
           } else if (Array.isArray(this.referenceSolution)) {
-            // multiple files
             for (const file of this.referenceSolution) {
               await this.showReferenceSolutionAsCode(
                 file.content,
@@ -96,7 +94,6 @@ export class ActivityWebviewProvider implements vscode.WebviewViewProvider {
     }
     const workspaceRoot = workspaceFolders[0].uri.fsPath;
 
-    // Extract Java code blocks from markdown
     const codeBlockRegex = /```java\s*([\s\S]*?)```/g;
     let match;
     let codeContent = "";
@@ -109,8 +106,6 @@ export class ActivityWebviewProvider implements vscode.WebviewViewProvider {
       vscode.window.showErrorMessage("No Java code found in reference solution.");
       return;
     }
-
-    // Write to reference_solution folder
     const path = require("path");
     const fs = require("fs");
     const outputDir = path.join(workspaceRoot, "reference_solution");
@@ -119,12 +114,12 @@ export class ActivityWebviewProvider implements vscode.WebviewViewProvider {
     const outputPath = path.join(outputDir, filename);
     fs.writeFileSync(outputPath, codeContent, "utf8");
 
-    // Open the file in VSCode
     const doc = await vscode.workspace.openTextDocument(outputPath);
     await vscode.window.showTextDocument(doc);
 
     vscode.window.showInformationMessage("Reference solution opened as code!");
   }
+
   private getActivityHtml(): string {
     return /* html */ `
 <!DOCTYPE html>
