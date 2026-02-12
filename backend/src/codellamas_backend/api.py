@@ -126,6 +126,7 @@ async def generate_exercise(body: GenerateRequest):
                 "status": "success",
                 "message": f"Exercise generated and saved to {saved_path}",
                 "data": exercise_data.model_dump(),
+                "reference_solution": exercise_data.reference_solution_markdown,
                 "meta": loop_meta
             }
 
@@ -179,7 +180,8 @@ async def generate_exercise(body: GenerateRequest):
         response_data = {
             "status": "success",
             "message": f"Exercise generated and saved to {saved_path}",
-            "data": result.json_dict,
+            "data": exercise_data.model_dump(),
+            "reference_solution": exercise_data.reference_solution_markdown,
             "maven_verification": maven_verification,
         }
 
