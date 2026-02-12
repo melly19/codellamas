@@ -20,7 +20,7 @@ interface ResponseData {
 export async function saveToSpringBootProject(
   responseData: ResponseData,
   webviewHost: vscode.WebviewPanel | vscode.WebviewView
-) {
+){
   const workspaceFolders = vscode.workspace.workspaceFolders;
   if (!workspaceFolders || workspaceFolders.length === 0) {
     vscode.window.showErrorMessage("No workspace folder open!");

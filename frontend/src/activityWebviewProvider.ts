@@ -4,7 +4,9 @@ import { saveToSpringBootProject } from "./springBootSaver";
 export class ActivityWebviewProvider implements vscode.WebviewViewProvider {
   public static readonly viewType = "codellamas_activityView";
 
-  constructor(private readonly context: vscode.ExtensionContext) {}
+  private referenceSolution: any[] | string | null = null;
+
+  constructor(private readonly context: vscode.ExtensionContext) { }
 
   /* =========================
      ACTIVITY BAR VIEW
@@ -21,8 +23,8 @@ export class ActivityWebviewProvider implements vscode.WebviewViewProvider {
             message.topic,
             message.smells
           );
-
           await saveToSpringBootProject(responseData, webviewView);
+          this.referenceSolution = responseData.data.reference_solution_markdown ?? null;
         } catch (error) {
           vscode.window.showErrorMessage(
             "Error generating questions: " + String(error)
@@ -51,9 +53,78 @@ export class ActivityWebviewProvider implements vscode.WebviewViewProvider {
           });
         }
       }
+      else if (message.type === "showAnswerFile") {
+        if (!this.referenceSolution) {
+          vscode.window.showErrorMessage("No reference solution available");
+          return;
+        }
+        try {
+          if (typeof this.referenceSolution === "string") {
+            // backend returned single markdown string
+            await this.showReferenceSolutionAsCode(this.referenceSolution);
+          } else if (Array.isArray(this.referenceSolution)) {
+            // multiple files
+            for (const file of this.referenceSolution) {
+              await this.showReferenceSolutionAsCode(
+                file.content,
+                file.path.replace(/\//g, "_")
+              );
+            }
+          } else {
+            vscode.window.showErrorMessage(
+              "Reference solution format is invalid"
+            );
+          }
+        } catch (err: any) {
+          vscode.window.showErrorMessage(
+            "Failed to show reference solution: " + String(err)
+          );
+        }
+      }
+
     });
   }
 
+  private async showReferenceSolutionAsCode(
+    markdown: string,
+    filename = "ReferenceSolution.java"
+  ) {
+    const workspaceFolders = vscode.workspace.workspaceFolders;
+    if (!workspaceFolders || workspaceFolders.length === 0) {
+      vscode.window.showErrorMessage("No workspace folder open!");
+      return;
+    }
+    const workspaceRoot = workspaceFolders[0].uri.fsPath;
+
+    // Extract Java code blocks from markdown
+    const codeBlockRegex = /```java\s*([\s\S]*?)```/g;
+    let match;
+    let codeContent = "";
+
+    while ((match = codeBlockRegex.exec(markdown)) !== null) {
+      codeContent += match[1].trim() + "\n\n";
+    }
+
+    if (!codeContent.trim()) {
+      vscode.window.showErrorMessage("No Java code found in reference solution.");
+      return;
+    }
+
+    // Write to reference_solution folder
+    const path = require("path");
+    const fs = require("fs");
+    const outputDir = path.join(workspaceRoot, "reference_solution");
+    if (!fs.existsSync(outputDir)) fs.mkdirSync(outputDir, { recursive: true });
+
+    const outputPath = path.join(outputDir, filename);
+    fs.writeFileSync(outputPath, codeContent, "utf8");
+
+    // Open the file in VSCode
+    const doc = await vscode.workspace.openTextDocument(outputPath);
+    await vscode.window.showTextDocument(doc);
+
+    vscode.window.showInformationMessage("Reference solution opened as code!");
+  }
   private getActivityHtml(): string {
     return /* html */ `
 <!DOCTYPE html>
@@ -306,6 +377,7 @@ export class ActivityWebviewProvider implements vscode.WebviewViewProvider {
   <div class="tabs">
     <button class="tab active" data-panel="generate">Generate</button>
     <button class="tab" data-panel="review">Review</button>
+    <button class="tab" data-panel="answer">Answer</button>
   </div>
 
   <div id="panel-generate" class="panel active">
@@ -379,6 +451,19 @@ export class ActivityWebviewProvider implements vscode.WebviewViewProvider {
     </div>
   </div>
 
+  <div id="panel-answer" class="panel">
+    <div class="section-title">Model Answer</div>
+    <div class="panel-placeholder">
+      Show the solution file for this activity.
+    </div>
+    <div class="review-footer">
+      <button id="showAnswerBtn" type="button">
+        Show Answer File
+      </button>
+    </div>
+  </div>
+  </div>
+
   <script>
     const vscode = acquireVsCodeApi();
 
@@ -386,6 +471,7 @@ export class ActivityWebviewProvider implements vscode.WebviewViewProvider {
     const panels = {
       generate: document.getElementById('panel-generate'),
       review: document.getElementById('panel-review'),
+      answer: document.getElementById('panel-answer'),
     };
 
     function showPanel(name) {
@@ -411,6 +497,14 @@ export class ActivityWebviewProvider implements vscode.WebviewViewProvider {
     const generateBtn = document.getElementById("generateBtn");
     const reviewBtn = document.getElementById("reviewBtn");
     const chatMessages = document.getElementById("chat-messages");
+    const showAnswerBtn = document.getElementById("showAnswerBtn");
+    if (showAnswerBtn){
+      showAnswerBtn.addEventListener("click",() => {
+        vscode.postMessage({
+          type:"showAnswerFile"
+          });
+        });
+    }
 
     function setGenerating(isGenerating) {
       generateBtn.disabled = isGenerating;
@@ -536,7 +630,7 @@ export class ActivityWebviewProvider implements vscode.WebviewViewProvider {
       }
 
       const data: any = await response.json();
-      
+
       if (data.status !== "success") {
         throw new Error(data.message || "Failed to generate exercise");
       }
