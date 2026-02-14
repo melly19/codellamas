@@ -1,5 +1,14 @@
 # codellamas
 An assessment generation VSCode extension!
+# How to run maven test
+# optional to run without test
+mvn -DskipTests package
+
+mvn clean install
+mvn test
+OR
+mvn spring-boot:run
+
 
 # How to Run the Backend
 

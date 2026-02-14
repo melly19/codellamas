@@ -55,28 +55,36 @@ def ingest_code_smells(code_smells: List[str]) -> str:
     return ", ".join(code_smells)
 
 def append_to_csv(exercise: SpringBootExercise, topic: str, model: str, response_data: dict = None):
-    timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-
-    row = {
-        "timestamp": timestamp,
-        "topic": topic,
-        "problem_description": exercise.problem_description,
-        "single_or_multi": model,
-        "response_json": json.dumps(response_data),
-    }
-
-    file_exists = os.path.isfile(CSV_FILE_PATH)
-
-    with open(CSV_FILE_PATH, mode='a', newline='', encoding='utf-8') as csvfile:
-        fieldnames = ["timestamp", "topic", "problem_description", "single_or_multi", "response_json"]
-        writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+    try:
+        # Create directory if it doesn't exist
+        os.makedirs(os.path.dirname(CSV_FILE_PATH), exist_ok=True)
         
-        if not file_exists:
-            writer.writeheader()
-            
-        writer.writerow(row)
+        timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-    return os.path.abspath(CSV_FILE_PATH)
+        row = {
+            "timestamp": timestamp,
+            "topic": topic,
+            "problem_description": exercise.problem_description,
+            "single_or_multi": model,
+            "response_json": json.dumps(response_data),
+        }
+
+        file_exists = os.path.isfile(CSV_FILE_PATH)
+
+        with open(CSV_FILE_PATH, mode='a', newline='', encoding='utf-8') as csvfile:
+            fieldnames = ["timestamp", "topic", "problem_description", "single_or_multi", "response_json"]
+            writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+            
+            if not file_exists:
+                writer.writeheader()
+                
+            writer.writerow(row)
+
+        return os.path.abspath(CSV_FILE_PATH)
+    
+    except Exception as e:
+        print(f"Error appending to CSV: {e}")
+        raise
 
 def save_exercise_to_repo(exercise: SpringBootExercise, topic: str):
     timestamp = datetime.datetime.now().strftime("%d%m_%M%S")

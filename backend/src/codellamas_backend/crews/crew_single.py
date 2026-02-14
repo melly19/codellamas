@@ -9,6 +9,7 @@ import os
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
 BASE_URL = "https://openrouter.ai/api/v1"
 MODEL = "openrouter/qwen/qwen3-coder-30b-a3b-instruct"
+# MODEL = "openrouter/deepseek/deepseek-v3.2"
 
 class ProjectFile(BaseModel):
     path: str = Field(..., description="Relative path including package (e.g., 'src/main/java/com/example/demo/App.java')")
@@ -32,7 +33,7 @@ class CodellamasBackend():
         return Agent(
             config=self.agents_config['general_agent'],  # type: ignore[index]
             # llm=LLM(model="ollama/phi4", base_url="http://localhost:11434"),
-            llm = LLM(model=MODEL, base_url=BASE_URL,api_key=OPENROUTER_API_KEY),
+            llm = LLM(model=MODEL, base_url=BASE_URL,api_key=OPENROUTER_API_KEY, max_tokens=20000),
             timeout="1800s",
             verbose=True,
         )

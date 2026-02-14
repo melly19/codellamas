@@ -5,3 +5,4 @@ __pycache__/
 generated_exercises
 output
 .csv
+src/codellamas_backend/output

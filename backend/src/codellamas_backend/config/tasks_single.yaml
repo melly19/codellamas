@@ -1,64 +1,61 @@
 generate_exercise:
    description: >
       INPUTS:
-      - {topic}: The business domain for the Spring Boot project (e.g., "e-commerce inventory")
-      - {code_smells}: A list of specific code smells that will be tested for this exercise (e.g., "Long Method")
-      - {existing_codebase}: OPTIONAL. A structured string containing the file paths and content of an existing Spring Boot project. Use "NONE" if a new project should be generated.
+      - {topic}: The topic for the Spring Boot project 
+      - {code_smells}: A list of code smells should be tested for this exercise 
 
-      SECTION 1: PROJECT AND PROBLEM GENERATION
-      1. **Determine Project Source:**
-         - IF {existing_codebase} is "NONE":
-            a. Generate a small, realistic Java Spring Boot project based on {topic}.
-            b. Include necessary project files (e.g., pom.xml, main application class).
-            c. Limit scope: 2–4 classes, 1 controller, 1 service, no external APIs or databases.
-            d. All generated Java files should be packaged properly.
-         - ELSE (IF {existing_codebase} is provided):
-            a. Analyze the provided {existing_codebase} to understand its structure and domain.
-            b. The output should only contain the modified/new files required for the exercise. DO NOT output the entire existing codebase.
-            c. The exercise must be generated within the context of the existing project.
 
-      2. **Code Smell Injection (Applicable to both new and existing projects):**
-         - Intentionally include the code smells {code_smells} in a way that students are expected to identify and refactor.
-         - For existing projects, the injection should be subtle and fit naturally into the existing code logic.
-         - The code should reflect common student-level mistakes rather than advanced architectural flaws.
+      SECTION 1: PROJECT AND EXERCISE GENERATION
+      1. 
+        a. Generate a small Java Spring Boot project based on {topic} topic for a refactoring exercise. The files should contain common {code_smells} code smells for the university student to identify and practice refactoring on. 
+        b. Include necessary project files for springboot maven build (e.g., pom.xml).
+        c. Maximum 4 classes, 1 controller, 1 service, no external APIs or databases.
 
-      3. **Exercise Definition:**
+      2. **Exercise Definition:**
          - Clearly state:
-            - The refactoring task
-            - Constraints (behavior must not change)
-         - Never write any comments.
+            - The refactoring task, files they are supposed to modify
+            - Any Constraints
+
 
       SECTION 2: TEST CASE GENERATION
-      1. Generate JUnit 5 test cases that define the correct external behavior.
-      2. Tests must:
-         - Pass with the original implementation (with the code smell)
-         - Pass with a correct refactoring
-         - Be unchanged before and after refactoring
-      3. Include:
-         - At least one normal case
-         - At least one edge or invalid input case.
-      4. Use readable test names and simple assertions suitable for advanced students.
-      5. Tests should be packaged accordingly.
+      Generate simple JUnit test cases that define the correct behavior.
+      Tests should Pass with the original implementation (with the code smell) and also  after correct refactoring
+      Include:
+         - One or more normal case
+         - One or more edge or invalid input case.
+      Package them accordingly
 
       SECTION 3: REFERENCE SOLUTION GENERATION
-      1. Provide a recommended refactored solution that removes {code_smells}.
+      1. Provide a recommended refactored solution that shows correct coding practices withou {code_smells} smells.
       2. Show:
          - The original (smelly) implementation (only the files/segments that contain the smell)
-         - Only the refactored implementation. Don't show any segments of code that remain unchanged.
-      3. Refactoring must:
-         - Preserve behavior
-         - Improve readability and structure
-         - Follow clean code principles taught at undergraduate level.
+         - Then Only the refactored implementation. Don't show any segments of code that remain unchanged.
       4. Ensure all provided tests pass.
 
       OUTPUT FORMAT:
-      1. Problem description and constraints
-      2. Original code (with code smell) - This will be the full set of files for a new project, or the modified/new files for an existing project.
+      1. Problem description:  Short description. Java files student need to edit. Short definition of each each code smell. That's it no other clues Format should be in markdown (only for problem_description)
+      2. Original code (with code smell) - This will be the full set of files for a new project. withou comments
       3. JUnit 5 test cases
       4. Recommended refactored solution
    expected_output: >
-      A structured JSON object containing the problem description, project files with their package paths, 
-      test files, and a reference solution.
+      A structured JSON object containing the problem description, project files with their package paths (including pom.xml), test files, and a reference solution.
+      {
+      "problem_description": "",
+      "project_files": [
+        {
+          "path": "",
+          "content": ""
+        }
+      ],
+      "test_files": [
+        {
+          "path": "",
+          "content": ""
+        }
+      ],
+      "reference_solution_markdown": "",
+      "reference_solution": ""}
+
    agent: general_agent
 
 review_solution:
