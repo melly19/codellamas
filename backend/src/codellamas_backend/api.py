@@ -38,7 +38,7 @@ class EvaluateRequest(BaseModel):
     original_code: str
     student_code: str
     test_results: str
-    reference_solution: str
+    answers_list: str
     code_smells: List[str]
     query: str = ""
     mode: str = "single"
@@ -108,8 +108,8 @@ def save_exercise_to_repo(exercise: SpringBootExercise, topic: str):
         with open(full_path, "w") as f:
             f.write(file.content)
 
-    with open(os.path.join(base_repo_dir, "REFERENCE_SOLUTION.md"), "w") as f:
-        f.write(exercise.reference_solution_markdown)
+    with open(os.path.join(base_repo_dir, "SOLUTION_EXP.md"), "w") as f:
+        f.write(exercise.solution_explanation_md)
     
     return base_repo_dir
 
@@ -170,7 +170,6 @@ async def generate_exercise(body: GenerateRequest):
                 "status": "success",
                 "message": f"Exercise generated and saved to {saved_path}",
                 "data": exercise_data.model_dump(),
-                "reference_solution": exercise_data.reference_solution_markdown,
                 "meta": loop_meta
             }
         
@@ -199,8 +198,8 @@ async def generate_exercise(body: GenerateRequest):
             "status": "success",
             "message": f"Exercise generated and saved to {saved_path}",
             "data": exercise_data.model_dump(),
-            "reference_solution": exercise_data.reference_solution_markdown,
             "maven_verification": maven_verification,
+            
         }
 
         append_to_csv(exercise_data, body.topic, model=body.mode, response_data=response_data)
@@ -219,7 +218,7 @@ async def review_solution(body: EvaluateRequest):
         "original_code": body.original_code,
         "student_code": body.student_code,
         "test_results": body.test_results,
-        "reference_solution": body.reference_solution,
+        "answers_list": body.answers_list,
         "code_smells": formatted_code_smells,
         "query": body.query
     }

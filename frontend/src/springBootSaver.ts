@@ -1,19 +1,23 @@
 import * as vscode from "vscode";
 import * as fs from "fs";
 import * as path from "path";
-
-interface ProjectFile {
+// import { ResponseData, ProjectFile } from "./activityWebviewProvider";
+export interface ProjectFile {
   path: string;
   content: string;
 }
 
-interface ResponseData {
+
+export interface ResponseData {
   status: string;
   message: string;
   data: {
     problem_description: string;
     project_files: ProjectFile[];
-    test_files?: ProjectFile[];
+    test_files: ProjectFile[];
+    solution_explanation_md: string;
+    paths_to_ex: string[];
+    answers_list: ProjectFile[];
   };
 }
 

@@ -26,14 +26,14 @@ class SpringBootExercise(BaseModel):
     problem_description: str
     project_files: List[ProjectFile]
     test_files: List[ProjectFile]
-    reference_solution_markdown: str
+    solution_explanation_md: str
 
 
 class PatchOutput(BaseModel):
     """Debug/patch agent output."""
     project_files: List[ProjectFile] = Field(default_factory=list)
     test_files: List[ProjectFile] = Field(default_factory=list)
-    reference_solution_markdown: str = ""
+    solution_explanation_md: str = ""
 
 
 class VerifyToolInput(BaseModel):
@@ -135,9 +135,9 @@ class CodellamasBackendMulti:
         )
 
     @agent
-    def reference_solution_developer(self) -> Agent:
+    def answers_list_developer(self) -> Agent:
         return Agent(
-            config=self.agents_config['reference_solution_developer'],
+            config=self.agents_config['answers_list_developer'],
             verbose=True
         )
 
@@ -201,24 +201,24 @@ class CodellamasBackendMulti:
         )
 
     @task
-    def generate_reference_solution(self) -> Task:
+    def generate_answers_list(self) -> Task:
         return Task(
-            config=self.tasks_config['generate_reference_solution'],
-            agent=self.reference_solution_developer(),
+            config=self.tasks_config['generate_answers_list'],
+            agent=self.answers_list_developer(),
             output_json=PatchOutput
         )
 
     @task
-    def run_tests_on_reference_solution(self) -> Task:
+    def run_tests_on_answers_list(self) -> Task:
         return Task(
-            config=self.tasks_config['run_tests_on_reference_solution'],
+            config=self.tasks_config['run_tests_on_answers_list'],
             agent=self.test_runner()
         )
 
     @task
-    def patch_reference_solution(self) -> Task:
+    def patch_answers_list(self) -> Task:
         return Task(
-            config=self.tasks_config['patch_reference_solution'],
+            config=self.tasks_config['patch_answers_list'],
             agent=self.debug_specialist(),
             output_json=PatchOutput
         )
@@ -261,7 +261,7 @@ class CodellamasBackendMulti:
                 self.smelly_developer(),
                 self.test_runner(),
                 self.debug_specialist(),
-                self.reference_solution_developer(),
+                self.answers_list_developer(),
                 self.quality_assurance(),
             ],
             tasks=[
@@ -270,9 +270,9 @@ class CodellamasBackendMulti:
                 self.implement_smelly_code(),
                 self.run_tests_on_smelly_code(),
                 self.patch_smelly_code(),
-                self.generate_reference_solution(),
-                self.run_tests_on_reference_solution(),
-                self.patch_reference_solution(),
+                self.generate_answers_list(),
+                self.run_tests_on_answers_list(),
+                self.patch_answers_list(),
                 self.audit_exercise(),
             ],
             process=Process.sequential,
@@ -368,8 +368,8 @@ class CodellamasBackendMulti:
 
         # 3) Generate reference solution
         ref = Crew(
-            agents=[self.reference_solution_developer()],
-            tasks=[self.generate_reference_solution()],
+            agents=[self.answers_list_developer()],
+            tasks=[self.generate_answers_list()],
             process=Process.sequential,
             verbose=True,
         ).kickoff(inputs={
@@ -380,7 +380,7 @@ class CodellamasBackendMulti:
         ref_patch = PatchOutput(**ref.json_dict)
         reference_project_files = ref_patch.project_files or exercise.project_files
         reference_test_files = ref_patch.test_files or exercise.test_files
-        reference_md = ref_patch.reference_solution_markdown or exercise.reference_solution_markdown
+        reference_md = ref_patch.solution_explanation_md or exercise.solution_explanation_md
 
         # 4) Verify + patch reference
         for i in range(1, self.max_patch_iters + 1):
@@ -401,22 +401,22 @@ class CodellamasBackendMulti:
 
             patch = Crew(
                 agents=[self.debug_specialist()],
-                tasks=[self.patch_reference_solution()],
+                tasks=[self.patch_answers_list()],
                 process=Process.sequential,
                 verbose=True,
             ).kickoff(inputs={
                 "maven_log_head": ver.summary()[:2000],
                 "reference_project_files": [p.model_dump() for p in reference_project_files],
                 "reference_test_files": [t.model_dump() for t in reference_test_files],
-                "reference_solution_markdown": reference_md,
+                "solution_explanation_md": reference_md,
             })
             p = PatchOutput(**patch.json_dict)
             if p.project_files:
                 reference_project_files = p.project_files
             if p.test_files:
                 reference_test_files = p.test_files
-            if p.reference_solution_markdown.strip():
-                reference_md = p.reference_solution_markdown
+            if p.solution_explanation_md.strip():
+                reference_md = p.solution_explanation_md
 
         # 5) Audit + package final
         audited = Crew(
@@ -428,7 +428,7 @@ class CodellamasBackendMulti:
             "problem_description": exercise.problem_description,
             "smelly_project_files": [p.model_dump() for p in exercise.project_files],
             "test_files": [t.model_dump() for t in exercise.test_files],
-            "reference_solution_markdown": reference_md,
+            "solution_explanation_md": reference_md,
         })
 
         final_exercise = SpringBootExercise(**audited.json_dict)

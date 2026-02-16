@@ -1,45 +1,47 @@
 generate_exercise:
-   description: >
-      INPUTS:
-      - {topic}: The topic for the Spring Boot project 
-      - {code_smells}: A list of code smells should be tested for this exercise 
+  description: >
+    INPUTS:
+    - {topic}: The topic for the Spring Boot project 
+    - {code_smells}: A list of code smells should be tested for this exercise 
 
 
-      SECTION 1: PROJECT AND EXERCISE GENERATION
-      1. 
-        a. Generate a small Java Spring Boot project based on {topic} topic for a refactoring exercise. The files should contain common {code_smells} code smells for the university student to identify and practice refactoring on. 
-        b. Include necessary project files for springboot maven build (e.g., pom.xml).
-        c. Maximum 4 classes, 1 controller, 1 service, no external APIs or databases.
+    SECTION 1: PROJECT AND EXERCISE GENERATION
+    1. 
+      a. Generate a small Java Spring Boot project based on {topic} topic for a refactoring exercise. The files should contain common {code_smells} code smells for the university student to identify and practice refactoring on. Students should be expected to edit only 1 java ecercise file.
+      b. Include necessary project files for springboot maven build (e.g., pom.xml).
+      c. Maximum 4 classes, 1 controller, 1 service, no external APIs or databases.
 
-      2. **Exercise Definition:**
-         - Clearly state:
-            - The refactoring task, files they are supposed to modify
-            - Any Constraints
+    2. **Exercise Definition:**
+       - Clearly state:
+          - The refactoring task, files they are supposed to modify
+          - Any Constraints
 
 
-      SECTION 2: TEST CASE GENERATION
-      Generate simple JUnit test cases that define the correct behavior.
-      Tests should Pass with the original implementation (with the code smell) and also  after correct refactoring
-      Include:
-         - One or more normal case
-         - One or more edge or invalid input case.
-      Package them accordingly
+    SECTION 2: TEST CASE GENERATION
+    Generate simple JUnit test cases that define the correct behavior.
+    Tests should Pass with the original implementation (with the code smell) and also  after correct refactoring
+    Include:
+       - One or more normal case
+       - One or more edge or invalid input case.
+    Package them accordingly
 
-      SECTION 3: REFERENCE SOLUTION GENERATION
-      1. Provide a recommended refactored solution that shows correct coding practices withou {code_smells} smells.
-      2. Show:
-         - The original (smelly) implementation (only the files/segments that contain the smell)
-         - Then Only the refactored implementation. Don't show any segments of code that remain unchanged.
-      4. Ensure all provided tests pass.
+    SECTION 3: REFERENCE SOLUTION GENERATION
+    1. Provide a recommended refactored solution that shows correct coding practices withou {code_smells} smells.
+    2. Show:
+       - The original (smelly) implementation (only the files/segments that contain the smell)
+       - Then Only the refactored implementation. Don't show any segments of code that remain unchanged.
+    4. Ensure all provided tests pass.
 
-      OUTPUT FORMAT:
-      1. Problem description:  Short description. Java files student need to edit. Short definition of each each code smell. That's it no other clues Format should be in markdown (only for problem_description)
-      2. Original code (with code smell) - This will be the full set of files for a new project. withou comments
-      3. JUnit 5 test cases
-      4. Recommended refactored solution
-   expected_output: >
-      A structured JSON object containing the problem description, project files with their package paths (including pom.xml), test files, and a reference solution.
-      {
+    OUTPUT FORMAT:
+    1. problem_description:  Short description. Java file student need to edit. Short definition of each each code smell. That's it no other clues Format should be in markdown (only for problem_description)
+    2. project_files: (with code smell) - This will be the full set of files for a new project. without comments (including pom.xml)
+    3. test_files: JUnit 5 test cases
+    4. solution_explanation_md: on how to solve the exercise in markdown 
+    5. paths_to_ex: List of exercise file paths that sudent has to edit 
+    6. answers_list: List of answer files (solved exercises in java format)
+  expected_output: >
+    A structured JSON object In the below format
+    {
       "problem_description": "",
       "project_files": [
         {
@@ -53,51 +55,58 @@ generate_exercise:
           "content": ""
         }
       ],
-      "reference_solution_markdown": "",
-      "reference_solution": ""}
+      "solution_explanation_md": ",
+      "paths_to_ex": [],
+      "answers_list": [  
+        {
+          "path": "<just file name no parent directory>",
+          "content": ""
+        }
+      ]
+    }
 
-   agent: general_agent
+  agent: general_agent
 
 review_solution:
-   description: >
-      INPUTS:
-      - {problem_description}: The original exercise description
-      - {original_code}: The initial code containing the code smell
-      - {student_code}: The student's refactored code submission
-      - {test_results}: JUnit 5 test case results (pass or fail)
-      - {reference_solution}: A model solution for the refactoring task
-      - {code_smells}: The code smells that were tested for the task
+  description: >
+    INPUTS:
+    - {problem_description}: The original exercise description
+    - {original_code}: The initial code containing the code smell
+    - {student_code}: The student's refactored code submission
+    - {test_results}: JUnit 5 test case results (pass or fail)
+    - {answers_list}: A model solution for the refactoring task
+    - {code_smells}: The code smells that were tested for the task
 
-      SECTION 1: FUNCTIONAL CORRECTNESS CHECK
-      1. Determine whether the student solution preserves the intended behavior.
-      2. Clearly state any functional regressions or violations.
+    SECTION 1: FUNCTIONAL CORRECTNESS CHECK
+    1. Determine whether the student solution preserves the intended behavior.
+    2. Clearly state any functional regressions or violations.
 
-      SECTION 2: CODE QUALITY REVIEW
-      1. Assess whether the targeted code smells has been adequately addressed.
-      2. Evaluate the solution based on clean code principles:
-         - Readability
-         - Separation of concerns
-         - Appropriate abstraction.
-      3. Accept multiple valid solutions if they adhere to good refactoring practices.
+    SECTION 2: CODE QUALITY REVIEW
+    1. Assess whether the targeted code smells has been adequately addressed.
+    2. Evaluate the solution based on clean code principles:
+       - Readability
+       - Separation of concerns
+       - Appropriate abstraction.
+    3. Accept multiple valid solutions if they adhere to good refactoring practices.
 
-      SECTION 3: FEEDBACK GENERATION
-      1. Provide concise, constructive feedback covering:
-         - What was done well
-         - What could be improved.
-      2. Reference specific files or constructs where relevant.
-      3. Avoid teaching step-by-step refactoring; focus on review and evaluation.
+    SECTION 3: FEEDBACK GENERATION
+    1. Provide concise, constructive feedback covering:
+       - What was done well
+       - What could be improved.
+    2. Reference specific files or constructs where relevant.
+    3. Avoid teaching step-by-step refactoring; focus on review and evaluation.
 
-      SECTION 4: SUMMARY ASSESSMENT
-      1. Provide a brief overall assessment of the submission.
-      2. Clearly indicate whether the solution is acceptable.
+    SECTION 4: SUMMARY ASSESSMENT
+    1. Provide a brief overall assessment of the submission.
+    2. Clearly indicate whether the solution is acceptable.
 
-      OUTPUT FORMAT:
-      1. Functional correctness assessment
-      2. Code quality review
-      3. Actionable feedback
-      4. Overall verdict
-      5. A rating of the solution out of 5
-   expected_output: >
-      An objective review of the student's refactoring, covering correctness,
-      code quality, and adherence to refactoring principles.
-   agent: general_agent
+    OUTPUT FORMAT:
+    1. Functional correctness assessment
+    2. Code quality review
+    3. Actionable feedback
+    4. Overall verdict
+    5. A rating of the solution out of 5
+  expected_output: >
+    An objective review of the student's refactoring, covering correctness,
+    code quality, and adherence to refactoring principles.
+  agent: general_agent

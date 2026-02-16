@@ -16,11 +16,15 @@ class ProjectFile(BaseModel):
     content: str
 
 
+
 class SpringBootExercise(BaseModel):
     problem_description: str
     project_files: List[ProjectFile]
     test_files: List[ProjectFile]
-    reference_solution_markdown: str
+    solution_explanation_md: str
+    paths_to_ex: List[str]
+    answers_list: List[ProjectFile]
+    
 
 
 @CrewBase

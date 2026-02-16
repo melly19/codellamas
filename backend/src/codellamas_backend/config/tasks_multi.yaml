@@ -58,7 +58,7 @@ patch_smelly_code:
     Updated smelly Java source files that pass all tests.
   agent: debug_specialist
 
-generate_reference_solution:
+generate_answers_list:
   description: >
     Using the **Problem Description** and the **JUnit 5 Test Suite** (the authoritative source of truth):
     
@@ -68,9 +68,9 @@ generate_reference_solution:
     3. Use Design Patterns and SOLID principles.
   expected_output: >
     Refactored Java source files representing the reference solution.
-  agent: reference_solution_developer
+  agent: answers_list_developer
 
-run_tests_on_reference_solution:
+run_tests_on_answers_list:
   description: >
     Using the **JUnit Test Suite** and the **Reference Solution** code from the previous task:
     
@@ -79,7 +79,7 @@ run_tests_on_reference_solution:
     A test report indicating success or detailing compilation/test failures.
   agent: test_runner
 
-patch_reference_solution:
+patch_answers_list:
   description: >
     Review the **Test Report** for the **Reference Solution**.
     
@@ -120,7 +120,7 @@ evaluate_code_quality:
     - {problem_description}: The original exercise description
     - {original_code}: The initial smelly code
     - {student_code}: The student's submission
-    - {reference_solution}: The model solution
+    - {answers_list}: The model solution
     - {code_smells}: A list of code smells that were tested in the question
     
     Evaluate whether the targeted smells were mitigated and assess overall code quality compared to the reference solution.

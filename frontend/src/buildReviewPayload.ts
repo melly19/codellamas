@@ -7,7 +7,7 @@ interface ReviewPayload {
   problem_description: string;
   original_code: string;
   student_code: string;
-  reference_solution: string;
+  answers_list: string;
   test_results: string;
   code_smells: string[];
 }
@@ -70,8 +70,8 @@ export async function buildReviewPayload(
     vscode.window.showWarningMessage(`Starter file not found for ${relPath}. Using empty string.`);
   }
 
-  const ref = provider.getReferenceSolution();
-  const referenceSolution = extractJavaCode(ref); 
+  const ref = provider.getSolutionExp();
+  const solutionExp = extractJavaCode(ref); 
 
   const testResults = "BUILD SUCCESS"; 
 
@@ -80,7 +80,7 @@ export async function buildReviewPayload(
   console.log("Problem Description:", problemDescription);
   console.log("Original Code:", originalCode);
   console.log("Student Code:", studentCode);
-  console.log("Reference Solution:", referenceSolution);
+  console.log("Reference Solution:", solutionExp);
   console.log("Test Results:", testResults);
   console.log("Code Smells:", codeSmells);
 
@@ -88,7 +88,7 @@ export async function buildReviewPayload(
     problem_description: problemDescription,
     original_code: originalCode,
     student_code: studentCode,
-    reference_solution: referenceSolution,
+    answers_list: solutionExp,
     test_results: testResults,
     code_smells: codeSmells,
   };

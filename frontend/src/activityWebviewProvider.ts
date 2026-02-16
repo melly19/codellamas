@@ -17,10 +17,29 @@ interface ReviewResult {
   };
 }
 
+export interface ProjectFile {
+  path: string;
+  content: string;
+}
+
+export interface ResponseData {
+  status: string;
+  message: string;
+  data: {
+    problem_description: string;
+    project_files: ProjectFile[];
+    test_files: ProjectFile[];
+    solution_explanation_md: string;
+    paths_to_ex: string[];
+    answers_list: ProjectFile[];
+  };
+}
+
 export class ActivityWebviewProvider implements vscode.WebviewViewProvider {
   public static readonly viewType = "codellamas_activityView";
 
-  private referenceSolution: any[] | string | null = null;
+  private solutionExp: any[] | string | null = null;
+  private responseData: any = null;
   private webviewView: vscode.WebviewView | undefined;
   private selectedSmells: string[] = [];
 
@@ -30,12 +49,14 @@ export class ActivityWebviewProvider implements vscode.WebviewViewProvider {
     }
   }
 
-  public getReferenceSolution(): any[] | string | null {
-    return this.referenceSolution;
+  public getSolutionExp(): any[] | string | null {
+    return this.solutionExp;
   }
   constructor(private readonly context: vscode.ExtensionContext) { 
-    this.referenceSolution =
-      this.context.workspaceState.get<any[] | string | null>("referenceSolution")??null;
+    this.solutionExp =
+      this.context.workspaceState.get<any[] | string | null>("solutionExp")??null;
+    this.responseData =
+      this.context.workspaceState.get<any>("responseData")??null;
   }
 
   /* =========================
@@ -51,16 +72,17 @@ export class ActivityWebviewProvider implements vscode.WebviewViewProvider {
       if (message.type === "submit") {
         try {
           this.selectedSmells = message.smells;
-          const responseData = await this.fetchAiQuestionsFromBackend(
+          this.responseData = await this.fetchAiQuestionsFromBackend(
             message.topic,
             message.smells
           );
-          await saveToSpringBootProject(responseData, webviewView);
-          this.referenceSolution = responseData.reference_solution ?? null;
-          console.log("Full responseData:", responseData);
-          console.log("Reference Solution in memory:", this.referenceSolution);
+          await saveToSpringBootProject(this.responseData, webviewView);
+          this.solutionExp = this.responseData.data.answers_list ?? null;
+          console.log("Full responseData:", this.responseData);
+          console.log("Reference Solution in memory:", this.solutionExp);
 
-          await this.context.workspaceState.update("referenceSolution", this.referenceSolution);
+          await this.context.workspaceState.update("solutionExp", this.solutionExp);
+          await this.context.workspaceState.update("responseData", this.responseData);
         } catch (error) {   
           vscode.window.showErrorMessage(
             "Error generating questions: " + String(error)
@@ -90,28 +112,38 @@ export class ActivityWebviewProvider implements vscode.WebviewViewProvider {
         }
       }
       else if (message.type === "showAnswerFile") {
-        if (!this.referenceSolution) {
-          this.referenceSolution = this.context.workspaceState.get<string | any[] | null>("referenceSolution") ?? null;
+        // Load responseData from workspaceState if not in memory
+        if (!this.responseData) {
+          this.responseData = this.context.workspaceState.get<any>("responseData") ?? null;
         }
-        if (!this.referenceSolution) {
+        
+        if (!this.responseData || !this.responseData.data) {
           vscode.window.showErrorMessage("No reference solution available");
           return;
         }
+        
+        const solutionMd = this.responseData.data.solution_explanation_md;
+        const answersList = this.responseData.data.answers_list;
+        
+        if (!solutionMd && (!answersList || answersList.length === 0)) {
+          vscode.window.showErrorMessage("No reference solution content available");
+          return;
+        }
+        
         try {
-          if (typeof this.referenceSolution === "string") {
-            await this.showReferenceSolutionAsCode(this.referenceSolution);
-          } else if (Array.isArray(this.referenceSolution)) {
-            for (const file of this.referenceSolution) {
-              await this.showReferenceSolutionAsCode(
-                file.content,
-                file.path.replace(/\//g, "_")
-              );
-            }
-          } else {
-            vscode.window.showErrorMessage(
-              "Reference solution format is invalid"
-            );
+          // Write solution explanation markdown
+          if (solutionMd) {
+            await this.writeShowFile(solutionMd, "SOLUTION_EXPLANATION.md");
           }
+          
+          // Write each answer file
+          if (answersList && Array.isArray(answersList)) {
+            for (const file of answersList) {
+              await this.writeShowFile(file.content, file.path);
+            }
+          }
+          
+          vscode.window.showInformationMessage("Reference solutions saved to /answers folder!");
         } catch (err: any) {
           vscode.window.showErrorMessage(
             "Failed to show reference solution: " + String(err)
@@ -122,49 +154,31 @@ export class ActivityWebviewProvider implements vscode.WebviewViewProvider {
     });
   }
 
-  private async showReferenceSolutionAsCode(
-    markdown: string,
-    filename = "ReferenceSolution.java"
-  ) {
+  private async writeShowFile(content: string, path: string) {
     const workspaceFolders = vscode.workspace.workspaceFolders;
     if (!workspaceFolders || workspaceFolders.length === 0) {
       vscode.window.showErrorMessage("No workspace folder open!");
       return;
     }
-    const workspaceRoot = workspaceFolders[0].uri.fsPath;
-
-    const codeBlockRegex = /```java\s*([\s\S]*?)```/g;
-    let match;
-    let codeContent = "";
-
-    while ((match = codeBlockRegex.exec(markdown)) !== null) {
-      codeContent += match[1].trim() + "\n\n";
-    }
-
-    // if (!codeContent.trim()) {
-    //   codeContent = markdown;
-    //   vscode.window.showErrorMessage("No Java code found in reference solution.");
-    //   return;
-    // }
-    const path = require("path");
+    
+    const pathModule = require("path");
     const fs = require("fs");
-    const outputDir = path.join(workspaceRoot, "reference_solution");
-    if (!fs.existsSync(outputDir)) fs.mkdirSync(outputDir, { recursive: true });
-
-    let outputPath: string;
-    if (!codeContent.trim()){
-      outputPath = path.join(outputDir, "REFERENCE_SOLUTION.md");
-      fs.writeFileSync(outputPath, markdown, "utf8");
-      const doc = await vscode.workspace.openTextDocument(outputPath);
-      await vscode.window.showTextDocument(doc);
-      vscode.window.showInformationMessage("Reference solution opened as markdown!");
-    } else {
-      outputPath = path.join(outputDir, filename);
-      fs.writeFileSync(outputPath, codeContent, "utf8");
-      const doc = await vscode.workspace.openTextDocument(outputPath);
-      await vscode.window.showTextDocument(doc);
-      vscode.window.showInformationMessage("Reference solution opened as code!");
+    const workspaceRoot = workspaceFolders[0].uri.fsPath;
+    const answersDir = pathModule.join(workspaceRoot, "answers");
+    const filePath = pathModule.join(answersDir, path);
+    const directory = pathModule.dirname(filePath);
+    
+    // Create directory if it doesn't exist
+    if (!fs.existsSync(directory)) {
+      fs.mkdirSync(directory, { recursive: true });
     }
+    
+    // Write the file
+    fs.writeFileSync(filePath, content, "utf8");
+    
+    // Open the file
+    const doc = await vscode.workspace.openTextDocument(filePath);
+    await vscode.window.showTextDocument(doc);
   }
 
   public postMessage(message: any) {
