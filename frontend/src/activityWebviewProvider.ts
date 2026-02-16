@@ -33,7 +33,10 @@ export class ActivityWebviewProvider implements vscode.WebviewViewProvider {
   public getReferenceSolution(): any[] | string | null {
     return this.referenceSolution;
   }
-  constructor(private readonly context: vscode.ExtensionContext) { }
+  constructor(private readonly context: vscode.ExtensionContext) { 
+    this.referenceSolution =
+      this.context.workspaceState.get<any[] | string | null>("referenceSolution")??null;
+  }
 
   /* =========================
      ACTIVITY BAR VIEW
@@ -53,8 +56,12 @@ export class ActivityWebviewProvider implements vscode.WebviewViewProvider {
             message.smells
           );
           await saveToSpringBootProject(responseData, webviewView);
-          this.referenceSolution = responseData.data.reference_solution_markdown ?? null;
-        } catch (error) {
+          this.referenceSolution = responseData.reference_solution ?? null;
+          console.log("Full responseData:", responseData);
+          console.log("Reference Solution in memory:", this.referenceSolution);
+
+          await this.context.workspaceState.update("referenceSolution", this.referenceSolution);
+        } catch (error) {   
           vscode.window.showErrorMessage(
             "Error generating questions: " + String(error)
           );
@@ -83,6 +90,9 @@ export class ActivityWebviewProvider implements vscode.WebviewViewProvider {
         }
       }
       else if (message.type === "showAnswerFile") {
+        if (!this.referenceSolution) {
+          this.referenceSolution = this.context.workspaceState.get<string | any[] | null>("referenceSolution") ?? null;
+        }
         if (!this.referenceSolution) {
           vscode.window.showErrorMessage("No reference solution available");
           return;
@@ -131,22 +141,30 @@ export class ActivityWebviewProvider implements vscode.WebviewViewProvider {
       codeContent += match[1].trim() + "\n\n";
     }
 
-    if (!codeContent.trim()) {
-      vscode.window.showErrorMessage("No Java code found in reference solution.");
-      return;
-    }
+    // if (!codeContent.trim()) {
+    //   codeContent = markdown;
+    //   vscode.window.showErrorMessage("No Java code found in reference solution.");
+    //   return;
+    // }
     const path = require("path");
     const fs = require("fs");
     const outputDir = path.join(workspaceRoot, "reference_solution");
     if (!fs.existsSync(outputDir)) fs.mkdirSync(outputDir, { recursive: true });
 
-    const outputPath = path.join(outputDir, filename);
-    fs.writeFileSync(outputPath, codeContent, "utf8");
-
-    const doc = await vscode.workspace.openTextDocument(outputPath);
-    await vscode.window.showTextDocument(doc);
-
-    vscode.window.showInformationMessage("Reference solution opened as code!");
+    let outputPath: string;
+    if (!codeContent.trim()){
+      outputPath = path.join(outputDir, "REFERENCE_SOLUTION.md");
+      fs.writeFileSync(outputPath, markdown, "utf8");
+      const doc = await vscode.workspace.openTextDocument(outputPath);
+      await vscode.window.showTextDocument(doc);
+      vscode.window.showInformationMessage("Reference solution opened as markdown!");
+    } else {
+      outputPath = path.join(outputDir, filename);
+      fs.writeFileSync(outputPath, codeContent, "utf8");
+      const doc = await vscode.workspace.openTextDocument(outputPath);
+      await vscode.window.showTextDocument(doc);
+      vscode.window.showInformationMessage("Reference solution opened as code!");
+    }
   }
 
   public postMessage(message: any) {
