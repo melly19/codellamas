@@ -27,6 +27,8 @@ class SpringBootExercise(BaseModel):
     project_files: List[ProjectFile]
     test_files: List[ProjectFile]
     solution_explanation_md: str
+    paths_to_ex: List[str] = Field(default_factory=list, description="List of exercise file paths that student has to edit")
+    answers_list: List[ProjectFile] = Field(default_factory=list, description="List of answer files (solved exercises in Java format)")
 
 
 class PatchOutput(BaseModel):
@@ -34,6 +36,8 @@ class PatchOutput(BaseModel):
     project_files: List[ProjectFile] = Field(default_factory=list)
     test_files: List[ProjectFile] = Field(default_factory=list)
     solution_explanation_md: str = ""
+    paths_to_ex: List[str] = Field(default_factory=list)
+    answers_list: List[ProjectFile] = Field(default_factory=list)
 
 
 class VerifyToolInput(BaseModel):
@@ -381,6 +385,7 @@ class CodellamasBackendMulti:
         reference_project_files = ref_patch.project_files or exercise.project_files
         reference_test_files = ref_patch.test_files or exercise.test_files
         reference_md = ref_patch.solution_explanation_md or exercise.solution_explanation_md
+        reference_answers_list = ref_patch.answers_list if ref_patch.answers_list else []
 
         # 4) Verify + patch reference
         for i in range(1, self.max_patch_iters + 1):
@@ -417,6 +422,8 @@ class CodellamasBackendMulti:
                 reference_test_files = p.test_files
             if p.solution_explanation_md.strip():
                 reference_md = p.solution_explanation_md
+            if p.answers_list:
+                reference_answers_list = p.answers_list
 
         # 5) Audit + package final
         audited = Crew(
@@ -429,6 +436,8 @@ class CodellamasBackendMulti:
             "smelly_project_files": [p.model_dump() for p in exercise.project_files],
             "test_files": [t.model_dump() for t in exercise.test_files],
             "solution_explanation_md": reference_md,
+            "paths_to_ex": exercise.paths_to_ex if hasattr(exercise, 'paths_to_ex') else [],
+            "answers_list": [a.model_dump() for a in reference_answers_list],
         })
 
         final_exercise = SpringBootExercise(**audited.json_dict)

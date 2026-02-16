@@ -111,6 +111,17 @@ def save_exercise_to_repo(exercise: SpringBootExercise, topic: str):
     with open(os.path.join(base_repo_dir, "SOLUTION_EXP.md"), "w") as f:
         f.write(exercise.solution_explanation_md)
     
+
+    # Save answers_list (reference solution files)
+    if hasattr(exercise, 'answers_list') and exercise.answers_list:
+        answers_dir = os.path.join(base_repo_dir, "answers")
+        os.makedirs(answers_dir, exist_ok=True)
+        for file in exercise.answers_list:
+            full_path = os.path.join(answers_dir, file.path)
+            os.makedirs(os.path.dirname(full_path), exist_ok=True)
+            with open(full_path, "w") as f:
+                f.write(file.content)
+    
     return base_repo_dir
 
 def run_maven_verification(*, verify_maven: bool, project_files: List[ProjectFile], override_files: List[Any], injected_tests: List[Any],

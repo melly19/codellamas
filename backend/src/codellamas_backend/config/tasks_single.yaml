@@ -55,7 +55,7 @@ generate_exercise:
           "content": ""
         }
       ],
-      "solution_explanation_md": ",
+      "solution_explanation_md": "",
       "paths_to_ex": [],
       "answers_list": [  
         {

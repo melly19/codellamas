@@ -31,8 +31,15 @@ implement_smelly_code:
     1. PASSES all the provided tests.
     2. Uses the EXACT class names and method signatures defined in the tests.
     3. Intentionally exhibits the specific **Code Smells** requested in the problem description.
+    4. Identify which Java files students should edit to fix the code smells (typically 1-2 files).
+    
+    OUTPUT FORMAT (when this is the last task in a crew):
+    Return a JSON object with: problem_description (from define_problem), project_files (your implementation), 
+    test_files (from define_tests), solution_explanation_md (brief note that this is initial version), 
+    paths_to_ex (list of file paths students must edit), and answers_list (empty for now).
   expected_output: >
-    Java source files containing the functional but smelly implementation.
+    Java source files containing the functional but smelly implementation, paths_to_ex list, 
+    and complete exercise structure when used as final task in initial crew.
   agent: smelly_developer
 
 run_tests_on_smelly_code:
@@ -66,8 +73,9 @@ generate_answers_list:
     1. It must remove the code smells present in the smelly version.
     2. It must use the EXACT same public API (class names/methods) so it passes the same tests.
     3. Use Design Patterns and SOLID principles.
+    4. Provide the solution as an answers_list containing ONLY the files that students need to submit (just file name, no parent directory).
   expected_output: >
-    Refactored Java source files representing the reference solution.
+    Refactored Java source files representing the reference solution, provided as answers_list (file name only, without directory paths).
   agent: answers_list_developer
 
 run_tests_on_answers_list:
@@ -98,8 +106,16 @@ audit_exercise:
     
     Verify functional equivalence (do they both do the same thing?) and pedagogical contrast (is the smelly code actually messy compared to the clean code?).
     Ensure the specific **Code Smells** requested by the Architect are present.
+    
+    OUTPUT FORMAT:
+    1. problem_description: Short description. Java file student need to edit. Short definition of each code smell. Format should be in markdown.
+    2. project_files: (with code smell) - Full set of files for a new project without comments (including pom.xml).
+    3. test_files: JUnit 5 test cases.
+    4. solution_explanation_md: How to solve the exercise in markdown.
+    5. paths_to_ex: List of exercise file paths that student has to edit.
+    6. answers_list: List of answer files (solved exercises in Java format, just file name no parent directory).
   expected_output: >
-    A quality assurance report validating the educational value of the exercise.
+    A quality assurance report validating the educational value of the exercise, structured as a JSON object with problem_description, project_files, test_files, solution_explanation_md, paths_to_ex, and answers_list.
   agent: quality_assurance
 
 # --- REVIEW CREW TASKS ---
