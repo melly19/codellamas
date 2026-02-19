@@ -7,8 +7,6 @@ It helps students practice identifying and fixing code smells by:
 - Verifying solutions with Maven
 - Providing AI-powered feedback
 
----
-
 ## Features
 
 - **AI-Orchestrated Exercise Generation**
@@ -29,8 +27,6 @@ It helps students practice identifying and fixing code smells by:
   - Saves generated exercises locally
   - Logs evaluation results to CSV
 
----
-
 ## Key Components (Backend)
 
 | Component | Description |
@@ -43,8 +39,6 @@ It helps students practice identifying and fixing code smells by:
 | `workspace.py` | Manages temporary projects |
 | `agents_*.yaml` | CrewAI agent definitions |
 | `tasks_*.yaml` | CrewAI task definitions |
-
----
 
 ## Setup
 
