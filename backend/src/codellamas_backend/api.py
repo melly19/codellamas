@@ -4,7 +4,7 @@ import json
 import csv
 from typing import List, Dict, Any
 from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from codellamas_backend.crews.crew_single import CodellamasBackend, SpringBootExercise
 from codellamas_backend.crews.crew_multi import CodellamasBackendMulti
 from codellamas_backend.runtime.verifier import MavenVerifier, to_filelikes
@@ -31,7 +31,7 @@ class GenerateRequest(BaseModel):
     mode: str = "single" # "single" or "multi"
     # optional
     verify_maven: bool = False
-    project_files: List[ProjectFile] = []
+    project_files: List[ProjectFile] = Field(default_factory=list)
 
 class EvaluateRequest(BaseModel):
     problem_description: str
@@ -45,9 +45,9 @@ class EvaluateRequest(BaseModel):
 
     # optional
     verify_maven: bool = False
-    project_files: List[ProjectFile] = [] # base Spring Boot project
-    student_files: List[ProjectFile] = [] # overrides (what student changed)
-    injected_tests: List[ProjectFile] = [] # generated tests you want to enforce
+    project_files: List[ProjectFile] = Field(default_factory=list) # base Spring Boot project
+    student_files: List[ProjectFile] = Field(default_factory=list) # overrides (what student changed)
+    injected_tests: List[ProjectFile] = Field(default_factory=list) # generated tests you want to enforce
 
 def ingest_code_smells(code_smells: List[str]) -> str:
     if not code_smells:
@@ -166,6 +166,7 @@ async def root():
 @app.post("/generate")
 async def generate_exercise(body: GenerateRequest):
     formatted_code_smells = ingest_code_smells(body.code_smells)
+    
     try:
         backend = get_backend(body.mode)
 
@@ -174,29 +175,19 @@ async def generate_exercise(body: GenerateRequest):
                 topic=body.topic,
                 code_smells=body.code_smells,
                 existing_codebase=body.existing_codebase,
-                project_files=body.project_files,
+                project_files=body.project_files
             )
-            saved_path = save_exercise_to_repo(exercise_data, body.topic)
-            response_data = {
-                "status": "success",
-                "message": f"Exercise generated and saved to {saved_path}",
-                "data": exercise_data.model_dump(),
-                "meta": loop_meta
-            }
-        
-            append_to_csv(exercise_data, body.topic, model=body.mode, response_data=response_data)
-            return response_data
+        else:
+            result = backend.generation_crew().kickoff(inputs={
+                    "topic": body.topic,
+                    "code_smells": formatted_code_smells,
+                    "existing_codebase": body.existing_codebase
+                })
+            exercise_data = SpringBootExercise(**result.json_dict)
+            loop_meta = None
 
-        result = backend.generation_crew().kickoff(inputs={
-            "topic": body.topic,
-            "code_smells": formatted_code_smells,
-            "existing_codebase": body.existing_codebase
-        })
-
-        exercise_data = SpringBootExercise(**result.json_dict)
         saved_path = save_exercise_to_repo(exercise_data, body.topic)
 
-        # Optional Maven verification (deduped)
         maven_verification = run_maven_verification(
             verify_maven=body.verify_maven,
             project_files=body.project_files,
@@ -205,12 +196,14 @@ async def generate_exercise(body: GenerateRequest):
             timeout_sec=180,
         )
 
-        response_data = {
+        response_data: Dict[str, Any] = {
             "status": "success",
             "message": f"Exercise generated and saved to {saved_path}",
             "data": exercise_data.model_dump(),
             "maven_verification": maven_verification,
         }
+        if loop_meta is not None:
+            response_data["meta"] = loop_meta
 
         append_to_csv(exercise_data, body.topic, model=body.mode, response_data=response_data)
         return response_data
