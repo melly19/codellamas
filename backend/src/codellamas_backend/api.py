@@ -210,7 +210,6 @@ async def generate_exercise(body: GenerateRequest):
             "message": f"Exercise generated and saved to {saved_path}",
             "data": exercise_data.model_dump(),
             "maven_verification": maven_verification,
-            
         }
 
         append_to_csv(exercise_data, body.topic, model=body.mode, response_data=response_data)

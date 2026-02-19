@@ -16,7 +16,6 @@ class ProjectFile(BaseModel):
     content: str
 
 
-
 class SpringBootExercise(BaseModel):
     problem_description: str
     project_files: List[ProjectFile]
@@ -26,7 +25,6 @@ class SpringBootExercise(BaseModel):
     answers_list: List[ProjectFile]
     
 
-
 @CrewBase
 class CodellamasBackend():
     agents_config = "../config/agents_single.yaml"
@@ -35,8 +33,7 @@ class CodellamasBackend():
     @agent
     def general_agent(self) -> Agent:
         return Agent(
-            config=self.agents_config['general_agent'],  # type: ignore[index]
-            # llm=LLM(model="ollama/phi4", base_url="http://localhost:11434"),
+            config=self.agents_config['general_agent'],
             llm = LLM(model=MODEL, base_url=BASE_URL,api_key=OPENROUTER_API_KEY, max_tokens=20000),
             timeout="1800s",
             verbose=True,
@@ -45,7 +42,6 @@ class CodellamasBackend():
     @task
     def generate_exercise(self) -> Task:
         return Task(
-            # type: ignore[index]
             config=self.tasks_config['generate_exercise'],
             output_json=SpringBootExercise
         )
@@ -53,12 +49,11 @@ class CodellamasBackend():
     @task
     def review_solution(self) -> Task:
         return Task(
-            config=self.tasks_config['review_solution'],  # type: ignore[index]
+            config=self.tasks_config['review_solution'],
         )
 
     @crew
     def generation_crew(self) -> Crew:
-        """Creates the generation crew"""
         return Crew(
             agents=[self.general_agent()],
             tasks=[self.generate_exercise()],
@@ -68,7 +63,6 @@ class CodellamasBackend():
 
     @crew
     def review_crew(self) -> Crew:
-        """Creates the evaluation crew"""
         return Crew(
             agents=[self.general_agent()],
             tasks=[self.review_solution()],

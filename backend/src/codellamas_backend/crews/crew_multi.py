@@ -14,9 +14,6 @@ OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
 BASE_URL = "https://openrouter.ai/api/v1"
 MODEL = "openrouter/qwen/qwen3-coder-30b-a3b-instruct"
 
-# =========================
-# Shared output models
-# =========================
 
 class ProjectFile(BaseModel):
     path: str = Field(..., description="Relative path (e.g., src/main/java/... or pom.xml)")
@@ -113,8 +110,6 @@ class CodellamasBackendMulti:
         # self.llm = LLM(model=self.model, base_url=self.ollama_base_url)
         # change to OpenRouter LLM
         self.llm = LLM(model=MODEL, base_url=BASE_URL, api_key=OPENROUTER_API_KEY, request_timeout=self.request_timeout_sec,)
-
-
         self.verify_tool = MavenVerifyTool()
 
     @agent
