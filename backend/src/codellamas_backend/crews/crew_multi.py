@@ -57,30 +57,24 @@ class VerifyToolOutput(BaseModel):
 
 class MavenVerifyTool(BaseTool):
     name: str = "maven_verify"
-    description: str = (
-        "Runs mvn test in an isolated workspace (includes compilation) and returns PASS/FAIL plus a log head."
-    )
+    description: str = "Runs mvn test in an isolated workspace (includes compilation) and returns PASS/FAIL plus a log head."
     args_schema: Type[BaseModel] = VerifyToolInput
 
     def _run(
         self,
-        base_project_files: List[Dict[str, str]],
-        override_project_files: Optional[List[Dict[str, str]]] = None,
-        injected_tests: Optional[List[Dict[str, str]]] = None,
+        base_project_files: List[ProjectFile],
+        override_project_files: Optional[List[ProjectFile]] = None,
+        injected_tests: Optional[List[ProjectFile]] = None,
         timeout_sec: int = 180,
     ) -> str:
         override_project_files = override_project_files or []
         injected_tests = injected_tests or []
 
-        base_pf = [ProjectFile(path=f["path"], content=f["content"]) for f in base_project_files]
-        override_pf = [ProjectFile(path=f["path"], content=f["content"]) for f in override_project_files]
-        test_pf = [ProjectFile(path=f["path"], content=f["content"]) for f in injected_tests]
-
         verifier = MavenVerifier(timeout_sec=timeout_sec, quiet=True)
         verification = verifier.verify(
-            base_project=to_filelikes(base_pf),
-            override_files=to_filelikes(override_pf),
-            injected_tests={f.path: f.content for f in test_pf},
+            base_project=to_filelikes(base_project_files),
+            override_files=to_filelikes(override_project_files),
+            injected_tests={f.path: f.content for f in injected_tests},
         )
 
         out = VerifyToolOutput(
