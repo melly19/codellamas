@@ -96,13 +96,6 @@ class CodellamasBackendMulti:
     max_patch_iters: int = 2
 
     def __init__(self):
-        # self.llm = LLM(
-        #     model="ollama/phi4",
-        #     base_url="http://localhost:11434",
-        #     request_timeout=self.request_timeout_sec,
-        # )
-        # self.llm = LLM(model=self.model, base_url=self.ollama_base_url)
-        # change to OpenRouter LLM
         self.llm = LLM(model=MODEL, base_url=BASE_URL, api_key=OPENROUTER_API_KEY, request_timeout=self.request_timeout_sec,)
         self.verify_tool = MavenVerifyTool()
 
@@ -297,11 +290,8 @@ class CodellamasBackendMulti:
         project_files: List[Any],  # scaffold from API (ProjectFile-like)
     ) -> tuple[SpringBootExercise, Dict[str, Any]]:
         """
-        A simpler + more reliable implementation of the same stage functionality as generation_crew,
-        but with deterministic verification + patching loops in Python.
-
-        Use this from api.py when:
-          mode == "multi" AND verify_maven == True AND project_files provided
+        Verification + patching loops in Python.
+        Use if mode == "multi" AND verify_maven == True AND project_files provided
         """
         base_project_files = [ProjectFile(path=f.path, content=f.content) for f in project_files]
         base_filelikes = to_filelikes(base_project_files)
