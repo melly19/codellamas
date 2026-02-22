@@ -21,11 +21,19 @@ class SpringBootExercise(BaseModel):
     reference_solution_markdown: str
 
 class ReviewResult(BaseModel):
-    functional_correctness_assessment: str
-    code_quality_review: str
-    actionable_feedback: str
-    overall_verdict: str
-    rating: float
+    problem_statement_clarity: str
+    smell_incorporation: str
+    
+    avoids_unrelated_bad_practices: str
+    naming_conventions: str
+    structure_quality: str
+    undergraduate_suitability: str
+
+    minimal_boilerplate: str
+    readability: str
+    reasonable_optimisation: str
+
+    overall_rating: float
 
 @CrewBase
 class CodellamasBackend():

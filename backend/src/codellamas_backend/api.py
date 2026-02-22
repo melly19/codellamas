@@ -98,11 +98,19 @@ def append_review_to_csv(
         "single_or_multi": mode,
 
         # 🔹 Extracted review JSON fields
-        "functional_correctness_assessment": feedback_dict.get("functional_correctness_assessment"),
-        "code_quality_review": feedback_dict.get("code_quality_review"),
-        "actionable_feedback": feedback_dict.get("actionable_feedback"),
-        "overall_verdict": feedback_dict.get("overall_verdict"),
-        "rating": feedback_dict.get("rating"),
+        "problem_statement_clarity": feedback_dict.get("problem_statement_clarity"),
+        "smell_incorporation": feedback_dict.get("smell_incorporation"),
+
+        "avoids_unrelated_bad_practices": feedback_dict.get("avoids_unrelated_bad_practices"),
+        "naming_conventions": feedback_dict.get("naming_conventions"),
+        "structure_quality": feedback_dict.get("structure_quality"),
+        "undergraduate_suitability": feedback_dict.get("undergraduate_suitability"),
+
+        "minimal_boilerplate": feedback_dict.get("minimal_boilerplate"),
+        "readability": feedback_dict.get("readability_flow"),
+        "reasonable_optimisation": feedback_dict.get("reasonable_optimisation"),
+
+        "overall_rating": feedback_dict.get("overall_rating"),
 
         # 🔹 Maven info
         "maven_status": maven_verification.get("status"),

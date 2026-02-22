@@ -71,35 +71,34 @@ review_solution:
       - {reference_solution}: A model solution for the refactoring task
       - {code_smells}: The code smells that were tested for the task
 
-      SECTION 1: FUNCTIONAL CORRECTNESS CHECK
-      1. Determine whether the student solution preserves the intended behavior.
-      2. Clearly state any functional regressions or violations.
-
-      SECTION 2: CODE QUALITY REVIEW
-      1. Assess whether the targeted code smells has been adequately addressed.
-      2. Evaluate the solution based on clean code principles:
-         - Readability
-         - Separation of concerns
-         - Appropriate abstraction.
-      3. Accept multiple valid solutions if they adhere to good refactoring practices.
-
-      SECTION 3: FEEDBACK GENERATION
-      1. Provide concise, constructive feedback covering:
-         - What was done well
-         - What could be improved.
-      2. Reference specific files or constructs where relevant.
-      3. Avoid teaching step-by-step refactoring; focus on review and evaluation.
-
-      SECTION 4: SUMMARY ASSESSMENT
-      1. Provide a brief overall assessment of the submission.
-      2. Clearly indicate whether the solution is acceptable.
-
       OUTPUT FORMAT:
-      1. Functional correctness assessment
-      2. Code quality review
-      3. Actionable feedback
-      4. Overall verdict
-      5. A rating of the solution out of 5
+      Return a structured JSON object with the following fields.
+
+      For each criterion:
+      - Provide a short comment (2 sentences maximum).
+      - Clearly include a rating in the format "Rating: X/5" at the end of the comment.
+      - Do not return the rating separately for each criterion.
+
+      Required fields:
+
+      problem_statement_clarity: str
+      smell_incorporation: str
+    
+      avoids_unrelated_bad_practices: str
+      naming_conventions: str
+      structure_quality: str
+      undergraduate_suitability: str
+
+      minimal_boilerplate: str
+      readability: str
+      reasonable_optimisation: str
+
+      overall_rating: float (numeric value between 0 and 5)
+
+      Each comment must end with:
+      "Rating: X/5"
+
+      overall_rating must be a number only.
    expected_output: >
       An objective review of the student's refactoring, covering correctness,
       code quality, and adherence to refactoring principles.
