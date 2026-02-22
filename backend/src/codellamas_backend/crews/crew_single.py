@@ -20,6 +20,12 @@ class SpringBootExercise(BaseModel):
     test_files: List[ProjectFile]
     reference_solution_markdown: str
 
+class ReviewResult(BaseModel):
+    functional_correctness_assessment: str
+    code_quality_review: str
+    actionable_feedback: str
+    overall_verdict: str
+    rating: float
 
 @CrewBase
 class CodellamasBackend():
@@ -48,6 +54,7 @@ class CodellamasBackend():
     def review_solution(self) -> Task:
         return Task(
             config=self.tasks_config['review_solution'],  # type: ignore[index]
+            output_json=ReviewResult
         )
 
     @crew

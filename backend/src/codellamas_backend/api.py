@@ -12,6 +12,7 @@ from codellamas_backend.runtime.verifier import MavenVerifier, to_filelikes
 
 app = FastAPI()
 CSV_FILE_PATH = "output/exercises_evaluation.csv"
+REVIEW_CSV_FILE_PATH = "output/reviews_evaluation.csv"
 
 class ProjectFile(BaseModel):
     path: str
@@ -79,6 +80,48 @@ def append_to_csv(exercise: SpringBootExercise, topic: str, code_smells: List[st
         writer.writerow(row)
 
     return os.path.abspath(CSV_FILE_PATH)
+
+def append_review_to_csv(
+    problem_description: str,
+    code_smells: List[str],
+    mode: str,
+    review_time_sec: float,
+    feedback_dict: dict,
+    maven_verification: dict
+):
+    timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+    row = {
+        "timestamp": timestamp,
+        "problem_description": problem_description,
+        "code_smells": ", ".join(code_smells),
+        "single_or_multi": mode,
+
+        # 🔹 Extracted review JSON fields
+        "functional_correctness_assessment": feedback_dict.get("functional_correctness_assessment"),
+        "code_quality_review": feedback_dict.get("code_quality_review"),
+        "actionable_feedback": feedback_dict.get("actionable_feedback"),
+        "overall_verdict": feedback_dict.get("overall_verdict"),
+        "rating": feedback_dict.get("rating"),
+
+        # 🔹 Maven info
+        "maven_status": maven_verification.get("status"),
+        "failed_tests": json.dumps(maven_verification.get("failed_tests")),
+        "review_time_sec": review_time_sec
+    }
+
+    file_exists = os.path.isfile(REVIEW_CSV_FILE_PATH)
+
+    with open(REVIEW_CSV_FILE_PATH, mode='a', newline='', encoding='utf-8') as csvfile:
+        fieldnames = list(row.keys())
+        writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+
+        if not file_exists:
+            writer.writeheader()
+
+        writer.writerow(row)
+
+    return os.path.abspath(REVIEW_CSV_FILE_PATH)
 
 def save_exercise_to_repo(exercise: SpringBootExercise, topic: str):
     timestamp = datetime.datetime.now().strftime("%d%m_%M%S")
@@ -215,7 +258,7 @@ async def review_solution(body: EvaluateRequest):
     maven_verification: Dict[str, Any] = {"enabled": False}
 
     try:
-        # Optional runtime verification (compile + mvn test)
+        # Optional Maven verification
         if body.verify_maven:
             maven_verification["enabled"] = True
 
@@ -227,13 +270,8 @@ async def review_solution(body: EvaluateRequest):
             else:
                 verifier = MavenVerifier(timeout_sec=180, quiet=True)
 
-                # Convert base project scaffold (Spring Initializr) to FileLike[]
                 base_project = to_filelikes(body.project_files)
-
-                # Apply student's modified files as overrides
                 student_overrides = to_filelikes(body.student_files or [])
-
-                # Inject tests (typically generated tests for the exercise)
                 inject_tests = {f.path: f.content for f in (body.injected_tests or [])}
 
                 verification = verifier.verify(
@@ -249,17 +287,38 @@ async def review_solution(body: EvaluateRequest):
                     "raw_log_head": verification.summary()
                 })
 
-                # Feed *real* execution log into the LLM reviewer
                 inputs["test_results"] = verification.summary()
 
-        # Run review crew based on selected mode
+        # 🔹 Measure review time (same pattern as generate)
+        start_time = time.perf_counter()
+
         backend = get_backend(body.mode)
         raw = backend.review_crew().kickoff(inputs=inputs)
 
-        return {
-            "feedback": str(raw),
+        end_time = time.perf_counter()
+        review_time_sec = round(end_time - start_time, 3)
+
+        # 🔹 Extract structured JSON output
+        feedback_dict = raw.json_dict if hasattr(raw, "json_dict") else json.loads(str(raw))
+
+        # 🔹 Build response
+        response_data = {
+            "status": "success",
+            "feedback": feedback_dict,
             "maven_verification": maven_verification
         }
+
+        # 🔹 Append to separate review CSV
+        append_review_to_csv(
+            problem_description=body.problem_description,
+            code_smells=body.code_smells,
+            mode=body.mode,
+            review_time_sec=review_time_sec,
+            feedback_dict=feedback_dict,
+            maven_verification=maven_verification
+        )
+
+        return response_data
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Review crew failed: {e}")
