@@ -246,7 +246,7 @@ async def review_solution(body: EvaluateRequest):
         maven_verification = run_maven_verification(
             verify_maven=body.verify_maven,
             project_files=project_files,
-            student_code=student_code or [],
+            override_files=student_code or [],
             injected_tests=injected_tests or [],
             timeout_sec=180,
             skipped_reason="verify_maven=true but no project_files provided",
@@ -266,7 +266,10 @@ async def review_solution(body: EvaluateRequest):
             "injected_tests": [p.model_dump() for p in injected_tests],
             "test_results": test_results,
             "code_smells": formatted_code_smells,
-            "query": body.query
+            "query": body.query,
+            "mode": body.mode,
+            "query": body.query or "",
+            "verify_maven": body.verify_maven
         }
 
         backend = get_backend(body.mode)
