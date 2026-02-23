@@ -15,6 +15,7 @@ interface ReviewPayload {
   query?: string;
   test_results?: string;
   verify_maven?: boolean;
+  code_smells?: string[];
 }
 
 export async function buildReviewPayload(
@@ -108,6 +109,7 @@ export async function buildReviewPayload(
     query: "",
     test_results: testResults,
     verify_maven: false,
+    code_smells: codeSmells,
   };
 
   return payload;
