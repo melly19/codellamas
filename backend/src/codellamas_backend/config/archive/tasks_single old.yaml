@@ -64,7 +64,7 @@ review_solution:
       - {original_code}: The initial code containing the code smell
       - {student_code}: The student's refactored code submission
       - {test_results}: JUnit 5 test case results (pass or fail)
-      - {reference_solution}: A model solution for the refactoring task
+      - {answers_list}: A model solution for the refactoring task
       - {code_smells}: The code smells that were tested for the task
 
       SECTION 1: FUNCTIONAL CORRECTNESS CHECK

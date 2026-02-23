@@ -5,7 +5,7 @@ import csv
 import time
 from typing import List, Dict, Any
 from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from codellamas_backend.crews.crew_single import CodellamasBackend, SpringBootExercise
 from codellamas_backend.crews.crew_multi import CodellamasBackendMulti
 from codellamas_backend.runtime.verifier import MavenVerifier, to_filelikes
@@ -33,22 +33,18 @@ class GenerateRequest(BaseModel):
     mode: str = "single" # "single" or "multi"
     # optional
     verify_maven: bool = False
-    project_files: List[ProjectFile] = []
+    project_files: List[ProjectFile] = Field(default_factory=list)
 
 class EvaluateRequest(BaseModel):
-    problem_description: str
-    original_code: str
-    student_code: str
-    test_results: str
-    reference_solution: str
+    question_json: str  # flexible input to accommodate both single and multi agent review tasks
+    student_code: List[ProjectFile] = Field(default_factory=list)
     code_smells: List[str]
-    mode: str = "single"
+    mode: str = "single"  # "single" or "multi"
+    query: str = ""  # additional context or specific questions for the review
 
     # optional
+    test_results: str = ""  # output of mvn test in the frontend, can be used by the review crew for more informed feedback
     verify_maven: bool = False
-    project_files: List[ProjectFile] = [] # base Spring Boot project
-    student_files: List[ProjectFile] = [] # overrides (what student changed)
-    injected_tests: List[ProjectFile] = [] # generated tests you want to enforce
 
 def ingest_code_smells(code_smells: List[str]) -> str:
     if not code_smells:
@@ -56,30 +52,38 @@ def ingest_code_smells(code_smells: List[str]) -> str:
     return ", ".join(code_smells)
 
 def append_to_csv(exercise: SpringBootExercise, topic: str, code_smells: List[str], generation_time_sec: float, model: str, response_data: dict = None):
-    timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-
-    row = {
-        "timestamp": timestamp,
-        "topic": topic,
-        "code_smells": code_smells,
-        "problem_description": exercise.problem_description,
-        "single_or_multi": model,
-        "response_json": json.dumps(response_data),
-        "generation_time_sec": generation_time_sec
-    }
-
-    file_exists = os.path.isfile(CSV_FILE_PATH)
-
-    with open(CSV_FILE_PATH, mode='a', newline='', encoding='utf-8') as csvfile:
-        fieldnames = ["timestamp", "topic", "code_smells", "problem_description", "single_or_multi", "response_json", "generation_time_sec"]
-        writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+    try:
+        # Create directory if it doesn't exist
+        os.makedirs(os.path.dirname(CSV_FILE_PATH), exist_ok=True)
         
-        if not file_exists:
-            writer.writeheader()
-            
-        writer.writerow(row)
+        timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-    return os.path.abspath(CSV_FILE_PATH)
+        row = {
+            "timestamp": timestamp,
+            "topic": topic,
+            "code_smells": code_smells,
+            "problem_description": exercise.problem_description,
+            "single_or_multi": model,
+            "response_json": json.dumps(response_data),
+            "generation_time_sec": generation_time_sec
+        }
+
+        file_exists = os.path.isfile(CSV_FILE_PATH)
+
+        with open(CSV_FILE_PATH, mode='a', newline='', encoding='utf-8') as csvfile:
+            fieldnames = ["timestamp", "topic", "code_smells", "problem_description", "single_or_multi", "response_json", "generation_time_sec"]
+            writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+            
+            if not file_exists:
+                writer.writeheader()
+                
+            writer.writerow(row)
+
+        return os.path.abspath(CSV_FILE_PATH)
+    
+    except Exception as e:
+        print(f"Error appending to CSV: {e}")
+        raise
 
 def append_review_to_csv(
     problem_description: str,
@@ -153,10 +157,56 @@ def save_exercise_to_repo(exercise: SpringBootExercise, topic: str):
         with open(full_path, "w") as f:
             f.write(file.content)
 
-    with open(os.path.join(base_repo_dir, "REFERENCE_SOLUTION.md"), "w") as f:
-        f.write(exercise.reference_solution_markdown)
+    with open(os.path.join(base_repo_dir, "SOLUTION_EXP.md"), "w") as f:
+        f.write(exercise.solution_explanation_md)
+    
+
+    # Save answers_list (reference solution files)
+    if hasattr(exercise, 'answers_list') and exercise.answers_list:
+        answers_dir = os.path.join(base_repo_dir, "answers")
+        os.makedirs(answers_dir, exist_ok=True)
+        for file in exercise.answers_list:
+            full_path = os.path.join(answers_dir, file.path)
+            os.makedirs(os.path.dirname(full_path), exist_ok=True)
+            with open(full_path, "w") as f:
+                f.write(file.content)
     
     return base_repo_dir
+
+def run_maven_verification(*, verify_maven: bool, project_files: List[ProjectFile], override_files: List[Any], injected_tests: List[Any],
+    timeout_sec: int = 180, skipped_reason: str = "verify_maven=true but no project_files provided (Spring Initializr scaffold required).") -> Dict[str, Any]:
+    
+    maven_verification: Dict[str, Any] = {"enabled": False}
+
+    if not verify_maven:
+        return maven_verification
+
+    maven_verification["enabled"] = True
+
+    if not project_files:
+        maven_verification.update({"status": "SKIPPED", "reason": skipped_reason})
+        return maven_verification
+
+    verifier = MavenVerifier(timeout_sec=timeout_sec, quiet=True)
+
+    base_project = to_filelikes(project_files)
+    overrides = to_filelikes(override_files or [])
+    inject_tests = {f.path: f.content for f in (injected_tests or [])}
+
+    verification = verifier.verify(
+        base_project=base_project,
+        override_files=overrides,
+        injected_tests=inject_tests,
+    )
+
+    maven_verification.update({
+            "status": verification.status,
+            "failed_tests": verification.failed_tests,
+            "errors": verification.errors,
+            "raw_log_head": verification.summary(),
+    })
+
+    return maven_verification
 
 @app.get("/")
 async def root():
@@ -165,6 +215,7 @@ async def root():
 @app.post("/generate")
 async def generate_exercise(body: GenerateRequest):
     formatted_code_smells = ingest_code_smells(body.code_smells)
+    
     try:
         backend = get_backend(body.mode)
 
@@ -173,74 +224,38 @@ async def generate_exercise(body: GenerateRequest):
                 topic=body.topic,
                 code_smells=body.code_smells,
                 existing_codebase=body.existing_codebase,
-                project_files=body.project_files,
+                project_files=body.project_files
             )
-            saved_path = save_exercise_to_repo(exercise_data, body.topic)
-            return {
-                "status": "success",
-                "message": f"Exercise generated and saved to {saved_path}",
-                "data": exercise_data.model_dump(),
-                "meta": loop_meta
-            }
-
-        start_time = time.perf_counter()
-
-        result = backend.generation_crew().kickoff(inputs={
-            "topic": body.topic,
-            "code_smells": formatted_code_smells,
-            "existing_codebase": body.existing_codebase
-        })
-
-        end_time = time.perf_counter()
-        generation_time_sec = round(end_time - start_time, 3)
-
-        exercise_data = SpringBootExercise(**result.json_dict)
+        else:
+            start_time = time.perf_counter()
+            result = backend.generation_crew().kickoff(inputs={
+                    "topic": body.topic,
+                    "code_smells": formatted_code_smells,
+                    "existing_codebase": body.existing_codebase
+                })
+            end_time = time.perf_counter()
+            generation_time_sec = round(end_time - start_time, 3)
+            exercise_data = SpringBootExercise(**result.json_dict)
+            loop_meta = None
 
         saved_path = save_exercise_to_repo(exercise_data, body.topic)
 
-        # Optional Maven verification (using verifier layer)   
-        maven_verification: dict = {"enabled": False}
+        maven_verification = run_maven_verification(
+            verify_maven=body.verify_maven,
+            project_files=body.project_files,
+            override_files=exercise_data.project_files,
+            injected_tests=exercise_data.test_files,
+            timeout_sec=180,
+        )
 
-        if body.verify_maven:
-            maven_verification["enabled"] = True
-
-            if not body.project_files:
-                maven_verification.update({
-                    "status": "SKIPPED",
-                    "reason": "verify_maven=true but no project_files provided (Spring Initializr scaffold required)."
-                })
-            else:
-                verifier = MavenVerifier(timeout_sec=180, quiet=True)
-
-                # Convert scaffold files to FileLike using verifier helper
-                base_project = to_filelikes(body.project_files)  # from verifier.py :contentReference[oaicite:4]{index=4}
-
-                # Convert generated project files to FileLike (same helper)
-                override_files = to_filelikes(exercise_data.project_files)
-
-                # Inject generated tests (dict[path -> content])
-                inject_tests = {f.path: f.content for f in exercise_data.test_files}
-
-                verification = verifier.verify(
-                    base_project=base_project,
-                    override_files=override_files,
-                    injected_tests=inject_tests
-                )
-
-                maven_verification.update({
-                    "status": verification.status,
-                    "failed_tests": verification.failed_tests,
-                    "errors": verification.errors,
-                    "raw_log_head": verification.summary()
-                })
-
-        # 5) Compile response early to save to CSV
-        response_data = {
+        response_data: Dict[str, Any] = {
             "status": "success",
             "message": f"Exercise generated and saved to {saved_path}",
-            "data": result.json_dict,
+            "data": exercise_data.model_dump(),
             "maven_verification": maven_verification,
         }
+        if loop_meta is not None:
+            response_data["meta"] = loop_meta
 
         append_to_csv(exercise_data, body.topic, body.code_smells, generation_time_sec, model=body.mode, response_data=response_data)
 
@@ -252,69 +267,80 @@ async def generate_exercise(body: GenerateRequest):
 
 @app.post("/review")
 async def review_solution(body: EvaluateRequest):
-    formatted_code_smells = ingest_code_smells(body.code_smells)
+    # Parse flexible question JSON (may include project_files, student_files, injected_tests, etc.)
+    parsed_q: Any = {}
+    try:
+        parsed_q = json.loads(body.question_json) if body.question_json else {}
+    except Exception:
+        # keep raw string when JSON parse fails
+        parsed_q = {"raw": body.question_json}
 
-    inputs = {
-        "problem_description": body.problem_description,
-        "original_code": body.original_code,
-        "student_code": body.student_code,
-        "test_results": body.test_results,
-        "reference_solution": body.reference_solution,
-        "code_smells": formatted_code_smells
-    }
+    # question_json uses `project_files` and `test_files` keys per task YAML
+    project_files_q = parsed_q.get("project_files", [])
+    injected_tests_q = parsed_q.get("test_files", [])
 
-    maven_verification: Dict[str, Any] = {"enabled": False}
+    # Always prefer explicit `student_code` from the request as overrides; do NOT read student_code from question_json
+    override_files_input = body.student_code or []
+
+    # Normalize items into `ProjectFile` instances
+    def _normalize(items: list) -> list:
+        out: list[ProjectFile] = []
+        for it in items or []:
+            if isinstance(it, ProjectFile):
+                out.append(it)
+            elif isinstance(it, dict):
+                try:
+                    out.append(ProjectFile(**it))
+                except Exception:
+                    # skip malformed entries
+                    continue
+        return out
+
+    project_files = _normalize(project_files_q)
+    override_files = _normalize(override_files_input)
+    injected_tests = _normalize(injected_tests_q)
+
+    # Include code_smells from request in a formatted string for crew inputs
+    formatted_code_smells = ingest_code_smells(getattr(body, "code_smells", []) )
 
     try:
-        # Optional Maven verification
-        if body.verify_maven:
-            maven_verification["enabled"] = True
+        maven_verification = run_maven_verification(
+            verify_maven=body.verify_maven,
+            project_files=project_files,
+            override_files=override_files or [],
+            injected_tests=injected_tests or [],
+            timeout_sec=180,
+            skipped_reason="verify_maven=true but no project_files provided",
+        )
 
-            if not body.project_files:
-                maven_verification.update({
-                    "status": "SKIPPED",
-                    "reason": "verify_maven=true but no project_files provided"
-                })
-            else:
-                verifier = MavenVerifier(timeout_sec=180, quiet=True)
+        # If verifier produced test/log output, prefer it for test_results
+        test_results = body.test_results or ""
+        if (maven_verification.get("enabled") and maven_verification.get("status") not in (None, "SKIPPED")
+                and maven_verification.get("raw_log_head")):
+            test_results = maven_verification["raw_log_head"]
 
-                base_project = to_filelikes(body.project_files)
-                student_overrides = to_filelikes(body.student_files or [])
-                inject_tests = {f.path: f.content for f in (body.injected_tests or [])}
-
-                verification = verifier.verify(
-                    base_project=base_project,
-                    override_files=student_overrides,
-                    injected_tests=inject_tests
-                )
-
-                maven_verification.update({
-                    "status": verification.status,
-                    "failed_tests": verification.failed_tests,
-                    "errors": verification.errors,
-                    "raw_log_head": verification.summary()
-                })
-
-                inputs["test_results"] = verification.summary()
-
+        # Build inputs for the review crew. Keep payload compact and JSON-serializable.
+        inputs: Dict[str, Any] = {
+            "question_json": parsed_q,
+            "student_code": [p.model_dump() for p in body.student_code] if body.student_code else [],
+            "project_files": [p.model_dump() for p in project_files],
+            "student_files": [p.model_dump() for p in override_files],
+            "injected_tests": [p.model_dump() for p in injected_tests],
+            "query": body.query,
+            "test_results": test_results,
+            "code_smells": formatted_code_smells,
+        }
+        
         # 🔹 Measure review time (same pattern as generate)
         start_time = time.perf_counter()
-
+        
         backend = get_backend(body.mode)
         raw = backend.review_crew().kickoff(inputs=inputs)
 
         end_time = time.perf_counter()
         review_time_sec = round(end_time - start_time, 3)
-
-        # 🔹 Extract structured JSON output
+        
         feedback_dict = raw.json_dict if hasattr(raw, "json_dict") else json.loads(str(raw))
-
-        # 🔹 Build response
-        response_data = {
-            "status": "success",
-            "feedback": feedback_dict,
-            "maven_verification": maven_verification
-        }
 
         # 🔹 Append to separate review CSV
         append_review_to_csv(
@@ -326,7 +352,7 @@ async def review_solution(body: EvaluateRequest):
             maven_verification=maven_verification
         )
 
-        return response_data
+        return {"feedback": str(raw), "maven_verification": maven_verification}
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Review crew failed: {e}")

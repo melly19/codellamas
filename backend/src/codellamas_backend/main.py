@@ -1,6 +1,8 @@
 #!/usr/bin/env python
 import sys
 import warnings
+from dotenv import load_dotenv
+import os
 
 from dotenv import BaseModel, Field
 import os

@@ -4,4 +4,6 @@ __pycache__/
 .venv
 generated_exercises
 output
-
+.csv
+src/codellamas_backend/output
+venv

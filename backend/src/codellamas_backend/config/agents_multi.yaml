@@ -41,7 +41,7 @@ smelly_developer:
     tightly coupled, poorly named, and resistant to change. You must not improve
     structure, readability, or design unless required to satisfy a failing test.
 
-reference_solution_developer:
+answers_list_developer:
   role: >
     Senior Software Architect (Clean Code Expert)
   goal: >

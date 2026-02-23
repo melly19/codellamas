@@ -31,8 +31,15 @@ implement_smelly_code:
     1. PASSES all the provided tests.
     2. Uses the EXACT class names and method signatures defined in the tests.
     3. Intentionally exhibits the specific **Code Smells** requested in the problem description.
+    4. Identify which Java files students should edit to fix the code smells (typically 1-2 files).
+    
+    OUTPUT FORMAT (when this is the last task in a crew):
+    Return a JSON object with: problem_description (from define_problem), project_files (your implementation), 
+    test_files (from define_tests), solution_explanation_md (brief note that this is initial version), 
+    paths_to_ex (list of file paths students must edit), and answers_list (empty for now).
   expected_output: >
-    Java source files containing the functional but smelly implementation.
+    Java source files containing the functional but smelly implementation, paths_to_ex list, 
+    and complete exercise structure when used as final task in initial crew.
   agent: smelly_developer
 
 run_tests_on_smelly_code:
@@ -58,7 +65,7 @@ patch_smelly_code:
     Updated smelly Java source files that pass all tests.
   agent: debug_specialist
 
-generate_reference_solution:
+generate_answers_list:
   description: >
     Using the **Problem Description** and the **JUnit 5 Test Suite** (the authoritative source of truth):
     
@@ -66,11 +73,12 @@ generate_reference_solution:
     1. It must remove the code smells present in the smelly version.
     2. It must use the EXACT same public API (class names/methods) so it passes the same tests.
     3. Use Design Patterns and SOLID principles.
+    4. Provide the solution as an answers_list containing ONLY the files that students need to submit (just file name, no parent directory).
   expected_output: >
-    Refactored Java source files representing the reference solution.
-  agent: reference_solution_developer
+    Refactored Java source files representing the reference solution, provided as answers_list (file name only, without directory paths).
+  agent: answers_list_developer
 
-run_tests_on_reference_solution:
+run_tests_on_answers_list:
   description: >
     Using the **JUnit Test Suite** and the **Reference Solution** code from the previous task:
     
@@ -79,7 +87,7 @@ run_tests_on_reference_solution:
     A test report indicating success or detailing compilation/test failures.
   agent: test_runner
 
-patch_reference_solution:
+patch_answers_list:
   description: >
     Review the **Test Report** for the **Reference Solution**.
     
@@ -98,16 +106,27 @@ audit_exercise:
     
     Verify functional equivalence (do they both do the same thing?) and pedagogical contrast (is the smelly code actually messy compared to the clean code?).
     Ensure the specific **Code Smells** requested by the Architect are present.
+    
+    OUTPUT FORMAT:
+    1. problem_description: Short description. Java file student need to edit. Short definition of each code smell. Format should be in markdown.
+    2. project_files: (with code smell) - Full set of files for a new project without comments (including pom.xml).
+    3. test_files: JUnit 5 test cases.
+    4. solution_explanation_md: How to solve the exercise in markdown.
+    5. paths_to_ex: List of exercise file paths that student has to edit.
+    6. answers_list: List of answer files (solved exercises in Java format, just file name no parent directory).
   expected_output: >
-    A quality assurance report validating the educational value of the exercise.
+    A quality assurance report validating the educational value of the exercise, structured as a JSON object with problem_description, project_files, test_files, solution_explanation_md, paths_to_ex, and answers_list.
   agent: quality_assurance
 
 # --- REVIEW CREW TASKS ---
 check_functional_correctness:
   description: >
     INPUTS:
-    - {student_code}: The student's submitted code
-    - {test_suite}: The original test suite
+    - {question_json}: A JSON string containing the canonical exercise payload (includes `project_files`, `test_files`, `problem_description`, etc.)
+    - {student_code}: The student's submitted files (array of {path,content})
+    - {project_files}: Base project scaffold files (if provided separately)
+    - {injected_tests}: Any injected tests to run against the student code
+    - {test_results}: Optional test output to assist assessment
     
     Compile and run the tests against the student code. Identify any functional regressions.
   expected_output: >
@@ -117,13 +136,13 @@ check_functional_correctness:
 evaluate_code_quality:
   description: >
     INPUTS:
-    - {problem_description}: The original exercise description
-    - {original_code}: The initial smelly code
-    - {student_code}: The student's submission
-    - {reference_solution}: The model solution
+    - {question_json}: A JSON string containing the canonical exercise payload (includes `project_files`, `test_files`, `problem_description`, etc.)
+    - {student_code}: The student's submitted files (array of {path,content})
+    - {answers_list}: The model/reference solution files
     - {code_smells}: A list of code smells that were tested in the question
-    
-    Evaluate whether the targeted smells were mitigated and assess overall code quality compared to the reference solution.
+    - {query}: Optional context or reviewer directives
+
+    Using the provided inputs, evaluate whether the targeted smells were mitigated and assess overall code quality compared to the reference solution.
   expected_output: >
     A structured code quality review.
   agent: quality_assurance
