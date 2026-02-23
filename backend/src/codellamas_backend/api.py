@@ -34,7 +34,7 @@ class GenerateRequest(BaseModel):
     project_files: List[ProjectFile] = Field(default_factory=list)
 
 class EvaluateRequest(BaseModel):
-    question_json: str  # flexible input to accommodate both single and multi agent review tasks
+    question_json: Dict[str, Any] = Field(default_factory=dict)
     student_code: List[ProjectFile] = Field(default_factory=list)
     code_smells: List[str]
     mode: str = "single"  # "single" or "multi"
@@ -221,9 +221,6 @@ async def review_solution(body: EvaluateRequest):
     project_files_q = parsed_q.get("project_files", [])
     injected_tests_q = parsed_q.get("test_files", [])
 
-    # Always prefer explicit `student_code` from the request as overrides; do NOT read student_code from question_json
-    override_files_input = body.student_code or []
-
     # Normalize items into `ProjectFile` instances
     def _normalize(items: list) -> list:
         out: list[ProjectFile] = []
@@ -239,7 +236,7 @@ async def review_solution(body: EvaluateRequest):
         return out
 
     project_files = _normalize(project_files_q)
-    override_files = _normalize(override_files_input)
+    student_code = _normalize(body.student_code or [])
     injected_tests = _normalize(injected_tests_q)
 
     # Include code_smells from request in a formatted string for crew inputs
@@ -249,7 +246,7 @@ async def review_solution(body: EvaluateRequest):
         maven_verification = run_maven_verification(
             verify_maven=body.verify_maven,
             project_files=project_files,
-            override_files=override_files or [],
+            student_code=student_code or [],
             injected_tests=injected_tests or [],
             timeout_sec=180,
             skipped_reason="verify_maven=true but no project_files provided",
@@ -263,14 +260,13 @@ async def review_solution(body: EvaluateRequest):
 
         # Build inputs for the review crew. Keep payload compact and JSON-serializable.
         inputs: Dict[str, Any] = {
-            "question_json": parsed_q,
-            "student_code": [p.model_dump() for p in body.student_code] if body.student_code else [],
+            "question_json": body.question_json,
             "project_files": [p.model_dump() for p in project_files],
-            "student_files": [p.model_dump() for p in override_files],
+            "student_code": [p.model_dump() for p in student_code],
             "injected_tests": [p.model_dump() for p in injected_tests],
-            "query": body.query,
             "test_results": test_results,
             "code_smells": formatted_code_smells,
+            "query": body.query
         }
 
         backend = get_backend(body.mode)
