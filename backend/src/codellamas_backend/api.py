@@ -266,7 +266,6 @@ async def review_solution(body: EvaluateRequest):
             "injected_tests": [p.model_dump() for p in injected_tests],
             "test_results": test_results,
             "code_smells": formatted_code_smells,
-            "query": body.query,
             "mode": body.mode,
             "query": body.query or "",
             "verify_maven": body.verify_maven

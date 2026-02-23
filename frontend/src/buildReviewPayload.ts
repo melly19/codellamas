@@ -9,13 +9,13 @@ interface ProjectFile {
 }
 
 interface ReviewPayload {
-  question_json: string;
+  question_json: Record<string, any>;
   student_code: ProjectFile[];
   mode?: string;
   query?: string;
   test_results?: string;
   verify_maven?: boolean;
-  code_smells?: string[];
+  code_smells: string[];
 }
 
 export async function buildReviewPayload(
@@ -115,7 +115,7 @@ export async function buildReviewPayload(
   };
 
   const payload: ReviewPayload = {
-    question_json: JSON.stringify(questionObj),
+    question_json: questionObj,
     student_code: studentCode,
     mode: "single",
     query: "",
