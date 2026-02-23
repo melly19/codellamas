@@ -727,9 +727,13 @@ window.addEventListener("message", (event) => {
    * Configure the URL, payload shape, and response handling to match your backend.
    */
   private async fetchReviewFromBackend(payload: any): Promise<any> {
-    // TODO: Replace the URL and payload with your own review endpoint.
-        try {
-      const payload = await buildReviewPayload(this, this.selectedSmells);
+    // Build payload using selected smells or fallback to generated exercise data
+    try {
+      const codeSmells = (this.selectedSmells && this.selectedSmells.length)
+        ? this.selectedSmells
+        : (this.responseData && this.responseData.data && this.responseData.data.code_smells) || [];
+
+      const payload = await buildReviewPayload(this, codeSmells);
       if (!payload) return;
 
       const response = await fetch("http://localhost:8000/review", {
