@@ -34,20 +34,15 @@ class GenerateRequest(BaseModel):
     project_files: List[ProjectFile] = Field(default_factory=list)
 
 class EvaluateRequest(BaseModel):
-    problem_description: str
-    original_code: str
-    student_code: str
-    test_results: str
-    answers_list: str
+    question_json: str  # flexible input to accommodate both single and multi agent review tasks
+    student_code: List[ProjectFile] = Field(default_factory=list)
     code_smells: List[str]
-    query: str = ""
-    mode: str = "single"
+    mode: str = "single"  # "single" or "multi"
+    query: str = ""  # additional context or specific questions for the review
 
     # optional
+    test_results: str = ""  # output of mvn test in the frontend, can be used by the review crew for more informed feedback
     verify_maven: bool = False
-    project_files: List[ProjectFile] = Field(default_factory=list) # base Spring Boot project
-    student_files: List[ProjectFile] = Field(default_factory=list) # overrides (what student changed)
-    injected_tests: List[ProjectFile] = Field(default_factory=list) # generated tests you want to enforce
 
 def ingest_code_smells(code_smells: List[str]) -> str:
     if not code_smells:
@@ -214,31 +209,69 @@ async def generate_exercise(body: GenerateRequest):
 
 @app.post("/review")
 async def review_solution(body: EvaluateRequest):
-    formatted_code_smells = ingest_code_smells(body.code_smells)
+    # Parse flexible question JSON (may include project_files, student_files, injected_tests, etc.)
+    parsed_q: Any = {}
+    try:
+        parsed_q = json.loads(body.question_json) if body.question_json else {}
+    except Exception:
+        # keep raw string when JSON parse fails
+        parsed_q = {"raw": body.question_json}
 
-    inputs = {
-        "problem_description": body.problem_description,
-        "original_code": body.original_code,
-        "student_code": body.student_code,
-        "test_results": body.test_results,
-        "answers_list": body.answers_list,
-        "code_smells": formatted_code_smells,
-        "query": body.query
-    }
+    # question_json uses `project_files` and `test_files` keys per task YAML
+    project_files_q = parsed_q.get("project_files", [])
+    injected_tests_q = parsed_q.get("test_files", [])
+
+    # Always prefer explicit `student_code` from the request as overrides; do NOT read student_code from question_json
+    override_files_input = body.student_code or []
+
+    # Normalize items into `ProjectFile` instances
+    def _normalize(items: list) -> list:
+        out: list[ProjectFile] = []
+        for it in items or []:
+            if isinstance(it, ProjectFile):
+                out.append(it)
+            elif isinstance(it, dict):
+                try:
+                    out.append(ProjectFile(**it))
+                except Exception:
+                    # skip malformed entries
+                    continue
+        return out
+
+    project_files = _normalize(project_files_q)
+    override_files = _normalize(override_files_input)
+    injected_tests = _normalize(injected_tests_q)
+
+    # Include code_smells from request in a formatted string for crew inputs
+    formatted_code_smells = ingest_code_smells(getattr(body, "code_smells", []) )
 
     try:
         maven_verification = run_maven_verification(
             verify_maven=body.verify_maven,
-            project_files=body.project_files,
-            override_files=body.student_files or [],
-            injected_tests=body.injected_tests or [],
+            project_files=project_files,
+            override_files=override_files or [],
+            injected_tests=injected_tests or [],
             timeout_sec=180,
             skipped_reason="verify_maven=true but no project_files provided",
         )
 
+        # If verifier produced test/log output, prefer it for test_results
+        test_results = body.test_results or ""
         if (maven_verification.get("enabled") and maven_verification.get("status") not in (None, "SKIPPED")
-            and maven_verification.get("raw_log_head")):
-            inputs["test_results"] = maven_verification["raw_log_head"]
+                and maven_verification.get("raw_log_head")):
+            test_results = maven_verification["raw_log_head"]
+
+        # Build inputs for the review crew. Keep payload compact and JSON-serializable.
+        inputs: Dict[str, Any] = {
+            "question_json": parsed_q,
+            "student_code": [p.model_dump() for p in body.student_code] if body.student_code else [],
+            "project_files": [p.model_dump() for p in project_files],
+            "student_files": [p.model_dump() for p in override_files],
+            "injected_tests": [p.model_dump() for p in injected_tests],
+            "query": body.query,
+            "test_results": test_results,
+            "code_smells": formatted_code_smells,
+        }
 
         backend = get_backend(body.mode)
         raw = backend.review_crew().kickoff(inputs=inputs)

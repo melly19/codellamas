@@ -122,8 +122,11 @@ audit_exercise:
 check_functional_correctness:
   description: >
     INPUTS:
-    - {student_code}: The student's submitted code
-    - {test_suite}: The original test suite
+    - {question_json}: A JSON string containing the canonical exercise payload (includes `project_files`, `test_files`, `problem_description`, etc.)
+    - {student_code}: The student's submitted files (array of {path,content})
+    - {project_files}: Base project scaffold files (if provided separately)
+    - {injected_tests}: Any injected tests to run against the student code
+    - {test_results}: Optional test output to assist assessment
     
     Compile and run the tests against the student code. Identify any functional regressions.
   expected_output: >
@@ -133,13 +136,13 @@ check_functional_correctness:
 evaluate_code_quality:
   description: >
     INPUTS:
-    - {problem_description}: The original exercise description
-    - {original_code}: The initial smelly code
-    - {student_code}: The student's submission
-    - {answers_list}: The model solution
+    - {question_json}: A JSON string containing the canonical exercise payload (includes `project_files`, `test_files`, `problem_description`, etc.)
+    - {student_code}: The student's submitted files (array of {path,content})
+    - {answers_list}: The model/reference solution files
     - {code_smells}: A list of code smells that were tested in the question
-    
-    Evaluate whether the targeted smells were mitigated and assess overall code quality compared to the reference solution.
+    - {query}: Optional context or reviewer directives
+
+    Using the provided inputs, evaluate whether the targeted smells were mitigated and assess overall code quality compared to the reference solution.
   expected_output: >
     A structured code quality review.
   agent: quality_assurance

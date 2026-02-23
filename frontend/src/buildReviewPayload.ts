@@ -3,13 +3,18 @@ import * as fs from "fs";
 import * as path from "path";
 import { ActivityWebviewProvider } from "./activityWebviewProvider";
 
+interface ProjectFile {
+  path: string;
+  content: string;
+}
+
 interface ReviewPayload {
-  problem_description: string;
-  original_code: string;
-  student_code: string;
-  answers_list: string;
-  test_results: string;
-  code_smells: string[];
+  question_json: string;
+  student_code: ProjectFile[];
+  mode?: string;
+  query?: string;
+  test_results?: string;
+  verify_maven?: boolean;
 }
 
 export async function buildReviewPayload(
@@ -84,12 +89,26 @@ export async function buildReviewPayload(
   console.log("Test Results:", testResults);
   console.log("Code Smells:", codeSmells);
 
-  return {
+  const questionObj: any = {
     problem_description: problemDescription,
     original_code: originalCode,
-    student_code: studentCode,
     answers_list: solutionExp,
-    test_results: testResults,
     code_smells: codeSmells,
   };
+
+  const payload: ReviewPayload = {
+    question_json: JSON.stringify(questionObj),
+    student_code: [
+      {
+        path: relPath,
+        content: studentCode,
+      },
+    ],
+    mode: "single",
+    query: "",
+    test_results: testResults,
+    verify_maven: false,
+  };
+
+  return payload;
 }
