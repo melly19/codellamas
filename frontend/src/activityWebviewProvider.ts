@@ -191,56 +191,6 @@ export class ActivityWebviewProvider implements vscode.WebviewViewProvider {
     }
   }
 
-  public async runReviewFromSubmit() {
-    if (!this.webviewView) {
-      vscode.commands.executeCommand('workbench.view.extension.codellamasActivity');
-      return;
-    }
-
-    this.webviewView.show?.(true);
-    this.webviewView?.webview.postMessage({ type: "switchTab", tab: "review" });
-    // this.webviewView.webview.postMessage({ type: "startReview" });
-
-    try {
-      const payload = await buildReviewPayload(this, this.selectedSmells);
-      if (!payload) return;
-
-      const response = await fetch("http://localhost:8000/review", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload)
-      });
-      if (!response.ok) {
-        throw new Error(`Backend review error: ${response.statusText}`);
-      }
-      const reviewResult = (await response.json()) as ReviewResult;
-
-      let feedbackParsed: Feedback;
-      try {
-        feedbackParsed = JSON.parse(reviewResult.feedback) as Feedback;
-      } catch (err) {
-        throw new Error("Failed to parse feedback JSON from backend.");
-      }
-      const messages: string[] = Object.entries(feedbackParsed).map(([key, value]) => {
-        const title = key.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
-        return `=== ${title} ===\n${value}`;
-      });
-
-      this.postMessage({
-        type: "reviewResponse",
-        messages
-      });
-      vscode.window.showInformationMessage("Code submitted successfully!");
-    } catch (err: any) {
-      const errorMessage = "Error submitting code: " + String(err);
-      vscode.window.showErrorMessage(errorMessage);
-      this.postMessage({
-        type: "reviewError",
-        error: errorMessage
-      });
-    }
-
-  }
 
   private getActivityHtml(): string {
     return /* html */ `
@@ -778,19 +728,43 @@ window.addEventListener("message", (event) => {
    */
   private async fetchReviewFromBackend(payload: any): Promise<any> {
     // TODO: Replace the URL and payload with your own review endpoint.
-    const response = await fetch("http://localhost:8000/review", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload ?? {})
-    });
+        try {
+      const payload = await buildReviewPayload(this, this.selectedSmells);
+      if (!payload) return;
 
-    if (!response.ok) {
-      throw new Error(`Backend review error: ${response.statusText}`);
+      const response = await fetch("http://localhost:8000/review", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+      if (!response.ok) {
+        throw new Error(`Backend review error: ${response.statusText}`);
+      }
+      const reviewResult = (await response.json()) as ReviewResult;
+
+      let feedbackParsed: Feedback;
+      try {
+        feedbackParsed = JSON.parse(reviewResult.feedback) as Feedback;
+      } catch (err) {
+        throw new Error("Failed to parse feedback JSON from backend.");
+      }
+      const messages: string[] = Object.entries(feedbackParsed).map(([key, value]) => {
+        const title = key.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+        return `=== ${title} ===\n${value}`;
+      });
+
+      this.postMessage({
+        type: "reviewResponse",
+        messages
+      });
+      vscode.window.showInformationMessage("Code submitted successfully!");
+    } catch (err: any) {
+      const errorMessage = "Error submitting code: " + String(err);
+      vscode.window.showErrorMessage(errorMessage);
+      this.postMessage({
+        type: "reviewError",
+        error: errorMessage
+      });
     }
-
-    // Expected response shape (example):
-    // { messages: string[] }
-    // Adjust this to whatever your backend returns.
-    return response.json();
   }
 }

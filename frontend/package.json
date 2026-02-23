@@ -11,8 +11,7 @@
   ],
   "activationEvents": [
     "onView:codellamas_activityView",
-    "onCommand:code-llamas.helloWorld",
-    "onCommand:code-llamas.submitCode"
+    "onCommand:code-llamas.helloWorld"
     ],
   "main": "./out/extension.js",
   "contributes": {
@@ -20,22 +19,8 @@
       {
         "command": "code-llamas.helloWorld",
         "title": "Hello World"
-      },
-      {
-        "command": "code-llamas.submitCode",
-        "title": "Submit Code",
-        "icon": "$(cloud-upload)"
       }
     ],
-    "menus": {
-      "editor/title": [
-        {
-          "command": "code-llamas.submitCode",
-          "group": "navigation@99",
-          "when": "resourceLangId != ''"
-        }
-      ]
-    },
     "viewsContainers": {
       "activitybar": [
         {

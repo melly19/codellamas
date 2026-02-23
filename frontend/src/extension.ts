@@ -33,34 +33,6 @@ export function activate(context: vscode.ExtensionContext) {
 
 	context.subscriptions.push(helloWorldDisposable);
 
-	// =====================================================
-	//  Submit Code command
-	// =====================================================
-	const submitCodeDisposable = vscode.commands.registerCommand(
-		"code-llamas.submitCode",
-		async () => {
-			await provider.runReviewFromSubmit();
-		}
-	);
-
-	context.subscriptions.push(submitCodeDisposable);
-
-	// =====================================================
-	// Status bar button
-	// =====================================================
-	const submitButton = vscode.window.createStatusBarItem(
-		vscode.StatusBarAlignment.Right,
-		100
-	);
-
-	submitButton.text = '$(cloud-upload) Submit';
-	submitButton.tooltip = 'Submit current file to Code Llamas';
-	submitButton.command = 'code-llamas.submitCode';
-
-	submitButton.backgroundColor = new vscode.ThemeColor('statusBarItem.errorBackground');
-	submitButton.show();
-
-	context.subscriptions.push(submitButton);
 }
 
 // This method is called when your extension is deactivated
