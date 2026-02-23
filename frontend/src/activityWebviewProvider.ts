@@ -57,6 +57,8 @@ export class ActivityWebviewProvider implements vscode.WebviewViewProvider {
       this.context.workspaceState.get<any[] | string | null>("solutionExp")??null;
     this.responseData =
       this.context.workspaceState.get<any>("responseData")??null;
+    this.selectedSmells = 
+      this.context.workspaceState.get<string[]>("selectedSmells")??[];
   }
 
   /* =========================
@@ -81,6 +83,7 @@ export class ActivityWebviewProvider implements vscode.WebviewViewProvider {
           console.log("Full responseData:", this.responseData);
           console.log("Reference Solution in memory:", this.solutionExp);
 
+          await this.context.workspaceState.update("selectedSmells", this.selectedSmells);
           await this.context.workspaceState.update("solutionExp", this.solutionExp);
           await this.context.workspaceState.update("responseData", this.responseData);
         } catch (error) {   
@@ -733,7 +736,7 @@ window.addEventListener("message", (event) => {
         ? this.selectedSmells
         : (this.responseData && this.responseData.data && this.responseData.data.code_smells) || [];
 
-      const payload = await buildReviewPayload(this, codeSmells);
+      const payload = await buildReviewPayload(this, codeSmells, this.responseData.data.paths_to_ex);
       if (!payload) return;
 
       const response = await fetch("http://localhost:8000/review", {

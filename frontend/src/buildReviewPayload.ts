@@ -20,7 +20,8 @@ interface ReviewPayload {
 
 export async function buildReviewPayload(
   provider: ActivityWebviewProvider,
-  codeSmells: string[] = []
+  codeSmells: string[] = [],
+  pathsToEx: string[] = []
 ): Promise<ReviewPayload | null> {
   const workspaceFolders = vscode.workspace.workspaceFolders;
   if (!workspaceFolders || workspaceFolders.length === 0) {
@@ -58,30 +59,46 @@ export async function buildReviewPayload(
   } else {
     vscode.window.showWarningMessage("PROBLEM.md not found in workspace root. Using empty description.");
   }
+  const studentCode: ProjectFile[] = [];
+  const originalCode: ProjectFile[] = [];
 
-  const editor = vscode.window.activeTextEditor;
-  if (!editor) {
-    vscode.window.showErrorMessage("No active editor found!");
+  if (!pathsToEx || pathsToEx.length === 0) {
+    vscode.window.showWarningMessage("No paths_to_ex provided. Nothing to review.");
     return null;
   }
-  const studentFilePath = editor.document.fileName;
-  const relPath = path.relative(workspaceRoot, studentFilePath);
-  const studentCode = editor.document.getText();
 
-  const starterFilePath = path.join(workspaceRoot, "starter", relPath);
-  let originalCode = "";
-  if (fs.existsSync(starterFilePath)) {
-    originalCode = fs.readFileSync(starterFilePath, "utf8");
-  } else {
-    vscode.window.showWarningMessage(`Starter file not found for ${relPath}. Using empty string.`);
+  for (const relPath of pathsToEx) {
+    const studentFullPath = path.join(workspaceRoot, relPath);
+
+    if (fs.existsSync(studentFullPath)) {
+      const content = fs.readFileSync(studentFullPath, "utf8");
+      studentCode.push({
+        path: relPath,
+        content,
+      });
+    } else {
+      vscode.window.showWarningMessage(`Student file missing: ${relPath}`);
+    }
+
+    const starterFullPath = path.join(workspaceRoot, "starter", relPath);
+    if (fs.existsSync(starterFullPath)) {
+      const originalContent = fs.readFileSync(starterFullPath, "utf8");
+      originalCode.push({
+        path: relPath,
+        content: originalContent,
+      });
+    } else {
+      vscode.window.showWarningMessage(`Starter file missing: ${relPath}`);
+    }
   }
 
+
   const ref = provider.getSolutionExp();
-  const solutionExp = extractJavaCode(ref); 
+  const solutionExp = extractJavaCode(ref);
 
-  const testResults = "BUILD SUCCESS"; 
+  const testResults = "BUILD SUCCESS";
 
- // DEBUGGING OUTPUT
+  // DEBUGGING OUTPUT
   console.log("=== Review Payload Inputs ===");
   console.log("Problem Description:", problemDescription);
   console.log("Original Code:", originalCode);
@@ -99,12 +116,7 @@ export async function buildReviewPayload(
 
   const payload: ReviewPayload = {
     question_json: JSON.stringify(questionObj),
-    student_code: [
-      {
-        path: relPath,
-        content: studentCode,
-      },
-    ],
+    student_code: studentCode,
     mode: "single",
     query: "",
     test_results: testResults,
