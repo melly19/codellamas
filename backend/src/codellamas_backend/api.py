@@ -36,7 +36,8 @@ class GenerateRequest(BaseModel):
     project_files: List[ProjectFile] = Field(default_factory=list)
 
 class EvaluateRequest(BaseModel):
-    question_json: str  # flexible input to accommodate both single and multi agent review tasks
+    problem_description: str
+    question_json: Dict[str, Any] = {}
     student_code: List[ProjectFile] = Field(default_factory=list)
     code_smells: List[str]
     mode: str = "single"  # "single" or "multi"
@@ -268,12 +269,13 @@ async def generate_exercise(body: GenerateRequest):
 @app.post("/review")
 async def review_solution(body: EvaluateRequest):
     # Parse flexible question JSON (may include project_files, student_files, injected_tests, etc.)
-    parsed_q: Any = {}
-    try:
-        parsed_q = json.loads(body.question_json) if body.question_json else {}
-    except Exception:
-        # keep raw string when JSON parse fails
-        parsed_q = {"raw": body.question_json}
+    # parsed_q: Any = {}
+    # try:
+    #     parsed_q = json.loads(body.question_json) if body.question_json else {}
+    # except Exception:
+    #     # keep raw string when JSON parse fails
+    #     parsed_q = {"raw": body.question_json}
+    parsed_q = body.question_json or {}
 
     # question_json uses `project_files` and `test_files` keys per task YAML
     project_files_q = parsed_q.get("project_files", [])
@@ -329,6 +331,8 @@ async def review_solution(body: EvaluateRequest):
             "query": body.query,
             "test_results": test_results,
             "code_smells": formatted_code_smells,
+            "mode": body.mode,
+            "verify_maven": body.verify_maven
         }
         
         # 🔹 Measure review time (same pattern as generate)
