@@ -212,7 +212,13 @@ export class ActivityWebviewProvider implements vscode.WebviewViewProvider {
       box-sizing: border-box;
       display: flex;
       flex-direction: column;
+
+      background:
+    radial-gradient(circle at 85% 90%, rgba(190, 18, 60, 0.55), transparent 45%),
+    radial-gradient(circle at 0% 0%, rgba(13, 110, 140, 0.35), transparent 40%),
+    linear-gradient(135deg, #0A1A3F, #071433 60%, #050E23);
     }
+    
 
     h1 {
       margin: 0 0 12px 0;
@@ -441,6 +447,35 @@ export class ActivityWebviewProvider implements vscode.WebviewViewProvider {
       border-top: 1px solid var(--vscode-editorGroup-border);
       text-align: right;
     }
+
+/* Selected smell chips */
+.selected-smells {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 6px 0 12px 0;
+}
+
+.smell-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 8px;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  background-color: var(--vscode-badge-background);
+  color: var(--vscode-badge-foreground);
+}
+
+.smell-chip button {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 0.75rem;
+  padding: 0;
+  color: inherit;
+}
+
   </style>
 </head>
 <body>
@@ -457,6 +492,7 @@ export class ActivityWebviewProvider implements vscode.WebviewViewProvider {
     <div class="section-subtitle">
       Choose one or more refactoring topics to practise.
     </div>
+    <div id="selected-smells" class="selected-smells"></div>
 
     <details open>
       <summary>Bloaters</summary>
@@ -568,6 +604,42 @@ export class ActivityWebviewProvider implements vscode.WebviewViewProvider {
     const reviewBtn = document.getElementById("reviewBtn");
     const chatMessages = document.getElementById("chat-messages");
     const showAnswerBtn = document.getElementById("showAnswerBtn");
+    const selectedContainer = document.getElementById("selected-smells");
+
+function updateSelectedSmells() {
+  if (!selectedContainer) return;
+
+  selectedContainer.innerHTML = "";
+
+  const checked = Array.from(
+    document.querySelectorAll('input[type="checkbox"]:checked')
+  );
+
+  checked.forEach(cb => {
+    const chip = document.createElement("div");
+    chip.classList.add("smell-chip");
+
+    const text = document.createElement("span");
+    text.textContent = cb.value;
+
+    const removeBtn = document.createElement("button");
+    removeBtn.textContent = "✕";
+
+    removeBtn.addEventListener("click", () => {
+      cb.checked = false;
+      updateSelectedSmells();
+    });
+
+    chip.appendChild(text);
+    chip.appendChild(removeBtn);
+    selectedContainer.appendChild(chip);
+  });
+}
+
+document.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+  cb.addEventListener("change", updateSelectedSmells);
+});
+
     if (showAnswerBtn){
       showAnswerBtn.addEventListener("click",() => {
         vscode.postMessage({
