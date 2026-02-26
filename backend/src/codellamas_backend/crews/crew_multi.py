@@ -14,9 +14,9 @@ from codellamas_backend.schemas.files import ProjectFile
 
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
 BASE_URL = "https://openrouter.ai/api/v1"
-# MODEL = "openrouter/qwen/qwen3-coder-30b-a3b-instruct"
+MODEL = "openrouter/qwen/qwen3-coder-30b-a3b-instruct"
 # MODEL = "openrouter/deepseek/deepseek-v3.2"
-MODEL = "openrouter/nvidia/nemotron-3-nano-30b-a3b:free"
+# MODEL = "openrouter/nvidia/nemotron-3-nano-30b-a3b:free"
 
 
 class SpringBootExercise(BaseModel):
@@ -393,17 +393,17 @@ class CodellamasBackendMulti:
             "test_files": [t.model_dump() for t in exercise.test_files],
         })
         ref_patch = PatchOutput(**ref.json_dict)
-        reference_project_files = ref_patch.project_files or exercise.project_files
-        reference_test_files = ref_patch.test_files or exercise.test_files
         reference_md = ref_patch.solution_explanation_md or exercise.solution_explanation_md
-        reference_answers_list = ref_patch.answers_list if ref_patch.answers_list else []
+        reference_test_files = ref_patch.test_files or exercise.test_files
+        reference_answers_list = ref_patch.answers_list or []
+        reference_override_files = reference_answers_list if reference_answers_list else (ref_patch.project_files or exercise.project_files)
 
         # 4) Verify + patch reference
         for i in range(1, self.max_patch_iters + 1):
             meta["reference_iterations"] = i
             ver = MavenVerifier(timeout_sec=self.maven_timeout_sec, quiet=True).verify(
                 base_project=base_project_files,
-                override_files=reference_project_files,
+                override_files=reference_override_files,
                 injected_tests={t.path: t.content for t in reference_test_files},
             )
             meta["reference_maven"] = {
@@ -422,19 +422,19 @@ class CodellamasBackendMulti:
                 verbose=True,
             ).kickoff(inputs={
                 "maven_log_head": ver.summary()[:2000],
-                "reference_project_files": [p.model_dump() for p in reference_project_files],
+                "reference_override_files": [p.model_dump() for p in reference_override_files],
                 "reference_test_files": [t.model_dump() for t in reference_test_files],
                 "solution_explanation_md": reference_md,
             })
             p = PatchOutput(**patch.json_dict)
-            if p.project_files:
-                reference_project_files = p.project_files
             if p.test_files:
                 reference_test_files = p.test_files
             if p.solution_explanation_md.strip():
                 reference_md = p.solution_explanation_md
             if p.answers_list:
                 reference_answers_list = p.answers_list
+            elif p.project_files:
+                reference_override_files = p.project_files
 
         # 5) Audit + package final
         audited = Crew(

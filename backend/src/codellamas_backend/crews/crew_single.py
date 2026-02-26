@@ -12,7 +12,7 @@ BASE_URL = "https://openrouter.ai/api/v1"
 # MODEL = "openrouter/openrouter/free"
 MODEL = "openrouter/qwen/qwen3-coder-30b-a3b-instruct"
 # MODEL = "openrouter/deepseek/deepseek-v3.2"
-MODEL = "openrouter/nvidia/nemotron-3-nano-30b-a3b:free"
+# MODEL = "openrouter/nvidia/nemotron-3-nano-30b-a3b:free"
 
 
 class SpringBootExercise(BaseModel):

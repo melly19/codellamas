@@ -50,7 +50,7 @@ class MavenTool:
         inject_tests = inject_tests or {}
         extra_mvn_args = list(extra_mvn_args or [])
 
-        with Workspace(prefix="codelamas_") as ws:
+        with Workspace(prefix="codellamas_") as ws:
             # 1) materialize base project (from VS Code)
             ws.write_files(project_files)
 
