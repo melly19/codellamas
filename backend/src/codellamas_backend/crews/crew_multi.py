@@ -98,20 +98,24 @@ class CodellamasBackendMulti:
     max_patch_iters: int = 2
 
     def __init__(self):
-        self.llm = LLM(model=MODEL, base_url=BASE_URL, api_key=OPENROUTER_API_KEY, request_timeout=self.request_timeout_sec,)
+        self.llm = LLM(model=MODEL, base_url=BASE_URL, api_key=OPENROUTER_API_KEY, request_timeout=self.request_timeout_sec)
         self.verify_tool = MavenVerifyTool()
 
     @agent
     def problem_architect(self) -> Agent:
         return Agent(
             config=self.agents_config['problem_architect'],
+            llm=self.llm,
+            timeout="1800s",
             verbose=True
         )
-
+    
     @agent
     def test_engineer(self) -> Agent:
         return Agent(
             config=self.agents_config['test_engineer'],
+            llm=self.llm,
+            timeout="1800s",
             verbose=True
         )
 
@@ -119,6 +123,8 @@ class CodellamasBackendMulti:
     def smelly_developer(self) -> Agent:
         return Agent(
             config=self.agents_config['smelly_developer'],
+            llm=self.llm,
+            timeout="1800s",
             verbose=True
         )
 
@@ -126,6 +132,8 @@ class CodellamasBackendMulti:
     def answers_list_developer(self) -> Agent:
         return Agent(
             config=self.agents_config['answers_list_developer'],
+            llm=self.llm,
+            timeout="1800s",
             verbose=True
         )
 
@@ -133,6 +141,8 @@ class CodellamasBackendMulti:
     def test_runner(self) -> Agent:
         return Agent(
             config=self.agents_config['test_runner'],
+            llm=self.llm,
+            timeout="1800s",
             verbose=True,
             tools=[self.verify_tool]
         )
@@ -141,6 +151,8 @@ class CodellamasBackendMulti:
     def debug_specialist(self) -> Agent:
         return Agent(
             config=self.agents_config['debug_specialist'],
+            llm=self.llm,
+            timeout="1800s",
             verbose=True
         )
 
@@ -148,6 +160,8 @@ class CodellamasBackendMulti:
     def quality_assurance(self) -> Agent:
         return Agent(
             config=self.agents_config['quality_assurance'],
+            llm=self.llm,
+            timeout="1800s",
             verbose=True
         )
 
