@@ -31,7 +31,9 @@ export async function buildReviewPayload(
   const workspaceRoot = workspaceFolders[0].uri.fsPath;
 
   function extractJavaCode(markdown: string | { path: string; content: string }[] | null): string {
-    if (!markdown) return "";
+    if (!markdown) {
+      return "";
+    }
 
     let code = "";
 

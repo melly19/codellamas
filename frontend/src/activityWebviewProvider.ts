@@ -809,7 +809,9 @@ window.addEventListener("message", (event) => {
         : (this.responseData && this.responseData.data && this.responseData.data.code_smells) || [];
 
       const payload = await buildReviewPayload(this, codeSmells, this.responseData.data.paths_to_ex);
-      if (!payload) return;
+      if (!payload) {
+        return;
+      }
 
       const response = await fetch("http://localhost:8000/review", {
         method: "POST",

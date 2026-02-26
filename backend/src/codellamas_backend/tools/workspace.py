@@ -15,9 +15,9 @@ class FileLike:
 
 class Workspace:
     """
-    Creates a temp directory workspace and lets you write project files into it.
+    Creates temp directory workspace and lets you write project files into it.
     Designed for:
-      - materializing a Spring Initializr Maven project sent from VS Code (path+content)
+      - materializing a Maven project sent from VS Code (path+content)
       - applying student edits (override)
       - injecting generated tests
     """

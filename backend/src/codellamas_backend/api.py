@@ -12,9 +12,11 @@ from codellamas_backend.runtime.verifier import MavenVerifier, to_filelikes
 app = FastAPI()
 CSV_FILE_PATH = "output/exercises_evaluation.csv"
 
+
 class ProjectFile(BaseModel):
     path: str
     content: str
+
 
 def get_backend(mode: str):
     if mode not in {"single", "multi"}:
@@ -24,14 +26,16 @@ def get_backend(mode: str):
         )
     return CodellamasBackendMulti() if mode == "multi" else CodellamasBackend()
 
+
 class GenerateRequest(BaseModel):
     topic: str
     code_smells: List[str]
     existing_codebase: str = "NONE"
-    mode: str = "single" # "single" or "multi"
+    mode: str = "single"  # "single" or "multi"
     # optional
     verify_maven: bool = False
     project_files: List[ProjectFile] = Field(default_factory=list)
+
 
 class EvaluateRequest(BaseModel):
     question_json: Dict[str, Any] = Field(default_factory=dict)
@@ -41,19 +45,21 @@ class EvaluateRequest(BaseModel):
     query: str = ""  # additional context or specific questions for the review
 
     # optional
-    test_results: str = ""  # output of mvn test in the frontend, can be used by the review crew for more informed feedback
+    test_results: str = ""  # output of mvn test in the frontend
     verify_maven: bool = False
+
 
 def ingest_code_smells(code_smells: List[str]) -> str:
     if not code_smells:
         return "None"
     return ", ".join(code_smells)
 
+
 def append_to_csv(exercise: SpringBootExercise, topic: str, model: str, response_data: dict = None):
     try:
         # Create directory if it doesn't exist
         os.makedirs(os.path.dirname(CSV_FILE_PATH), exist_ok=True)
-        
+
         timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
         row = {
@@ -69,17 +75,18 @@ def append_to_csv(exercise: SpringBootExercise, topic: str, model: str, response
         with open(CSV_FILE_PATH, mode='a', newline='', encoding='utf-8') as csvfile:
             fieldnames = ["timestamp", "topic", "problem_description", "single_or_multi", "response_json"]
             writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
-            
+
             if not file_exists:
                 writer.writeheader()
-                
+
             writer.writerow(row)
 
         return os.path.abspath(CSV_FILE_PATH)
-    
+
     except Exception as e:
         print(f"Error appending to CSV: {e}")
         raise
+
 
 def save_exercise_to_repo(exercise: SpringBootExercise, topic: str):
     timestamp = datetime.datetime.now().strftime("%d%m_%M%S")
@@ -105,7 +112,6 @@ def save_exercise_to_repo(exercise: SpringBootExercise, topic: str):
 
     with open(os.path.join(base_repo_dir, "SOLUTION_EXP.md"), "w") as f:
         f.write(exercise.solution_explanation_md)
-    
 
     # Save answers_list (reference solution files)
     if hasattr(exercise, 'answers_list') and exercise.answers_list:
@@ -116,12 +122,13 @@ def save_exercise_to_repo(exercise: SpringBootExercise, topic: str):
             os.makedirs(os.path.dirname(full_path), exist_ok=True)
             with open(full_path, "w") as f:
                 f.write(file.content)
-    
+
     return base_repo_dir
 
+
 def run_maven_verification(*, verify_maven: bool, project_files: List[ProjectFile], override_files: List[Any], injected_tests: List[Any],
-    timeout_sec: int = 180, skipped_reason: str = "verify_maven=true but no project_files provided (Spring Initializr scaffold required).") -> Dict[str, Any]:
-    
+                           timeout_sec: int = 180, skipped_reason: str = "verify_maven=true but no project_files provided") -> Dict[str, Any]:
+
     maven_verification: Dict[str, Any] = {"enabled": False}
 
     if not verify_maven:
@@ -154,14 +161,16 @@ def run_maven_verification(*, verify_maven: bool, project_files: List[ProjectFil
 
     return maven_verification
 
+
 @app.get("/")
 async def root():
     return {"status": "ok", "backends": ["single-agent", "multi-agent"]}
 
+
 @app.post("/generate")
 async def generate_exercise(body: GenerateRequest):
     formatted_code_smells = ingest_code_smells(body.code_smells)
-    
+
     try:
         backend = get_backend(body.mode)
 
@@ -240,7 +249,7 @@ async def review_solution(body: EvaluateRequest):
     injected_tests = _normalize(injected_tests_q)
 
     # Include code_smells from request in a formatted string for crew inputs
-    formatted_code_smells = ingest_code_smells(getattr(body, "code_smells", []) )
+    formatted_code_smells = ingest_code_smells(getattr(body, "code_smells", []))
 
     try:
         maven_verification = run_maven_verification(

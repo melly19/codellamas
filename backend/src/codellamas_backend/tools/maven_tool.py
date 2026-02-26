@@ -103,7 +103,7 @@ class MavenTool:
             if path:
                 return candidate
         raise FileNotFoundError(
-            "Maven executable not found. Ensure Maven is installed and on PATH "
+            "Maven executable not found. Ensure Maven is installed and on PATH"
             "(try running `mvn -version` in the same terminal)."
         )
 

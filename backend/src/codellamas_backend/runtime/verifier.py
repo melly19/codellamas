@@ -9,8 +9,10 @@ class HasPathContent(Protocol):
     path: str
     content: str
 
+
 def to_filelikes(files: Iterable[HasPathContent]) -> list[FileLike]:
     return [FileLike(path=f.path, content=f.content) for f in files]
+
 
 @dataclass
 class VerificationResult:

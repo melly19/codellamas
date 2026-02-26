@@ -1,11 +1,11 @@
-#!/usr/bin/env python
 import sys
 import warnings
 from dotenv import load_dotenv
-import os
+import json
+from backend.src.codellamas_backend.crews.crew_single import CodellamasBackend
+# import os
 
 load_dotenv()
-from backend.src.codellamas_backend.crews.crew_single import CodellamasBackend
 
 warnings.filterwarnings("ignore", category=SyntaxWarning, module="pysbd")
 
@@ -13,6 +13,7 @@ warnings.filterwarnings("ignore", category=SyntaxWarning, module="pysbd")
 # crew locally, so refrain from adding unnecessary logic into this file.
 # Replace with inputs you want to test with, it will automatically
 # interpolate any tasks and agents information
+
 
 def generate():
     """
@@ -48,13 +49,14 @@ def review():
     }
 
     print("Evaluating student solution...")
-    
+
     try:
         result = CodellamasBackend().review_crew().kickoff(inputs=inputs)
         print("Evaluation completed!")
         return result
     except Exception as e:
         raise Exception(f"An error occurred while evaluating the solution: {e}")
+
 
 def train():
     """
@@ -72,6 +74,7 @@ def train():
     except Exception as e:
         raise Exception(f"An error occurred while training the crew: {e}")
 
+
 def replay():
     """
     Replay the crew execution from a specific task.
@@ -81,6 +84,7 @@ def replay():
 
     except Exception as e:
         raise Exception(f"An error occurred while replaying the crew: {e}")
+
 
 def test():
     """
@@ -99,11 +103,11 @@ def test():
     except Exception as e:
         raise Exception(f"An error occurred while testing the crew: {e}")
 
+
 def run_with_trigger():
     """
     Run the crew with trigger payload.
     """
-    import json
 
     if len(sys.argv) < 2:
         raise Exception("No trigger payload provided. Please provide JSON payload as argument.")

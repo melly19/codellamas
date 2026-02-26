@@ -19,6 +19,7 @@ class ProjectFile(BaseModel):
     path: str = Field(..., description="Relative path (e.g., src/main/java/... or pom.xml)")
     content: str
 
+
 class SpringBootExercise(BaseModel):
     problem_description: str
     project_files: List[ProjectFile]
@@ -85,6 +86,7 @@ class MavenVerifyTool(BaseTool):
         )
 
         return out.model_dump_json()
+
 
 @CrewBase
 class CodellamasBackendMulti:
@@ -162,7 +164,6 @@ class CodellamasBackendMulti:
             config=self.tasks_config['define_tests'],
             agent=self.test_engineer()
         )
-
 
     @task
     def implement_smelly_code(self) -> Task:
