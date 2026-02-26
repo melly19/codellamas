@@ -61,6 +61,19 @@ class MavenVerifyTool(BaseTool):
     description: str = "Runs mvn test in an isolated workspace (includes compilation) and returns PASS/FAIL plus a log head."
     args_schema: Type[BaseModel] = VerifyToolInput
 
+    def _normalize_files(self, items):
+        out = []
+        for it in items or []:
+            if isinstance(it, ProjectFile):
+                out.append(it)
+            elif isinstance(it, dict):
+                # tolerate dicts passed by the tool call
+                try:
+                    out.append(ProjectFile(**it))
+                except Exception:
+                    pass
+        return out
+
     def _run(
         self,
         base_project_files: List[ProjectFile],
@@ -68,8 +81,19 @@ class MavenVerifyTool(BaseTool):
         injected_tests: Optional[List[ProjectFile]] = None,
         timeout_sec: int = 180,
     ) -> str:
-        override_project_files = override_project_files or []
-        injected_tests = injected_tests or []
+        base_project_files = self._normalize_files(base_project_files)
+        override_project_files = self._normalize_files(override_project_files)
+        injected_tests = self._normalize_files(injected_tests)
+
+        # If no scaffold, skip verification instead of crashing
+        if not base_project_files:
+            out = VerifyToolOutput(
+                status="SKIPPED",
+                failed_tests=[],
+                errors=["No base_project_files provided (Spring Initializr scaffold required)."],
+                raw_log_head="",
+            )
+            return out.model_dump_json()
 
         verifier = MavenVerifier(timeout_sec=timeout_sec, quiet=True)
         verification = verifier.verify(
@@ -84,7 +108,6 @@ class MavenVerifyTool(BaseTool):
             errors=verification.errors,
             raw_log_head=verification.summary()[:2000],
         )
-
         return out.model_dump_json()
 
 
@@ -109,7 +132,7 @@ class CodellamasBackendMulti:
             timeout="1800s",
             verbose=True
         )
-    
+
     @agent
     def test_engineer(self) -> Agent:
         return Agent(
