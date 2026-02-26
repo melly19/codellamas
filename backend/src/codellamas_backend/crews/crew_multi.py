@@ -307,7 +307,6 @@ class CodellamasBackendMulti:
         }
 
         # 1) One-shot for initial exercise artifacts
-        kickoff = self.implement_smelly_code().agent  # for clarity: we just kickoff a small crew
         initial = Crew(
             agents=[self.problem_architect(), self.test_engineer(), self.smelly_developer()],
             tasks=[self.define_problem(), self.define_tests(), self.implement_smelly_code()],
