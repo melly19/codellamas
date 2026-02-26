@@ -35,6 +35,7 @@ activate the
 source .venv/bin/activate  #FOR MAC
 .venv\Scripts\activate     #FOR WINDOWS
 uv add litellm
+uv add apscheduler
 ```
 
 In a separate terminal run:
@@ -54,7 +55,7 @@ Run the backend
 source .venv/bin/activate  #FOR MAC
 .venv\Scripts\activate     #FOR WINDOWS
 cd src/codellamas_backend
-uvicorn api:app 
+uvicorn api:app --reload
 ```
 
 

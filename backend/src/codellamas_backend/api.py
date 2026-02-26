@@ -1,9 +1,14 @@
 import os
+import logging
 import datetime
 import json
 import csv
 from typing import List, Dict, Any
 from fastapi import FastAPI, HTTPException
+
+# Suppress noisy LiteLLM errors about optional proxy dependencies (e.g. apscheduler)
+# that are not required for core functionality.
+logging.getLogger("LiteLLM").setLevel(logging.CRITICAL)
 from pydantic import BaseModel, Field
 from codellamas_backend.crews.crew_single import CodellamasBackend, SpringBootExercise
 from codellamas_backend.crews.crew_multi import CodellamasBackendMulti

@@ -12,7 +12,9 @@ import os
 
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
 BASE_URL = "https://openrouter.ai/api/v1"
-MODEL = "openrouter/qwen/qwen3-coder-30b-a3b-instruct"
+# MODEL = "openrouter/qwen/qwen3-coder-30b-a3b-instruct"
+# MODEL = "openrouter/deepseek/deepseek-v3.2"
+MODEL = "openrouter/nvidia/nemotron-3-nano-30b-a3b:free"
 
 
 class ProjectFile(BaseModel):
@@ -121,7 +123,7 @@ class CodellamasBackendMulti:
     max_patch_iters: int = 2
 
     def __init__(self):
-        self.llm = LLM(model=MODEL, base_url=BASE_URL, api_key=OPENROUTER_API_KEY, request_timeout=self.request_timeout_sec)
+        self.llm = LLM(model=MODEL, base_url=BASE_URL, api_key=OPENROUTER_API_KEY, request_timeout=self.request_timeout_sec, max_tokens=5000)
         self.verify_tool = MavenVerifyTool()
 
     @agent
@@ -284,7 +286,6 @@ class CodellamasBackendMulti:
                 self.test_engineer(),
                 self.smelly_developer(),
                 self.test_runner(),
-                self.debug_specialist(),
                 self.answers_list_developer(),
                 self.quality_assurance(),
             ],
@@ -293,10 +294,8 @@ class CodellamasBackendMulti:
                 self.define_tests(),
                 self.implement_smelly_code(),
                 self.run_tests_on_smelly_code(),
-                self.patch_smelly_code(),
                 self.generate_answers_list(),
                 self.run_tests_on_answers_list(),
-                self.patch_answers_list(),
                 self.audit_exercise(),
             ],
             process=Process.sequential,

@@ -213,10 +213,13 @@ export class ActivityWebviewProvider implements vscode.WebviewViewProvider {
       display: flex;
       flex-direction: column;
 
-      background:
-    radial-gradient(circle at 85% 90%, rgba(190, 18, 60, 0.55), transparent 45%),
-    radial-gradient(circle at 0% 0%, rgba(13, 110, 140, 0.35), transparent 40%),
-    linear-gradient(135deg, #0A1A3F, #071433 60%, #050E23);
+    background:
+    /* radial-gradient(circle at 85% 90%, rgba(24, 80, 130, 0.32), transparent 45%),
+    radial-gradient(circle at 0% 0%, rgba(13, 110, 140, 0.3), transparent 40%),
+    linear-gradient(135deg, #0A1A3F, #071433 60%, #050E23); */
+    #11202f;
+    
+    
     }
     
 
