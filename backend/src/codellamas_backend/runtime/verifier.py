@@ -1,17 +1,9 @@
-from typing import List, Dict, Optional, Iterable, Protocol
+import os
+from typing import List, Dict, Optional
 from dataclasses import dataclass
 
 from codellamas_backend.tools.maven_tool import MavenTool
-from codellamas_backend.tools.workspace import FileLike
-
-
-class HasPathContent(Protocol):
-    path: str
-    content: str
-
-
-def to_filelikes(files: Iterable[HasPathContent]) -> list[FileLike]:
-    return [FileLike(path=f.path, content=f.content) for f in files]
+from codellamas_backend.schemas.files import ProjectFile
 
 
 @dataclass
@@ -36,13 +28,14 @@ class MavenVerifier:
     - Return structured, comparable results
     """
 
-    def __init__(self, timeout_sec: int = 180, quiet: bool = True):
-        self.maven = MavenTool(timeout_sec=timeout_sec, quiet=quiet)
+    def __init__(self, timeout_sec: int = 1800, quiet: bool = True):
+        mvn_cmd = os.getenv("MAVEN_CMD", "")  # empty triggers auto-detect
+        self.maven = MavenTool(mvn_cmd=mvn_cmd, timeout_sec=timeout_sec, quiet=quiet)
 
     def verify(
         self,
-        base_project: List[FileLike],
-        override_files: Optional[List[FileLike]] = None,
+        base_project: List[ProjectFile],
+        override_files: Optional[List[ProjectFile]] = None,
         injected_tests: Optional[Dict[str, str]] = None,
     ) -> VerificationResult:
         override_files = override_files or []

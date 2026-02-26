@@ -1,3 +1,4 @@
+import os
 from __future__ import annotations
 
 from typing import Any, Dict, List, Optional, Type
@@ -7,19 +8,15 @@ from crewai import Agent, Crew, Process, Task, LLM
 from crewai.project import CrewBase, agent, task, crew
 from crewai.tools import BaseTool
 
-from codellamas_backend.runtime.verifier import MavenVerifier, to_filelikes
-import os
+from codellamas_backend.runtime.verifier import MavenVerifier
+from codellamas_backend.schemas.files import ProjectFile
+
 
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
 BASE_URL = "https://openrouter.ai/api/v1"
 # MODEL = "openrouter/qwen/qwen3-coder-30b-a3b-instruct"
 # MODEL = "openrouter/deepseek/deepseek-v3.2"
 MODEL = "openrouter/nvidia/nemotron-3-nano-30b-a3b:free"
-
-
-class ProjectFile(BaseModel):
-    path: str = Field(..., description="Relative path (e.g., src/main/java/... or pom.xml)")
-    content: str
 
 
 class SpringBootExercise(BaseModel):
@@ -99,8 +96,8 @@ class MavenVerifyTool(BaseTool):
 
         verifier = MavenVerifier(timeout_sec=timeout_sec, quiet=True)
         verification = verifier.verify(
-            base_project=to_filelikes(base_project_files),
-            override_files=to_filelikes(override_project_files),
+            base_project=base_project_files,
+            override_files=override_project_files,
             injected_tests={f.path: f.content for f in injected_tests},
         )
 
@@ -331,7 +328,6 @@ class CodellamasBackendMulti:
         Use if mode == "multi" AND verify_maven == True AND project_files provided
         """
         base_project_files = [ProjectFile(path=f.path, content=f.content) for f in project_files]
-        base_filelikes = to_filelikes(base_project_files)
 
         meta: Dict[str, Any] = {
             "mode": "multi",
@@ -356,8 +352,8 @@ class CodellamasBackendMulti:
         for i in range(1, self.max_patch_iters + 1):
             meta["smelly_iterations"] = i
             ver = MavenVerifier(timeout_sec=self.maven_timeout_sec, quiet=True).verify(
-                base_project=base_filelikes,
-                override_files=to_filelikes(exercise.project_files),
+                base_project=base_project_files,
+                override_files=exercise.project_files,
                 injected_tests={t.path: t.content for t in exercise.test_files},
             )
             meta["smelly_maven"] = {
@@ -406,8 +402,8 @@ class CodellamasBackendMulti:
         for i in range(1, self.max_patch_iters + 1):
             meta["reference_iterations"] = i
             ver = MavenVerifier(timeout_sec=self.maven_timeout_sec, quiet=True).verify(
-                base_project=base_filelikes,
-                override_files=to_filelikes(reference_project_files),
+                base_project=base_project_files,
+                override_files=reference_project_files,
                 injected_tests={t.path: t.content for t in reference_test_files},
             )
             meta["reference_maven"] = {

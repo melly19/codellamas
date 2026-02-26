@@ -5,12 +5,7 @@ import shutil
 import tempfile
 from dataclasses import dataclass
 from typing import Dict, Iterable, Optional
-
-
-@dataclass(frozen=True)
-class FileLike:
-    path: str
-    content: str
+from codellamas_backend.schemas.files import ProjectFile
 
 
 class Workspace:
@@ -25,7 +20,7 @@ class Workspace:
     def __init__(self, prefix: str = "codellamas_"):
         self.root = tempfile.mkdtemp(prefix=prefix)
 
-    def write_files(self, files: Iterable[FileLike]) -> None:
+    def write_files(self, files: Iterable[ProjectFile]) -> None:
         for f in files:
             self._write_one(f.path, f.content)
 

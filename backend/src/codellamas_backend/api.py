@@ -5,14 +5,16 @@ import json
 import csv
 from typing import List, Dict, Any
 from fastapi import FastAPI, HTTPException
+from pydantic import BaseModel, Field
+from codellamas_backend.crews.crew_single import CodellamasBackend, SpringBootExercise
+from codellamas_backend.crews.crew_multi import CodellamasBackendMulti
+from codellamas_backend.runtime.verifier import MavenVerifier
+from codellamas_backend.schemas.files import ProjectFile
 
 # Suppress noisy LiteLLM errors about optional proxy dependencies (e.g. apscheduler)
 # that are not required for core functionality.
 logging.getLogger("LiteLLM").setLevel(logging.CRITICAL)
-from pydantic import BaseModel, Field
-from codellamas_backend.crews.crew_single import CodellamasBackend, SpringBootExercise
-from codellamas_backend.crews.crew_multi import CodellamasBackendMulti
-from codellamas_backend.runtime.verifier import MavenVerifier, to_filelikes
+
 
 app = FastAPI()
 CSV_FILE_PATH = "output/exercises_evaluation.csv"
@@ -146,14 +148,11 @@ def run_maven_verification(*, verify_maven: bool, project_files: List[ProjectFil
         return maven_verification
 
     verifier = MavenVerifier(timeout_sec=timeout_sec, quiet=True)
-
-    base_project = to_filelikes(project_files)
-    overrides = to_filelikes(override_files or [])
     inject_tests = {f.path: f.content for f in (injected_tests or [])}
 
     verification = verifier.verify(
-        base_project=base_project,
-        override_files=overrides,
+        base_project=project_files,
+        override_files=override_files,
         injected_tests=inject_tests,
     )
 

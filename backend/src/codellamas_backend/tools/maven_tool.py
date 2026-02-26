@@ -8,7 +8,8 @@ import subprocess
 from dataclasses import dataclass
 from typing import Dict, List, Optional, Sequence, Tuple
 
-from codellamas_backend.tools.workspace import Workspace, FileLike
+from codellamas_backend.tools.workspace import Workspace
+from codellamas_backend.schemas.files import ProjectFile
 
 
 @dataclass
@@ -40,8 +41,8 @@ class MavenTool:
 
     def run_tests(
         self,
-        project_files: List[FileLike],
-        override_files: Optional[List[FileLike]] = None,
+        project_files: List[ProjectFile],
+        override_files: Optional[List[ProjectFile]] = None,
         inject_tests: Optional[Dict[str, str]] = None,
         extra_mvn_args: Optional[Sequence[str]] = None,
     ) -> MavenTestResult:
