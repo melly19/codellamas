@@ -28,7 +28,7 @@ class MavenVerifier:
     - Return structured, comparable results
     """
 
-    def __init__(self, timeout_sec: int = 1800, quiet: bool = True):
+    def __init__(self, timeout_sec: int = 600, quiet: bool = True):
         mvn_cmd = os.getenv("MAVEN_CMD", "")  # empty triggers auto-detect
         self.maven = MavenTool(mvn_cmd=mvn_cmd, timeout_sec=timeout_sec, quiet=quiet)
 

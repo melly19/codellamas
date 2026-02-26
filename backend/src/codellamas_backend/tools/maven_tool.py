@@ -32,7 +32,7 @@ class MavenTool:
     def __init__(
         self,
         mvn_cmd: str = "mvn",
-        timeout_sec: int = 120,
+        timeout_sec: int = 300,
         quiet: bool = True,
     ):
         self.mvn_cmd = mvn_cmd or self._detect_mvn()

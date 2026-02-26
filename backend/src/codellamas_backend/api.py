@@ -20,11 +20,6 @@ app = FastAPI()
 CSV_FILE_PATH = "output/exercises_evaluation.csv"
 
 
-class ProjectFile(BaseModel):
-    path: str
-    content: str
-
-
 def get_backend(mode: str):
     if mode not in {"single", "multi"}:
         raise HTTPException(

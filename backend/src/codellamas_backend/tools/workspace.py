@@ -3,7 +3,6 @@ from __future__ import annotations
 import os
 import shutil
 import tempfile
-from dataclasses import dataclass
 from typing import Dict, Iterable, Optional
 from codellamas_backend.schemas.files import ProjectFile
 
