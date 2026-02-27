@@ -69,45 +69,21 @@ generate_exercise:
 
 review_solution:
   description: >
-    INPUTS:
-    - {question_json}: A JSON string containing the canonical exercise payload (includes `project_files`, `test_files`, `problem_description`, etc.)
-    - {student_code}: The student's submitted files (array of {path,content})
-    - {code_smells}: The code smells that were tested for the task (list)
-    - {mode}: "single" or "multi" to select review strategy
-    - {query}: Optional free-text question or guidance for the review
-    - {test_results}: Optional test run output (mvn test summary) to assist review
-    - {verify_maven}: Optional boolean, whether the review should run maven verification
-
-     SECTION 1: FUNCTIONAL CORRECTNESS CHECK
-     1. Using the provided `question_json`, `project_files` and the `student_code`, determine whether the student solution preserves the intended behavior.
-     2. Use `test_results` (if provided) or run verification if `verify_maven` is enabled to detect regressions.
-
-     SECTION 2: CODE QUALITY REVIEW
-     1. Assess whether the targeted code smells (from `code_smells`) have been addressed in the submission.
-     2. Evaluate the solution based on clean code principles:
-       - Readability
-       - Separation of concerns
-       - Appropriate abstraction.
-     3. Accept multiple valid solutions if they adhere to good refactoring practices.
-
-     SECTION 3: FEEDBACK GENERATION
-     1. Provide concise, constructive feedback covering:
-       - What was done well
-       - What could be improved.
-     2. Reference specific files or constructs where relevant.
-     3. Avoid teaching step-by-step refactoring; focus on review and evaluation.
-
-     SECTION 4: SUMMARY ASSESSMENT
-     1. Provide a brief overall assessment of the submission.
-     2. Clearly indicate whether the solution is acceptable.
+    You are reviewing a java springboot exercise. First read and understand the original exercise then
+    compare student's submitted code with the actual solution. Give the student feedback on how he did 
+    - Answer: {query}
+    Context:
+    - Original exercise and solution files: {question_json}
+    - The student's submitted files: {student_code}
+    - The code smells that were tested for the task (list): {code_smells}:
+    - {test_results}
 
      OUTPUT FORMAT:
-     1. Functional correctness assessment
-     2. Code quality review
-     3. Actionable feedback
-     4. Overall verdict
+     1. How did the student do in this exercise
+     3. Hints on how the student can do better if any. Without revealing too much
      5. A rating of the solution out of 5
+       0 - did not change the code at all
+       5 - solution matches intention of the answer files
   expected_output: >
-     An objective review of the student's refactoring, covering correctness,
-     code quality, and adherence to refactoring principles.
+    Review of how the student did in the exercise in markdown format
   agent: general_agent
