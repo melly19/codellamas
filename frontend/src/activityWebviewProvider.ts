@@ -217,7 +217,7 @@ export class ActivityWebviewProvider implements vscode.WebviewViewProvider {
     /* radial-gradient(circle at 85% 90%, rgba(24, 80, 130, 0.32), transparent 45%),
     radial-gradient(circle at 0% 0%, rgba(13, 110, 140, 0.3), transparent 40%),
     linear-gradient(135deg, #0A1A3F, #071433 60%, #050E23); */
-    #11202f;
+    #111e2c;
     
     
     }
@@ -411,32 +411,32 @@ export class ActivityWebviewProvider implements vscode.WebviewViewProvider {
       flex: 1;
       min-height: 0;
       margin-top: 8px;
-      border: 1px solid var(--vscode-editorGroup-border);
-      border-radius: 4px;
-      background-color: var(--vscode-editor-background);
       display: flex;
       flex-direction: column;
     }
 
     .chat-messages {
       flex: 1;
-      padding: 8px 10px;
+      padding: 8px 0;
       overflow-y: auto;
       box-sizing: border-box;
       font-size: 0.9rem;
     }
 
     .chat-message {
-      margin-bottom: 8px;
-      line-height: 1.4;
-      white-space: pre-wrap;
+      padding: 12px 4px;
+      margin-bottom: 0;
+      line-height: 1.5;
       word-wrap: break-word;
+      border-bottom: 1px solid var(--vscode-editorGroup-border);
+    }
+    
+    .chat-message:last-child {
+      border-bottom: none;
     }
 
     .chat-message-ai {
-      background-color: var(--vscode-editor-inactiveSelectionBackground);
-      border-radius: 4px;
-      padding: 6px 8px;
+      background-color: transparent;
     }
 
     .chat-placeholder {
@@ -449,6 +449,35 @@ export class ActivityWebviewProvider implements vscode.WebviewViewProvider {
       padding-top: 8px;
       border-top: 1px solid var(--vscode-editorGroup-border);
       text-align: right;
+    }
+
+    /* Markdown chat styles */
+    .chat-message p { margin: 0 0 8px 0; }
+    .chat-message p:last-child { margin-bottom: 0; }
+    .chat-message pre {
+      background-color: #1e1e1e;
+      color: #d4d4d4;
+      padding: 8px;
+      border-radius: 4px;
+      overflow-x: auto;
+      margin: 8px 0;
+      border: 1px solid rgba(255,255,255,0.1);
+    }
+    .chat-message code {
+      font-family: var(--vscode-editor-font-family, monospace);
+      background-color: rgba(255,255,255,0.05);
+      padding: 2px 4px;
+      border-radius: 3px;
+      font-size: 0.85em;
+    }
+    .chat-message h1, .chat-message h2, .chat-message h3 {
+      font-size: 1.1em;
+      margin: 12px 0 6px 0;
+      font-weight: 600;
+    }
+    .chat-message ul, .chat-message ol {
+      margin: 8px 0;
+      padding-left: 20px;
     }
 
 /* Selected smell chips */
@@ -573,8 +602,21 @@ export class ActivityWebviewProvider implements vscode.WebviewViewProvider {
   </div>
   </div>
 
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   <script>
     const vscode = acquireVsCodeApi();
+
+    // Persist webview state
+    let state = vscode.getState() || { 
+      topic: "", 
+      smells: [], 
+      messages: [],
+      activeTab: "generate"
+    };
+
+    function saveState() {
+      vscode.setState(state);
+    }
 
     const tabs = Array.from(document.querySelectorAll('.tab'));
     const panels = {
@@ -592,6 +634,9 @@ export class ActivityWebviewProvider implements vscode.WebviewViewProvider {
       Object.entries(panels).forEach(([key, el]) => {
         el.classList.toggle('active', key === name);
       });
+
+      state.activeTab = name;
+      saveState();
     }
 
     tabs.forEach(tab => {
@@ -608,6 +653,14 @@ export class ActivityWebviewProvider implements vscode.WebviewViewProvider {
     const chatMessages = document.getElementById("chat-messages");
     const showAnswerBtn = document.getElementById("showAnswerBtn");
     const selectedContainer = document.getElementById("selected-smells");
+    const topicInput = document.getElementById("topic");
+
+    if (topicInput) {
+      topicInput.addEventListener("input", (e) => {
+        state.topic = e.target.value;
+        saveState();
+      });
+    }
 
 function updateSelectedSmells() {
   if (!selectedContainer) return;
@@ -617,6 +670,9 @@ function updateSelectedSmells() {
   const checked = Array.from(
     document.querySelectorAll('input[type="checkbox"]:checked')
   );
+
+  state.smells = checked.map(cb => cb.value);
+  saveState();
 
   checked.forEach(cb => {
     const chip = document.createElement("div");
@@ -664,7 +720,7 @@ document.querySelectorAll('input[type="checkbox"]').forEach(cb => {
       reviewBtn.textContent = isReviewing ? "Reviewing..." : "Review";
     }
 
-    function appendChatMessage(text, role) {
+    function appendChatMessage(text, role, persist = true) {
       if (!chatMessages) return;
 
       // Remove placeholder on first real message
@@ -678,9 +734,44 @@ document.querySelectorAll('input[type="checkbox"]').forEach(cb => {
       if (role === "ai") {
         row.classList.add("chat-message-ai");
       }
-      row.textContent = text;
+      
+      if (typeof marked !== 'undefined') {
+        row.innerHTML = marked.parse(text);
+      } else {
+        row.textContent = text;
+      }
+      
       chatMessages.appendChild(row);
       chatMessages.scrollTop = chatMessages.scrollHeight;
+
+      if (persist) {
+        state.messages.push({ text, role });
+        saveState();
+      }
+    }
+
+    // Initialize UI using State
+    if (state.topic && topicInput) {
+      topicInput.value = state.topic;
+    }
+    
+    if (state.smells && state.smells.length > 0) {
+      document.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+        if (state.smells.includes(cb.value)) {
+          cb.checked = true;
+        }
+      });
+      updateSelectedSmells();
+    }
+
+    if (state.messages && state.messages.length > 0) {
+      state.messages.forEach(msg => {
+        appendChatMessage(msg.text, msg.role, false);
+      });
+    }
+
+    if (state.activeTab) {
+      showPanel(state.activeTab);
     }
 
 window.addEventListener("message", (event) => {
@@ -826,20 +917,18 @@ window.addEventListener("message", (event) => {
       }
       const reviewResult = (await response.json()) as ReviewResult;
 
-      let feedbackParsed: Feedback;
+      let parsedFeedback = reviewResult.feedback;
       try {
-        feedbackParsed = JSON.parse(reviewResult.feedback) as Feedback;
-      } catch (err) {
-        throw new Error("Failed to parse feedback JSON from backend.");
+        // If the model still happens to return JSON, gracefully parse it
+        const obj = JSON.parse(reviewResult.feedback);
+        parsedFeedback = Object.values(obj).join("\n\n");
+      } catch (e) {
+        // Expected route: it's plain markdown text
       }
-      const messages: string[] = Object.entries(feedbackParsed).map(([key, value]) => {
-        const title = key.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
-        return `=== ${title} ===\n${value}`;
-      });
 
       this.postMessage({
         type: "reviewResponse",
-        messages
+        messages: [parsedFeedback]
       });
       vscode.window.showInformationMessage("Code submitted successfully!");
     } catch (err: any) {

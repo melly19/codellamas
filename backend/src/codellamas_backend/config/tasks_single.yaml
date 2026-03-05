@@ -84,6 +84,7 @@ review_solution:
      5. A rating of the solution out of 5
        0 - did not change the code at all
        5 - solution matches intention of the answer files
+      Include headers and output in markdown format
   expected_output: >
-    Review of how the student did in the exercise in markdown format
+    Review of how the student did in the exercise in markdown format with headers
   agent: general_agent
