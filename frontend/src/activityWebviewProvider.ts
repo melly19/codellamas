@@ -576,7 +576,10 @@ export class ActivityWebviewProvider implements vscode.WebviewViewProvider {
   </div>
 
   <div id="panel-review" class="panel">
-    <div class="section-title">Review</div>
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+      <div class="section-title" style="margin-bottom: 0;">Review</div>
+      <button id="clearChatBtn" type="button" style="background-color: transparent; border: 1px solid var(--vscode-editorGroup-border); color: var(--vscode-descriptionForeground); padding: 2px 8px; font-size: 0.8rem;" title="Clear Chat">Clear</button>
+    </div>
     <div class="chat-container">
       <div id="chat-messages" class="chat-messages">
         <div class="chat-placeholder">
@@ -650,6 +653,7 @@ export class ActivityWebviewProvider implements vscode.WebviewViewProvider {
 
     const generateBtn = document.getElementById("generateBtn");
     const reviewBtn = document.getElementById("reviewBtn");
+    const clearChatBtn = document.getElementById("clearChatBtn");
     const chatMessages = document.getElementById("chat-messages");
     const showAnswerBtn = document.getElementById("showAnswerBtn");
     const selectedContainer = document.getElementById("selected-smells");
@@ -830,6 +834,15 @@ window.addEventListener("message", (event) => {
       });
     });
 
+    if (clearChatBtn) {
+      clearChatBtn.addEventListener("click", () => {
+        if (!chatMessages) return;
+        chatMessages.innerHTML = '<div class="chat-placeholder">Run a review to see feedback from your backend AI.</div>';
+        state.messages = [];
+        saveState();
+      });
+    }
+
     if (reviewBtn) {
       reviewBtn.addEventListener("click", () => {
         if (reviewBtn.disabled) return;
@@ -863,10 +876,16 @@ window.addEventListener("message", (event) => {
     const timeout = setTimeout(() => controller.abort(), timeoutMs);
 
     try {
+      const payload = { topic, code_smells: smells };
+      console.log("=========================================");
+      console.log("[POST /generate] Sending Payload:");
+      console.log(JSON.stringify(payload, null, 2));
+      console.log("=========================================");
+
       const response = await fetch("http://localhost:8000/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ topic, code_smells: smells }),
+        body: JSON.stringify(payload),
         signal: controller.signal
       });
 
@@ -877,6 +896,11 @@ window.addEventListener("message", (event) => {
       }
 
       const data: any = await response.json();
+
+      console.log("=========================================");
+      console.log("[POST /generate] Received Response:");
+      console.log(JSON.stringify(data, null, 2));
+      console.log("=========================================");
 
       if (data.status !== "success") {
         throw new Error(data.message || "Failed to generate exercise");
@@ -902,20 +926,30 @@ window.addEventListener("message", (event) => {
         ? this.selectedSmells
         : (this.responseData && this.responseData.data && this.responseData.data.code_smells) || [];
 
-      const payload = await buildReviewPayload(this, codeSmells, this.responseData.data.paths_to_ex);
-      if (!payload) {
+      const builtPayload = await buildReviewPayload(this, codeSmells, this.responseData.data.paths_to_ex);
+      if (!builtPayload) {
         return;
       }
+      
+      console.log("=========================================");
+      console.log("[POST /review] Sending Payload:");
+      console.log(JSON.stringify(builtPayload, null, 2));
+      console.log("=========================================");
 
       const response = await fetch("http://localhost:8000/review", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload)
+        body: JSON.stringify(builtPayload)
       });
       if (!response.ok) {
         throw new Error(`Backend review error: ${response.statusText}`);
       }
       const reviewResult = (await response.json()) as ReviewResult;
+      
+      console.log("=========================================");
+      console.log("[POST /review] Received Response:");
+      console.log(JSON.stringify(reviewResult, null, 2));
+      console.log("=========================================");
 
       let parsedFeedback = reviewResult.feedback;
       try {

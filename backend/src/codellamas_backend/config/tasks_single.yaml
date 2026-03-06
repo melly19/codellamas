@@ -84,7 +84,20 @@ review_solution:
      5. A rating of the solution out of 5
        0 - did not change the code at all
        5 - solution matches intention of the answer files
-      Include headers and output in markdown format
+    Include headers and output in markdown format
+    Use concise points
   expected_output: >
-    Review of how the student did in the exercise in markdown format with headers
+    ### Review of Student Submission
+
+      #### 1. Overall Performance
+      [concise points]
+
+      #### 2. Areas for Improvement
+      [concise points]
+
+      #### 3. Code Smell Observations
+      [concise points]
+
+      #### 4. Rating
+      [number 0-5]
   agent: general_agent
