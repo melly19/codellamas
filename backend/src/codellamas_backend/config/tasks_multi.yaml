@@ -193,21 +193,37 @@ define_problem:
 
     Generate a simple, small, realistic and concise software problem description in the given domain.
     If an existing codebase is provided, adapt the exercise to that structure.
-    
+
+    Hard constraints:
+    1. The exercise must focus on a single small business feature only.
+    2. The student must need to edit at most 2 Java files.
+    3. The overall implementation should contain at most 5 project files.
+    4. Prefer 2-4 project files when possible.
+    5. Avoid unnecessary architectural layers, DTOs, repositories, controllers, configs, or utilities.
+    6. Prefer plain Java service/domain classes unless Spring-specific structure is absolutely necessary.
+    7. The exercise should be solvable by a student in a short session and should not feel like a full application.
+
     Clearly describe:
-    1. what the application is supposed to do,
-    2. what student-facing files are likely relevant,
+    1. what the small feature does,
+    2. which 1-2 files the student is expected to edit,
     3. the refactoring goal,
     4. any important constraints.
 
     Do NOT write any code or tests.
   expected_output: >
-    A problem description with refactoring goals and constraints.
+    A concise problem description for a small refactoring exercise with clear constraints.
   agent: problem_architect
 
 define_tests:
   description: >
-    Using the Problem Description from the previous task, design a complete JUnit 5 test suite.
+    Using the Problem Description from the previous task, design a SMALL and FOCUSED JUnit 5 test suite.
+
+    Hard constraints:
+    1. The tests must cover only one small feature.
+    2. Prefer a single test file. Use at most 2 test files.
+    3. Keep the number of test cases minimal but sufficient.
+    4. Do not force a large architecture or many supporting classes.
+    5. The tests should imply an implementation of at most 5 project files total.
 
     Requirements:
     1. The tests define the authoritative external behaviour for the exercise.
@@ -220,7 +236,7 @@ define_tests:
 
     OUTPUT MUST BE STRICT JSON ONLY as an array-like test_files payload consumable by later tasks.
   expected_output: >
-    A complete set of JUnit 5 test files with package declarations, full relative paths, and full contents.
+    A small JUnit 5 test suite with 1-2 test files with package declarations, full relative paths, and full contents.
   agent: test_engineer
 
 implement_smelly_code:
@@ -230,6 +246,15 @@ implement_smelly_code:
     2. The JUnit 5 Test Suite from define_tests
 
     Implement the INITIAL SMELLY VERSION of the Spring Boot exercise.
+
+    Hard constraints:
+    1. The implementation MUST stay small and simple.
+    2. The total number of project_files must be at most 5.
+    3. Prefer 2-4 project_files when possible.
+    4. paths_to_ex must contain at most 2 files.
+    5. Prefer exactly 1 or 2 student-editable files.
+    6. Avoid generating unnecessary helper classes, configs, controllers, repositories, DTOs, mappers, or utilities.
+    7. Keep the business logic centered in a very small set of classes.
 
     Requirements:
     1. The implementation MUST pass the provided tests logically.
@@ -298,6 +323,13 @@ patch_smelly_code:
     3. Do NOT remove the intended smells unless unavoidable for correctness.
     4. Do NOT drop any fields from the payload.
 
+    Hard constraints:
+    1. Preserve the small project scope.
+    2. Do not increase project_files beyond 5.
+    3. Do not increase paths_to_ex beyond 2 files.
+    4. Do not introduce new files unless absolutely necessary for correctness.
+    5. Preserve the code smells as much as possible.
+
     OUTPUT MUST BE STRICT JSON ONLY.
     Return the FULL exercise payload again in exactly this shape:
     {
@@ -309,7 +341,7 @@ patch_smelly_code:
       "answers_list": []
     }
   expected_output: >
-    Strict JSON object containing the corrected smelly exercise payload.
+    Strict JSON object containing the corrected smelly exercise payload while preserving simplicity.
   agent: debug_specialist
 
 generate_answers_list:
@@ -319,6 +351,14 @@ generate_answers_list:
     2. The JUnit 5 test suite as the authoritative contract
 
     Produce the CLEAN REFERENCE SOLUTION.
+
+    Hard constraints:
+    1. Keep the same small project structure.
+    2. Do not increase project_files beyond 5.
+    3. Do not increase paths_to_ex beyond 2 files.
+    4. The refactoring should primarily affect only the files listed in paths_to_ex.
+    5. Avoid introducing extra abstractions unless they are truly necessary.
+    6. Prefer simple refactoring over enterprise-style redesign.
 
     Requirements:
     1. Remove or significantly mitigate the intended code smells.
@@ -420,6 +460,11 @@ audit_exercise:
     2. The requested code smells are clearly present in the smelly implementation
     3. The reference solution meaningfully removes or mitigates those smells
     4. The exercise is pedagogically useful
+    5. The exercise remains small and simple
+    6. project_files has at most 5 files
+    7. paths_to_ex has at most 2 files
+
+    If the exercise is overly large or complex, simplify it while preserving intent.
 
     OUTPUT MUST BE STRICT JSON ONLY.
 
