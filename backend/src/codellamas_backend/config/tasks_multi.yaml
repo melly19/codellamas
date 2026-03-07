@@ -1,141 +1,456 @@
-# --- GENERATION CREW TASKS ---
-define_problem:
-  description: >
-    INPUTS:
-    - {topic}: The business domain for the Spring Boot project (e.g., "e-commerce")
-    - {code_smells}: A list of specific code smells that will be tested for this exercise (e.g., "Long Method")
-    - {existing_codebase}: OPTIONAL. A structured string containing the file paths and content of an existing Spring Boot project. Use "NONE" if a new project should be generated.
+# # --- GENERATION CREW TASKS ---
+# define_problem:
+#   description: >
+#     INPUTS:
+#     - {topic}: The business domain for the Spring Boot project (e.g., "e-commerce")
+#     - {code_smells}: A list of specific code smells that will be tested for this exercise (e.g., "Long Method")
+#     - {existing_codebase}: OPTIONAL. A structured string containing the file paths and content of an existing Spring Boot project. Use "NONE" if a new project should be generated.
 
-    Generate a realistic software problem description in the given business domain. 
-    If an existing codebase is provided, adapt the problem to its structure.
-    Clearly state the refactoring task and constraints. Do not write any code or tests.
+#     Generate a realistic software problem description in the given business domain. 
+#     If an existing codebase is provided, adapt the problem to its structure.
+#     Clearly state the refactoring task and constraints. Do not write any code or tests.
+#   expected_output: >
+#     A problem description with refactoring goals and constraints.
+#   agent: problem_architect
+
+# define_tests:
+#   description: >
+#     Using the **Problem Description** provided in the previous task, design a JUnit 5 test suite that defines the expected external behaviour.
+    
+#     Invent all required class names, method signatures, and edge cases based on the requirements.
+#     Tests must be robust enough to serve as the "Contract" that both the smelly code and clean code must satisfy.
+#   expected_output: >
+#     A complete set of JUnit 5 test files with package declarations.
+#   agent: test_engineer
+
+# implement_smelly_code:
+#   description: >
+#     Review the **Problem Description** and the **JUnit 5 Test Suite** from the previous tasks.
+    
+#     Implement Java code that:
+#     1. PASSES all the provided tests.
+#     2. Uses the EXACT class names and method signatures defined in the tests.
+#     3. Intentionally exhibits the specific **Code Smells** requested in the problem description.
+#     4. Identify which Java files students should edit to fix the code smells (typically 1-2 files).
+    
+#     OUTPUT FORMAT (when this is the last task in a crew):
+#     Return a JSON object with: problem_description (from define_problem), project_files (your implementation), 
+#     test_files (from define_tests), solution_explanation_md (brief note that this is initial version), 
+#     paths_to_ex (list of file paths students must edit), and answers_list (empty for now).
+#   expected_output: >
+#     Java source files containing the functional but smelly implementation, paths_to_ex list, 
+#     and complete exercise structure when used as final task in initial crew. In short, smelly code.
+#   agent: smelly_developer
+
+# run_tests_on_smelly_code:
+#   description: >
+#     Using the **JUnit 5 Test Suite** and the **Smelly Code** implementation from the previous tasks, you MUST call the `maven_verify` tool with the following parameters:
+    
+#     - project_files = the full `project_files` from the smelly exercise JSON
+#     - override_project_files = []
+#     - test_files = the full `test_files` from the smelly exercise JSON
+
+#     Return STRICT JSON ONLY with this exact schema:
+#     {
+#       "status": "PASS | FAIL | SKIPPED",
+#       "failed_tests": ["..."],
+#       "errors": ["..."],
+#       "raw_log_head": "first part of verifier log"
+#     }
+#   expected_output: >
+#     "Strict JSON verifier output with status, failed_tests, errors, and raw_log_head."
+#   agent: test_runner
+
+# patch_smelly_code:
+#   description: >
+#     Review the **JSON Verifier Output** from the previous task. 
+    
+#     If there are failures, fix the **Smelly Code** to make the tests pass.
+#     CRITICAL: Fix only what is required for correctness. Do NOT refactor or clean up the code smells; they must remain for the student to fix.
+#   expected_output: >
+#     Updated smelly Java source files that pass all tests.
+#   agent: debug_specialist
+
+# generate_answers_list:
+#   description: >
+#     Using the **Problem Description** and the **JUnit 5 Test Suite** (the authoritative source of truth):
+
+#     Produce a CLEAN, refactored "Reference Solution" implementation.
+#     1. It must remove the code smells present in the smelly version.
+#     2. It must use the EXACT same public API (class names/methods) so it passes the same tests.
+#     3. Use Design Patterns and SOLID principles.
+#     4. Provide the solution as an answers_list containing ONLY the files that students need to submit,
+#        BUT each entry MUST include BOTH:
+#        - path: full relative path (e.g., src/main/java/com/bank/service/CustomerAccountService.java)
+#        - content: full file contents
+
+#     OUTPUT MUST BE STRICT JSON ONLY (no markdown fences, no YAML, no commentary).
+#   expected_output: >
+#     JSON object with answers_list as an array of {path, content} objects (full paths + full Java contents).
+#   agent: answers_list_developer
+
+# run_tests_on_answers_list:
+#   description: >
+#     Using the **JUnit Test Suite** and the **Reference Solution** implementation from the previous tasks, you MUST call the `maven_verify` tool with the following parameters:
+    
+#     - base_project_files = the full `project_files` from the smelly exercise JSON
+#     - override_project_files = []
+#     - injected_tests = the full `test_files` from the smelly exercise JSON
+#     - timeout_sec = 180
+
+#     Return STRICT JSON ONLY with this exact schema:
+#     {
+#       "status": "PASS | FAIL | SKIPPED",
+#       "failed_tests": ["..."],
+#       "errors": ["..."],
+#       "raw_log_head": "first part of verifier log"
+#     }
+#   expected_output: >
+#     "Strict JSON verifier output with status, failed_tests, errors, and raw_log_head."
+#   agent: test_runner
+
+# patch_answers_list:
+#   description: >
+#     Review the **JSON Verifier Output** for the **Reference Solution**.
+    
+#     If there are failures, fix the code to ensure all tests pass.
+#     Maintain clean code principles. Refactoring for clarity is allowed if required to fix correctness.
+#   expected_output: >
+#     Updated reference solution that passes all tests.
+#   agent: debug_specialist
+
+# audit_exercise:
+#   description: >
+#     Review the entire exercise package created by the crew:
+#     1. The **Smelly Code** (Student Version).
+#     2. The **Reference Solution** (Teacher Version).
+#     3. The **JUnit 5 Test Suite**.
+    
+#     Verify functional equivalence (do they both do the same thing?) and pedagogical contrast (is the smelly code actually messy compared to the clean code?).
+#     Ensure the specific **Code Smells** requested by the Architect are present.
+    
+#     OUTPUT FORMAT:
+#     1. problem_description: Short description. Java file student need to edit. Short definition of each code smell. Format should be in markdown.
+#     2. project_files: (with code smell) - Full set of files for a new project without comments (including pom.xml).
+#     3. test_files: JUnit 5 test cases.
+#     4. solution_explanation_md: How to solve the exercise in markdown.
+#     5. paths_to_ex: List of exercise file paths that student has to edit.
+#     6. answers_list: List of answer files (solved exercises in Java format), each entry MUST include {path, content} with full relative paths.
+
+#     Return the full exercise package as a JSON object.
+#   expected_output: >
+#     A quality assurance report validating the educational value of the exercise, structured as a JSON object with problem_description, project_files, test_files, solution_explanation_md, paths_to_ex, and answers_list.
+#   agent: quality_assurance
+
+# # --- REVIEW CREW TASKS ---
+# check_functional_correctness:
+#   description: >
+#     INPUTS:
+#     - {question_json}: A JSON string containing the canonical exercise payload (includes `project_files`, `test_files`, `problem_description`, etc.)
+#     - {student_code}: The student's submitted files (array of {path,content})
+#     - {project_files}: Base project scaffold files (if provided separately)
+#     - {injected_tests}: Any injected tests to run against the student code
+#     - {test_results}: Optional test output to assist assessment
+    
+#     Compile and run the tests against the student code. Identify any functional regressions.
+#   expected_output: >
+#     A functional correctness assessment.
+#   agent: test_runner
+
+# evaluate_code_quality:
+#   description: >
+#     INPUTS:
+#     - {question_json}: A JSON string containing the canonical exercise payload (includes `project_files`, `test_files`, `problem_description`, etc.)
+#     - {student_code}: The student's submitted files (array of {path,content})
+#     - {answers_list}: The model/reference solution files
+#     - {code_smells}: A list of code smells that were tested in the question
+#     - {query}: Optional context or reviewer directives
+
+#     Using the provided inputs, evaluate whether the targeted smells were mitigated and assess overall code quality compared to the reference solution.
+#   expected_output: >
+#     A structured code quality review.
+#   agent: quality_assurance
+
+# generate_review_feedback:
+#   description: >
+#     Using the **Functional Assessment** and **Code Quality Review** from the previous tasks:
+    
+#     Produce concise feedback for the student, an overall verdict (Pass/Fail), and a numerical rating.
+#   expected_output: >
+#     Final review feedback, verdict, and rating.
+#   agent: quality_assurance
+
+# --- GENERATION CREW TASKS ---
+
+define_problem:
+  description: > 
+    INPUTS:
+    - {topic}: The business domain for the Spring Boot project (e.g. "banking", "e-commerce")
+    - {code_smells}: A list of target code smells that this exercise should contain
+      (e.g. ["Long Method", "God Class", "Duplicate Code"])
+    - {existing_codebase}: OPTIONAL. A structured string containing an existing Spring Boot codebase.
+      Use "NONE" if a fresh project should be generated.
+
+    Generate a simple, small, realistic and concise software problem description in the given domain.
+    If an existing codebase is provided, adapt the exercise to that structure.
+    
+    Clearly describe:
+    1. what the application is supposed to do,
+    2. what student-facing files are likely relevant,
+    3. the refactoring goal,
+    4. any important constraints.
+
+    Do NOT write any code or tests.
   expected_output: >
     A problem description with refactoring goals and constraints.
   agent: problem_architect
 
 define_tests:
   description: >
-    Using the **Problem Description** provided in the previous task, design a JUnit 5 test suite that defines the expected external behaviour.
-    
-    Invent all required class names, method signatures, and edge cases based on the requirements.
-    Tests must be robust enough to serve as the "Contract" that both the smelly code and clean code must satisfy.
+    Using the Problem Description from the previous task, design a complete JUnit 5 test suite.
+
+    Requirements:
+    1. The tests define the authoritative external behaviour for the exercise.
+    2. Invent all required class names, method signatures, inputs, and edge cases.
+    3. Test only observable behaviour, not implementation details.
+    4. Output the FULL test files, each with:
+       - path: full relative path
+       - content: complete file contents
+    5. The tests must be compilable in a standard Maven Spring Boot project.
+
+    OUTPUT MUST BE STRICT JSON ONLY as an array-like test_files payload consumable by later tasks.
   expected_output: >
-    A complete set of JUnit 5 test files with package declarations.
+    A complete set of JUnit 5 test files with package declarations, full relative paths, and full contents.
   agent: test_engineer
 
 implement_smelly_code:
   description: >
-    Review the **Problem Description** and the **JUnit 5 Test Suite** from the previous tasks.
-    
-    Implement Java code that:
-    1. PASSES all the provided tests.
-    2. Uses the EXACT class names and method signatures defined in the tests.
-    3. Intentionally exhibits the specific **Code Smells** requested in the problem description.
-    4. Identify which Java files students should edit to fix the code smells (typically 1-2 files).
-    
-    OUTPUT FORMAT (when this is the last task in a crew):
-    Return a JSON object with: problem_description (from define_problem), project_files (your implementation), 
-    test_files (from define_tests), solution_explanation_md (brief note that this is initial version), 
-    paths_to_ex (list of file paths students must edit), and answers_list (empty for now).
+    Using:
+    1. The Problem Description from define_problem
+    2. The JUnit 5 Test Suite from define_tests
+
+    Implement the INITIAL SMELLY VERSION of the Spring Boot exercise.
+
+    Requirements:
+    1. The implementation MUST pass the provided tests logically.
+    2. It MUST use the EXACT public API required by the tests.
+    3. It MUST intentionally contain the requested code smells.
+    4. It MUST identify which Java files the student is expected to edit.
+    5. Include all implementation files needed for the exercise payload.
+
+    OUTPUT MUST BE STRICT JSON ONLY.
+    Return the FULL exercise payload in exactly this shape:
+    {
+      "problem_description": "<carry forward the exact problem description>",
+      "project_files": [{"path":"...","content":"..."}],
+      "test_files": [{"path":"...","content":"..."}],
+      "solution_explanation_md": "<brief markdown note that this is the initial smelly version>",
+      "paths_to_ex": ["src/main/java/..."],
+      "answers_list": []
+    }
+
+    Important:
+    - project_files must contain the full smelly implementation files.
+    - test_files must carry forward the full test suite unchanged.
+    - paths_to_ex must not be empty unless there is a very strong reason.
+    - answers_list must be an empty array at this stage.
+    - Return JSON only. No markdown fences. No explanations outside the JSON.
   expected_output: >
-    Java source files containing the functional but smelly implementation, paths_to_ex list, 
-    and complete exercise structure when used as final task in initial crew.
+    Strict JSON object containing problem_description, project_files, test_files,
+    solution_explanation_md, paths_to_ex, and answers_list.
   agent: smelly_developer
 
 run_tests_on_smelly_code:
   description: >
-    Using the **JUnit Test Suite** and the **Smelly Code** implementation from the previous tasks:
-    
-    1. Compile the code.
-    2. Execute the tests.
-    3. Analyze the output.
-    
-    Report any compilation errors or test failures with full diagnostics (stack traces/error messages).
+    Using the FULL exercise JSON from the previous task, call the maven_verify tool.
+
+    Tool arguments MUST be:
+    - base_project_files = the Spring scaffold/base project provided at runtime
+    - override_project_files = the full `project_files` from the smelly exercise JSON
+    - injected_tests = the full `test_files` from the smelly exercise JSON
+    - timeout_sec = 180
+
+    Return STRICT JSON ONLY with this exact schema:
+    {
+      "status": "PASS | FAIL | SKIPPED",
+      "failed_tests": ["..."],
+      "errors": ["..."],
+      "raw_log_head": "first part of verifier log"
+    }
+
+    Do not add commentary.
   expected_output: >
-    A test report including errors, stack traces, or success confirmation.
+    Strict JSON verifier output with status, failed_tests, errors, and raw_log_head.
   agent: test_runner
 
 patch_smelly_code:
   description: >
-    Review the **Test Report** from the previous task. 
-    
-    If there are failures, fix the **Smelly Code** to make the tests pass.
-    CRITICAL: Fix only what is required for correctness. Do NOT refactor or clean up the code smells; they must remain for the student to fix.
+    Review:
+    1. The FULL exercise JSON for the smelly implementation
+    2. The JSON verifier output for the smelly implementation
+
+    If there are compilation or test failures, patch the smelly implementation so it passes.
+    Preserve the code smells as much as possible.
+
+    CRITICAL RULES:
+    1. Fix only correctness, compilation, packaging, or path issues.
+    2. Do NOT refactor it into a clean solution.
+    3. Do NOT remove the intended smells unless unavoidable for correctness.
+    4. Do NOT drop any fields from the payload.
+
+    OUTPUT MUST BE STRICT JSON ONLY.
+    Return the FULL exercise payload again in exactly this shape:
+    {
+      "problem_description": "<carry forward unchanged or minimally updated>",
+      "project_files": [{"path":"...","content":"..."}],
+      "test_files": [{"path":"...","content":"..."}],
+      "solution_explanation_md": "<brief markdown note>",
+      "paths_to_ex": ["src/main/java/..."],
+      "answers_list": []
+    }
   expected_output: >
-    Updated smelly Java source files that pass all tests.
+    Strict JSON object containing the corrected smelly exercise payload.
   agent: debug_specialist
 
 generate_answers_list:
   description: >
-    Using the **Problem Description** and the **JUnit 5 Test Suite** (the authoritative source of truth):
+    Using:
+    1. The FULL smelly exercise JSON
+    2. The JUnit 5 test suite as the authoritative contract
 
-    Produce a CLEAN, refactored "Reference Solution" implementation.
-    1. It must remove the code smells present in the smelly version.
-    2. It must use the EXACT same public API (class names/methods) so it passes the same tests.
-    3. Use Design Patterns and SOLID principles.
-    4. Provide the solution as an answers_list containing ONLY the files that students need to submit,
-       BUT each entry MUST include BOTH:
-       - path: full relative path (e.g., src/main/java/com/bank/service/CustomerAccountService.java)
+    Produce the CLEAN REFERENCE SOLUTION.
+
+    Requirements:
+    1. Remove or significantly mitigate the intended code smells.
+    2. Preserve the EXACT same public API required by the tests.
+    3. Ensure the clean solution still passes the same tests.
+    4. Put the clean solution files into `answers_list`.
+    5. Each entry in answers_list MUST include:
+       - path: full relative path
        - content: full file contents
 
-    OUTPUT MUST BE STRICT JSON ONLY (no markdown fences, no YAML, no commentary).
+    OUTPUT MUST BE STRICT JSON ONLY.
+    Return the FULL exercise payload again in exactly this shape:
+    {
+      "problem_description": "<carry forward unchanged>",
+      "project_files": [{"path":"...","content":"..."}],
+      "test_files": [{"path":"...","content":"..."}],
+      "solution_explanation_md": "<markdown explanation of how the clean solution removes the smells>",
+      "paths_to_ex": ["src/main/java/..."],
+      "answers_list": [{"path":"...","content":"..."}]
+    }
+
+    Important:
+    - project_files must carry forward the original smelly implementation unchanged.
+    - test_files must carry forward the exact same tests unchanged.
+    - paths_to_ex must carry forward unchanged.
+    - problem_description must not be omitted.
+    - solution_explanation_md must not be omitted.
+    - Do NOT return empty project_files, test_files, or paths_to_ex.
   expected_output: >
-    JSON object with answers_list as an array of {path, content} objects (full paths + full Java contents).
+    Strict JSON object containing the full exercise payload with a populated answers_list.
   agent: answers_list_developer
 
 run_tests_on_answers_list:
   description: >
-    Using the **JUnit Test Suite** and the **Reference Solution** code from the previous task:
-    
-    Compile and execute the tests. Report any compilation errors or failing tests with full diagnostics.
+    Using the FULL exercise JSON from the previous task, call the maven_verify tool
+    to verify the CLEAN reference solution.
+
+    Tool arguments MUST be:
+    - base_project_files = the Spring scaffold/base project provided at runtime
+    - override_project_files = the full `answers_list` from the exercise JSON
+    - injected_tests = the full `test_files` from the exercise JSON
+    - timeout_sec = 180
+
+    Interpretation:
+    - base_project_files = scaffold/base project
+    - answers_list = the clean solution files that override the scaffold
+    - test_files = the canonical tests
+
+    Return STRICT JSON ONLY with this exact schema:
+    {
+      "status": "PASS | FAIL | SKIPPED",
+      "failed_tests": ["..."],
+      "errors": ["..."],
+      "raw_log_head": "first part of verifier log"
+    }
+
+    Do not add commentary.
   expected_output: >
-    A test report indicating success or detailing compilation/test failures.
+    Strict JSON verifier output with status, failed_tests, errors, and raw_log_head.
   agent: test_runner
 
 patch_answers_list:
   description: >
-    Review the **Test Report** for the **Reference Solution**.
-    
-    If there are failures, fix the code to ensure all tests pass.
-    Maintain clean code principles. Refactoring for clarity is allowed if required to fix correctness.
+    Review:
+    1. The FULL exercise JSON containing the generated answers_list
+    2. The JSON verifier output for the reference solution
+
+    If there are failures, patch the reference solution so it passes all tests.
+
+    CRITICAL RULES:
+    1. Keep the solution clean and maintainable.
+    2. Preserve the exact public API expected by the tests.
+    3. Do NOT drop any fields from the payload.
+    4. Do NOT replace the answers_list with empty content.
+
+    OUTPUT MUST BE STRICT JSON ONLY.
+    Return the FULL exercise payload again in exactly this shape:
+    {
+      "problem_description": "<carry forward unchanged>",
+      "project_files": [{"path":"...","content":"..."}],
+      "test_files": [{"path":"...","content":"..."}],
+      "solution_explanation_md": "<updated markdown explanation if needed>",
+      "paths_to_ex": ["src/main/java/..."],
+      "answers_list": [{"path":"...","content":"..."}]
+    }
   expected_output: >
-    Updated reference solution that passes all tests.
+    Strict JSON object containing the corrected full exercise payload with answers_list.
   agent: debug_specialist
 
 audit_exercise:
   description: >
-    Review the entire exercise package created by the crew:
-    1. The **Smelly Code** (Student Version).
-    2. The **Reference Solution** (Teacher Version).
-    3. The **Test Suite**.
-    
-    Verify functional equivalence (do they both do the same thing?) and pedagogical contrast (is the smelly code actually messy compared to the clean code?).
-    Ensure the specific **Code Smells** requested by the Architect are present.
-    
-    OUTPUT FORMAT:
-    1. problem_description: Short description. Java file student need to edit. Short definition of each code smell. Format should be in markdown.
-    2. project_files: (with code smell) - Full set of files for a new project without comments (including pom.xml).
-    3. test_files: JUnit 5 test cases.
-    4. solution_explanation_md: How to solve the exercise in markdown.
-    5. paths_to_ex: List of exercise file paths that student has to edit.
-    6. answers_list: List of answer files (solved exercises in Java format), each entry MUST include {path, content} with full relative paths.
+    Review the complete exercise package:
+    1. The smelly code in `project_files`
+    2. The clean reference solution in `answers_list`
+    3. The JUnit 5 test suite in `test_files`
 
-    Return the full exercise package as a JSON object.
+    Validate:
+    1. Functional equivalence between the smelly implementation and the reference solution
+    2. The requested code smells are clearly present in the smelly implementation
+    3. The reference solution meaningfully removes or mitigates those smells
+    4. The exercise is pedagogically useful
+
+    OUTPUT MUST BE STRICT JSON ONLY.
+
+    Return the final FULL exercise package in exactly this shape:
+    {
+      "problem_description": "<markdown short description + student file(s) to edit + short definition of each code smell>",
+      "project_files": [{"path":"...","content":"..."}],
+      "test_files": [{"path":"...","content":"..."}],
+      "solution_explanation_md": "<markdown explanation of the clean solution>",
+      "paths_to_ex": ["src/main/java/..."],
+      "answers_list": [{"path":"...","content":"..."}]
+    }
   expected_output: >
-    A quality assurance report validating the educational value of the exercise, structured as a JSON object with problem_description, project_files, test_files, solution_explanation_md, paths_to_ex, and answers_list.
+    Strict JSON final exercise package with problem_description, project_files, test_files,
+    solution_explanation_md, paths_to_ex, and answers_list.
   agent: quality_assurance
 
 # --- REVIEW CREW TASKS ---
+
 check_functional_correctness:
   description: >
     INPUTS:
-    - {question_json}: A JSON string containing the canonical exercise payload (includes `project_files`, `test_files`, `problem_description`, etc.)
+    - {question_json}: A JSON string containing the canonical exercise payload
+      (includes problem_description, project_files, test_files, solution_explanation_md, paths_to_ex, answers_list)
     - {student_code}: The student's submitted files (array of {path,content})
-    - {project_files}: Base project scaffold files (if provided separately)
+    - {project_files}: Base project scaffold files if provided separately
     - {injected_tests}: Any injected tests to run against the student code
-    - {test_results}: Optional test output to assist assessment
-    
-    Compile and run the tests against the student code. Identify any functional regressions.
+    - {test_results}: Optional prior test output to assist assessment
+
+    Compile and run the tests against the student code and identify any functional regressions.
+    Base your assessment on the canonical exercise payload and observable test behaviour.
   expected_output: >
     A functional correctness assessment.
   agent: test_runner
@@ -143,22 +458,353 @@ check_functional_correctness:
 evaluate_code_quality:
   description: >
     INPUTS:
-    - {question_json}: A JSON string containing the canonical exercise payload (includes `project_files`, `test_files`, `problem_description`, etc.)
+    - {question_json}: A JSON string containing the canonical exercise payload
     - {student_code}: The student's submitted files (array of {path,content})
     - {answers_list}: The model/reference solution files
-    - {code_smells}: A list of code smells that were tested in the question
+    - {code_smells}: A list of code smells targeted in the exercise
     - {query}: Optional context or reviewer directives
 
-    Using the provided inputs, evaluate whether the targeted smells were mitigated and assess overall code quality compared to the reference solution.
+    Evaluate whether the targeted smells were mitigated and assess overall code quality
+    compared to the reference solution.
   expected_output: >
     A structured code quality review.
   agent: quality_assurance
 
 generate_review_feedback:
   description: >
-    Using the **Functional Assessment** and **Code Quality Review** from the previous tasks:
-    
-    Produce concise feedback for the student, an overall verdict (Pass/Fail), and a numerical rating.
+    Using the Functional Assessment and Code Quality Review from the previous tasks,
+    produce concise feedback for the student, an overall verdict (Pass/Fail), and a numerical rating.
   expected_output: >
     Final review feedback, verdict, and rating.
   agent: quality_assurance
+
+# --------------------------------------------------------------------------------
+
+# define_problem:
+#   description: >
+#     INPUTS:
+#     - {topic}: The business domain for the Spring Boot project (e.g. "banking", "e-commerce")
+#     - {code_smells}: A list of target code smells that this exercise should contain
+#     - {existing_codebase}: OPTIONAL. A structured string containing an existing Spring Boot codebase.
+#       Use "NONE" if a fresh project should be generated.
+
+#     Generate a SIMPLE and SMALL Spring Boot refactoring exercise.
+
+#     Hard constraints:
+#     1. The exercise must focus on a single small business feature only.
+#     2. The student must need to edit at most 2 Java files.
+#     3. The overall implementation should contain at most 5 project files.
+#     4. Prefer 2-4 project files when possible.
+#     5. Avoid unnecessary architectural layers, DTOs, repositories, controllers, configs, or utilities.
+#     6. Prefer plain Java service/domain classes unless Spring-specific structure is absolutely necessary.
+#     7. The exercise should be solvable by a student in a short session and should not feel like a full application.
+
+#     Clearly describe:
+#     1. what the small feature does,
+#     2. which 1-2 files the student is expected to edit,
+#     3. the refactoring goal,
+#     4. any important constraints.
+
+#     Do NOT write any code or tests.
+#   expected_output: >
+#     A concise problem description for a small refactoring exercise with clear constraints.
+#   agent: problem_architect
+
+# define_tests:
+#   description: >
+#     Using the Problem Description from the previous task, design a SMALL and FOCUSED JUnit 5 test suite.
+
+#     Hard constraints:
+#     1. The tests must cover only one small feature.
+#     2. Prefer a single test file. Use at most 2 test files.
+#     3. Keep the number of test cases minimal but sufficient.
+#     4. Do not force a large architecture or many supporting classes.
+#     5. The tests should imply an implementation of at most 5 project files total.
+
+#     Requirements:
+#     1. The tests define the authoritative external behaviour.
+#     2. Invent the minimum necessary class names, method signatures, inputs, and edge cases.
+#     3. Test only observable behaviour, not implementation details.
+#     4. Output the FULL test files, each with:
+#        - path: full relative path
+#        - content: complete file contents
+
+#     OUTPUT MUST BE STRICT JSON ONLY.
+#   expected_output: >
+#     A small JUnit 5 test suite with 1-2 test files and minimal but sufficient coverage.
+#   agent: test_engineer
+
+# implement_smelly_code:
+#   description: >
+#     Using:
+#     1. The Problem Description from define_problem
+#     2. The JUnit 5 Test Suite from define_tests
+
+#     Implement the INITIAL SMELLY VERSION of the Spring Boot exercise.
+
+#     Hard constraints:
+#     1. The implementation MUST stay small and simple.
+#     2. The total number of project_files must be at most 5.
+#     3. Prefer 2-4 project_files when possible.
+#     4. paths_to_ex must contain at most 2 files.
+#     5. Prefer exactly 1 or 2 student-editable files.
+#     6. Avoid generating unnecessary helper classes, configs, controllers, repositories, DTOs, mappers, or utilities.
+#     7. Keep the business logic centered in a very small set of classes.
+
+#     Requirements:
+#     1. The implementation MUST pass the provided tests logically.
+#     2. It MUST use the EXACT public API required by the tests.
+#     3. It MUST intentionally contain the requested code smells.
+#     4. The smells should be concentrated mainly in the 1-2 student-editable files.
+#     5. Supporting files should be minimal and lightweight.
+
+#     OUTPUT MUST BE STRICT JSON ONLY.
+#     Return the FULL exercise payload in exactly this shape:
+#     {
+#       "problem_description": "<carry forward the exact problem description>",
+#       "project_files": [{"path":"...","content":"..."}],
+#       "test_files": [{"path":"...","content":"..."}],
+#       "solution_explanation_md": "<brief markdown note that this is the initial smelly version>",
+#       "paths_to_ex": ["src/main/java/..."],
+#       "answers_list": []
+#     }
+
+#     Important:
+#     - project_files must contain the full smelly implementation files.
+#     - test_files must carry forward the full test suite unchanged.
+#     - paths_to_ex must contain only the student-editable files and must have length <= 2.
+#     - project_files must have length <= 5.
+#     - answers_list must be an empty array at this stage.
+#     - Return JSON only. No markdown fences. No explanations outside the JSON.
+#   expected_output: >
+#     Strict JSON object containing a small exercise payload with at most 5 project files
+#     and at most 2 student-editable files.
+#   agent: smelly_developer
+
+# run_tests_on_smelly_code:
+#   description: >
+#     Using the FULL exercise JSON from the previous task, call the maven_verify tool.
+
+#     Tool arguments MUST be:
+#     - base_project_files = the Spring scaffold/base project provided at runtime
+#     - override_project_files = the full `project_files` from the smelly exercise JSON
+#     - injected_tests = the full `test_files` from the smelly exercise JSON
+#     - timeout_sec = 180
+
+#     Return STRICT JSON ONLY with this exact schema:
+#     {
+#       "status": "PASS | FAIL | SKIPPED",
+#       "failed_tests": ["..."],
+#       "errors": ["..."],
+#       "raw_log_head": "first part of verifier log"
+#     }
+
+#     Do not add commentary.
+#   expected_output: >
+#     Strict JSON verifier output with status, failed_tests, errors, and raw_log_head.
+#   agent: test_runner
+
+# patch_smelly_code:
+#   description: >
+#     Review:
+#     1. The FULL exercise JSON for the smelly implementation
+#     2. The JSON verifier output for the smelly implementation
+
+#     If there are compilation or test failures, patch the smelly implementation so it passes.
+
+#     Hard constraints:
+#     1. Preserve the small project scope.
+#     2. Do not increase project_files beyond 5.
+#     3. Do not increase paths_to_ex beyond 2 files.
+#     4. Do not introduce new files unless absolutely necessary for correctness.
+#     5. Preserve the code smells as much as possible.
+
+#     OUTPUT MUST BE STRICT JSON ONLY.
+#     Return the FULL exercise payload again in exactly this shape:
+#     {
+#       "problem_description": "<carry forward unchanged or minimally updated>",
+#       "project_files": [{"path":"...","content":"..."}],
+#       "test_files": [{"path":"...","content":"..."}],
+#       "solution_explanation_md": "<brief markdown note>",
+#       "paths_to_ex": ["src/main/java/..."],
+#       "answers_list": []
+#     }
+#   expected_output: >
+#     Strict JSON object containing the corrected smelly exercise payload while preserving simplicity.
+#   agent: debug_specialist
+
+# generate_answers_list:
+#   description: >
+#     Using:
+#     1. The FULL smelly exercise JSON
+#     2. The JUnit 5 test suite as the authoritative contract
+
+#     Produce the CLEAN REFERENCE SOLUTION.
+
+#     Hard constraints:
+#     1. Keep the same small project structure.
+#     2. Do not increase project_files beyond 5.
+#     3. Do not increase paths_to_ex beyond 2 files.
+#     4. The refactoring should primarily affect only the files listed in paths_to_ex.
+#     5. Avoid introducing extra abstractions unless they are truly necessary.
+#     6. Prefer simple refactoring over enterprise-style redesign.
+
+#     Requirements:
+#     1. Remove or significantly mitigate the intended code smells.
+#     2. Preserve the EXACT same public API required by the tests.
+#     3. Ensure the clean solution still passes the same tests.
+#     4. Put the clean solution files into `answers_list`.
+#     5. Each entry in answers_list MUST include:
+#        - path: full relative path
+#        - content: full file contents
+
+#     OUTPUT MUST BE STRICT JSON ONLY.
+#     Return the FULL exercise payload again in exactly this shape:
+#     {
+#       "problem_description": "<carry forward unchanged>",
+#       "project_files": [{"path":"...","content":"..."}],
+#       "test_files": [{"path":"...","content":"..."}],
+#       "solution_explanation_md": "<markdown explanation of how the clean solution removes the smells>",
+#       "paths_to_ex": ["src/main/java/..."],
+#       "answers_list": [{"path":"...","content":"..."}]
+#     }
+
+#     Important:
+#     - project_files must carry forward the original smelly implementation unchanged.
+#     - test_files must carry forward the exact same tests unchanged.
+#     - paths_to_ex must carry forward unchanged and must have length <= 2.
+#     - project_files must remain <= 5 files.
+#     - Do not omit problem_description or solution_explanation_md.
+#   expected_output: >
+#     Strict JSON object containing the full small exercise payload with a populated answers_list.
+#   agent: answers_list_developer
+
+# run_tests_on_answers_list:
+#   description: >
+#     Using the FULL exercise JSON from the previous task, call the maven_verify tool
+#     to verify the CLEAN reference solution.
+
+#     Tool arguments MUST be:
+#     - base_project_files = the Spring scaffold/base project provided at runtime
+#     - override_project_files = the full `answers_list` from the exercise JSON
+#     - injected_tests = the full `test_files` from the exercise JSON
+#     - timeout_sec = 180
+
+#     Interpretation:
+#     - base_project_files = scaffold/base project
+#     - answers_list = the clean solution files that override the scaffold
+#     - test_files = the canonical tests
+
+#     Return STRICT JSON ONLY with this exact schema:
+#     {
+#       "status": "PASS | FAIL | SKIPPED",
+#       "failed_tests": ["..."],
+#       "errors": ["..."],
+#       "raw_log_head": "first part of verifier log"
+#     }
+
+#     Do not add commentary.
+#   expected_output: >
+#     Strict JSON verifier output with status, failed_tests, errors, and raw_log_head.
+#   agent: test_runner
+
+# patch_answers_list:
+#   description: >
+#     Review:
+#     1. The FULL exercise JSON containing the generated answers_list
+#     2. The JSON verifier output for the reference solution
+
+#     If there are failures, patch the reference solution so it passes all tests.
+
+#     CRITICAL RULES:
+#     1. Keep the solution clean and maintainable.
+#     2. Preserve the exact public API expected by the tests.
+#     3. Do NOT drop any fields from the payload.
+#     4. Do NOT replace the answers_list with empty content.
+
+#     OUTPUT MUST BE STRICT JSON ONLY.
+#     Return the FULL exercise payload again in exactly this shape:
+#     {
+#       "problem_description": "<carry forward unchanged>",
+#       "project_files": [{"path":"...","content":"..."}],
+#       "test_files": [{"path":"...","content":"..."}],
+#       "solution_explanation_md": "<updated markdown explanation if needed>",
+#       "paths_to_ex": ["src/main/java/..."],
+#       "answers_list": [{"path":"...","content":"..."}]
+#     }
+#   expected_output: >
+#     Strict JSON object containing the corrected full exercise payload with answers_list.
+#   agent: debug_specialist
+
+# audit_exercise:
+#   description: >
+#     Review the complete exercise package:
+#     1. The smelly code in `project_files`
+#     2. The clean reference solution in `answers_list`
+#     3. The JUnit 5 test suite in `test_files`
+
+#     Validate:
+#     1. Functional equivalence between the smelly implementation and the reference solution
+#     2. The requested code smells are clearly present in the smelly implementation
+#     3. The reference solution meaningfully removes or mitigates those smells
+#     4. The exercise is pedagogically useful
+#     5. The exercise remains small and simple
+#     6. project_files has at most 5 files
+#     7. paths_to_ex has at most 2 files
+
+#     If the exercise is overly large or complex, simplify it while preserving intent.
+
+#     OUTPUT MUST BE STRICT JSON ONLY.
+
+#     Return the final FULL exercise package in exactly this shape:
+#     {
+#       "problem_description": "<markdown short description + student file(s) to edit + short definition of each code smell>",
+#       "project_files": [{"path":"...","content":"..."}],
+#       "test_files": [{"path":"...","content":"..."}],
+#       "solution_explanation_md": "<markdown explanation of the clean solution>",
+#       "paths_to_ex": ["src/main/java/..."],
+#       "answers_list": [{"path":"...","content":"..."}]
+#     }
+#   expected_output: >
+#     Strict JSON final exercise package with small scope, at most 5 project files,
+#     and at most 2 student-editable files.
+#   agent: quality_assurance
+
+# check_functional_correctness:
+#   description: >
+#     INPUTS:
+#     - {question_json}: A JSON string containing the canonical exercise payload
+#       (includes problem_description, project_files, test_files, solution_explanation_md, paths_to_ex, answers_list)
+#     - {student_code}: The student's submitted files (array of {path,content})
+#     - {project_files}: Base project scaffold files if provided separately
+#     - {injected_tests}: Any injected tests to run against the student code
+#     - {test_results}: Optional prior test output to assist assessment
+
+#     Compile and run the tests against the student code and identify any functional regressions.
+#     Base your assessment on the canonical exercise payload and observable test behaviour.
+#   expected_output: >
+#     A functional correctness assessment.
+#   agent: test_runner
+
+# evaluate_code_quality:
+#   description: >
+#     INPUTS:
+#     - {question_json}: A JSON string containing the canonical exercise payload
+#     - {student_code}: The student's submitted files (array of {path,content})
+#     - {answers_list}: The model/reference solution files
+#     - {code_smells}: A list of code smells targeted in the exercise
+#     - {query}: Optional context or reviewer directives
+
+#     Evaluate whether the targeted smells were mitigated and assess overall code quality
+#     compared to the reference solution.
+#   expected_output: >
+#     A structured code quality review.
+#   agent: quality_assurance
+
+# generate_review_feedback:
+#   description: >
+#     Using the Functional Assessment and Code Quality Review from the previous tasks,
+#     produce concise feedback for the student, an overall verdict (Pass/Fail), and a numerical rating.
+#   expected_output: >
+#     Final review feedback, verdict, and rating.
+#   agent: quality_assurance

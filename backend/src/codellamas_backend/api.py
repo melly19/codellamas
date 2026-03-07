@@ -33,7 +33,7 @@ class GenerateRequest(BaseModel):
     topic: str
     code_smells: List[str]
     existing_codebase: str = "NONE"
-    mode: str = "single"  # "single" or "multi"
+    mode: str = "multi"  # "single" or "multi"
     # optional
     verify_maven: bool = False
     project_files: List[ProjectFile] = Field(default_factory=list)
@@ -43,7 +43,7 @@ class EvaluateRequest(BaseModel):
     question_json: Dict[str, Any] = Field(default_factory=dict)
     student_code: List[ProjectFile] = Field(default_factory=list)
     code_smells: List[str]
-    mode: str = "single"  # "single" or "multi"
+    mode: str = "multi"  # "single" or "multi"
     query: str = ""  # additional context or specific questions for the review
 
     # optional
