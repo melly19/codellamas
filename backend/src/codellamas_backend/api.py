@@ -11,8 +11,7 @@ from codellamas_backend.crews.crew_multi import CodellamasBackendMulti
 from codellamas_backend.runtime.verifier import MavenVerifier
 from codellamas_backend.schemas.files import ProjectFile
 
-# Suppress noisy LiteLLM errors about optional proxy dependencies (e.g. apscheduler)
-# that are not required for core functionality.
+
 logging.getLogger("LiteLLM").setLevel(logging.CRITICAL)
 
 
@@ -33,7 +32,7 @@ class GenerateRequest(BaseModel):
     topic: str
     code_smells: List[str]
     existing_codebase: str = "NONE"
-    mode: str = "multi"  # "single" or "multi"
+    mode: str = "single"  # "single" or "multi"
     # optional
     verify_maven: bool = False
     project_files: List[ProjectFile] = Field(default_factory=list)
@@ -43,7 +42,7 @@ class EvaluateRequest(BaseModel):
     question_json: Dict[str, Any] = Field(default_factory=dict)
     student_code: List[ProjectFile] = Field(default_factory=list)
     code_smells: List[str]
-    mode: str = "multi"  # "single" or "multi"
+    mode: str = "single"  # "single" or "multi"
     query: str = ""  # additional context or specific questions for the review
 
     # optional
@@ -59,7 +58,6 @@ def ingest_code_smells(code_smells: List[str]) -> str:
 
 def append_to_csv(exercise: SpringBootExercise, topic: str, model: str, response_data: dict = None):
     try:
-        # Create directory if it doesn't exist
         os.makedirs(os.path.dirname(CSV_FILE_PATH), exist_ok=True)
 
         timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -115,7 +113,6 @@ def save_exercise_to_repo(exercise: SpringBootExercise, topic: str):
     with open(os.path.join(base_repo_dir, "SOLUTION_EXP.md"), "w") as f:
         f.write(exercise.solution_explanation_md)
 
-    # Save answers_list (reference solution files)
     if hasattr(exercise, 'answers_list') and exercise.answers_list:
         answers_dir = os.path.join(base_repo_dir, "answers")
         os.makedirs(answers_dir, exist_ok=True)
@@ -217,19 +214,15 @@ async def generate_exercise(body: GenerateRequest):
 
 @app.post("/review")
 async def review_solution(body: EvaluateRequest):
-    # Parse flexible question JSON (may include project_files, student_files, injected_tests, etc.)
     parsed_q: Any = {}
     try:
         parsed_q = json.loads(body.question_json) if body.question_json else {}
     except Exception:
-        # keep raw string when JSON parse fails
         parsed_q = {"raw": body.question_json}
 
-    # question_json uses `project_files` and `test_files` keys per task YAML
     project_files_q = parsed_q.get("project_files", [])
     injected_tests_q = parsed_q.get("test_files", [])
 
-    # Normalize items into `ProjectFile` instances
     def _normalize(items: list) -> list:
         out: list[ProjectFile] = []
         for it in items or []:
@@ -239,7 +232,6 @@ async def review_solution(body: EvaluateRequest):
                 try:
                     out.append(ProjectFile(**it))
                 except Exception:
-                    # skip malformed entries
                     continue
         return out
 
@@ -247,7 +239,6 @@ async def review_solution(body: EvaluateRequest):
     student_code = _normalize(body.student_code or [])
     injected_tests = _normalize(injected_tests_q)
 
-    # Include code_smells from request in a formatted string for crew inputs
     formatted_code_smells = ingest_code_smells(getattr(body, "code_smells", []))
 
     try:
@@ -260,13 +251,11 @@ async def review_solution(body: EvaluateRequest):
             skipped_reason="verify_maven=true but no project_files provided",
         )
 
-        # If verifier produced test/log output, prefer it for test_results
         test_results = body.test_results or ""
         if (maven_verification.get("enabled") and maven_verification.get("status") not in (None, "SKIPPED")
                 and maven_verification.get("raw_log_head")):
             test_results = maven_verification["raw_log_head"]
 
-        # Build inputs for the review crew. Keep payload compact and JSON-serializable.
         inputs: Dict[str, Any] = {
             "question_json": body.question_json,
             "project_files": [p.model_dump() for p in project_files],
