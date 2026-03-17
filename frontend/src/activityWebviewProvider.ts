@@ -43,6 +43,9 @@ export class ActivityWebviewProvider implements vscode.WebviewViewProvider {
   private webviewView: vscode.WebviewView | undefined;
   private selectedSmells: string[] = [];
 
+  private backendUrl: string;
+  private mode: string;
+
   public revealReviewPanel() {
     if (this.webviewView) {
       this.webviewView.show?.(true);
@@ -57,6 +60,12 @@ export class ActivityWebviewProvider implements vscode.WebviewViewProvider {
       this.context.workspaceState.get<any[] | string | null>("solutionExp")??null;
     this.responseData =
       this.context.workspaceState.get<any>("responseData")??null;
+    this.selectedSmells = 
+      this.context.workspaceState.get<string[]>("selectedSmells")??[];
+    this.backendUrl = 
+      this.context.workspaceState.get<string>("backendUrl") ?? "http://127.0.0.1:8000";
+    this.mode = 
+      this.context.workspaceState.get<string>("mode") ?? "single";
   }
 
   /* =========================
@@ -81,6 +90,7 @@ export class ActivityWebviewProvider implements vscode.WebviewViewProvider {
           console.log("Full responseData:", this.responseData);
           console.log("Reference Solution in memory:", this.solutionExp);
 
+          await this.context.workspaceState.update("selectedSmells", this.selectedSmells);
           await this.context.workspaceState.update("solutionExp", this.solutionExp);
           await this.context.workspaceState.update("responseData", this.responseData);
         } catch (error) {   
@@ -149,6 +159,12 @@ export class ActivityWebviewProvider implements vscode.WebviewViewProvider {
             "Failed to show reference solution: " + String(err)
           );
         }
+      } else if (message.type === "updateSettings") {
+        this.backendUrl = message.backendUrl;
+        this.mode = message.mode;
+        this.context.workspaceState.update("backendUrl", this.backendUrl);
+        this.context.workspaceState.update("mode", this.mode);
+        vscode.window.showInformationMessage("Settings saved!");
       }
 
     });
@@ -193,6 +209,9 @@ export class ActivityWebviewProvider implements vscode.WebviewViewProvider {
 
 
   private getActivityHtml(): string {
+    const backendUrl = this.backendUrl;
+    const mode = this.mode;
+    
     return /* html */ `
 <!DOCTYPE html>
 <html lang="en">
@@ -209,7 +228,16 @@ export class ActivityWebviewProvider implements vscode.WebviewViewProvider {
       box-sizing: border-box;
       display: flex;
       flex-direction: column;
+
+    background:
+    /* radial-gradient(circle at 85% 90%, rgba(24, 80, 130, 0.32), transparent 45%),
+    radial-gradient(circle at 0% 0%, rgba(13, 110, 140, 0.3), transparent 40%),
+    linear-gradient(135deg, #0A1A3F, #071433 60%, #050E23); */
+    #111e2c;
+    
+    
     }
+    
 
     h1 {
       margin: 0 0 12px 0;
@@ -399,32 +427,32 @@ export class ActivityWebviewProvider implements vscode.WebviewViewProvider {
       flex: 1;
       min-height: 0;
       margin-top: 8px;
-      border: 1px solid var(--vscode-editorGroup-border);
-      border-radius: 4px;
-      background-color: var(--vscode-editor-background);
       display: flex;
       flex-direction: column;
     }
 
     .chat-messages {
       flex: 1;
-      padding: 8px 10px;
+      padding: 8px 0;
       overflow-y: auto;
       box-sizing: border-box;
       font-size: 0.9rem;
     }
 
     .chat-message {
-      margin-bottom: 8px;
-      line-height: 1.4;
-      white-space: pre-wrap;
+      padding: 12px 4px;
+      margin-bottom: 0;
+      line-height: 1.5;
       word-wrap: break-word;
+      border-bottom: 1px solid var(--vscode-editorGroup-border);
+    }
+    
+    .chat-message:last-child {
+      border-bottom: none;
     }
 
     .chat-message-ai {
-      background-color: var(--vscode-editor-inactiveSelectionBackground);
-      border-radius: 4px;
-      padding: 6px 8px;
+      background-color: transparent;
     }
 
     .chat-placeholder {
@@ -438,13 +466,78 @@ export class ActivityWebviewProvider implements vscode.WebviewViewProvider {
       border-top: 1px solid var(--vscode-editorGroup-border);
       text-align: right;
     }
+
+    /* Markdown chat styles */
+    .chat-message p { margin: 0 0 8px 0; }
+    .chat-message p:last-child { margin-bottom: 0; }
+    .chat-message pre {
+      background-color: #1e1e1e;
+      color: #d4d4d4;
+      padding: 8px;
+      border-radius: 4px;
+      overflow-x: auto;
+      margin: 8px 0;
+      border: 1px solid rgba(255,255,255,0.1);
+    }
+    .chat-message code {
+      font-family: var(--vscode-editor-font-family, monospace);
+      background-color: rgba(255,255,255,0.05);
+      padding: 2px 4px;
+      border-radius: 3px;
+      font-size: 0.85em;
+    }
+    .chat-message h1, .chat-message h2, .chat-message h3 {
+      font-size: 1.1em;
+      margin: 12px 0 6px 0;
+      font-weight: 600;
+    }
+    .chat-message ul, .chat-message ol {
+      margin: 8px 0;
+      padding-left: 20px;
+    }
+
+/* Selected smell chips */
+.selected-smells {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 6px 0 12px 0;
+}
+
+.smell-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 8px;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  background-color: var(--vscode-badge-background);
+  color: var(--vscode-badge-foreground);
+}
+
+.smell-chip button {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 0.75rem;
+  padding: 0;
+  color: inherit;
+}
+
   </style>
 </head>
 <body>
-  <div class="tabs">
-    <button class="tab active" data-panel="generate">Generate</button>
-    <button class="tab" data-panel="review">Review</button>
-    <button class="tab" data-panel="answer">Answer</button>
+  <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--vscode-editorGroup-border); margin: 12px 0 16px 0; max-width: 100%;">
+    <div class="tabs" style="border-bottom: none; margin: 0; overflow-x: auto; flex-wrap: nowrap; flex: 1; scrollbar-width: none;">
+      <button class="tab active" data-panel="generate" style="flex-shrink: 0;">Generate</button>
+      <button class="tab" data-panel="review" style="flex-shrink: 0;">Review</button>
+      <button class="tab" data-panel="answer" style="flex-shrink: 0;">Answer</button>
+    </div>
+    <button id="settingsIconBtn" title="Settings" style="background: none; border: none; cursor: pointer; color: var(--vscode-foreground); padding: 4px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-left: 8px;">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+        <path fill-rule="evenodd" clip-rule="evenodd" d="M9.1 0h-2.2l-.3 1.6c-.4.1-.8.3-1.2.6L4.1 1.4 2.5 3l.8 1.3c-.2.4-.4.8-.5 1.2L1.2 5.8v2.2l1.6.3c.1.4.3.8.6 1.2l-.8 1.3 1.6 1.6 1.3-.8c.4.2.8.4 1.2.5l.3 1.6h2.2l.3-1.6c.4-.1.8-.3 1.2-.6l1.3.8 1.6-1.6-.8-1.3c.2-.4.4-.8.5-1.2l1.6-.3V5.8l-1.6-.3c-.1-.4-.3-.8-.6-1.2l.8-1.3-1.6-1.6-1.3.8c-.4-.2-.8-.4-1.2-.5L9.1 0zM8 10a2 2 0 1 1 0-4 2 2 0 0 1 0 4z"/>
+      </svg>
+    </button>
   </div>
 
   <div id="panel-generate" class="panel active">
@@ -454,6 +547,7 @@ export class ActivityWebviewProvider implements vscode.WebviewViewProvider {
     <div class="section-subtitle">
       Choose one or more refactoring topics to practise.
     </div>
+    <div id="selected-smells" class="selected-smells"></div>
 
     <details open>
       <summary>Bloaters</summary>
@@ -505,7 +599,10 @@ export class ActivityWebviewProvider implements vscode.WebviewViewProvider {
   </div>
 
   <div id="panel-review" class="panel">
-    <div class="section-title">Review</div>
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+      <div class="section-title" style="margin-bottom: 0;">Review</div>
+      <button id="clearChatBtn" type="button" style="background-color: transparent; border: 1px solid var(--vscode-editorGroup-border); color: var(--vscode-descriptionForeground); padding: 2px 8px; font-size: 0.8rem;" title="Clear Chat">Clear</button>
+    </div>
     <div class="chat-container">
       <div id="chat-messages" class="chat-messages">
         <div class="chat-placeholder">
@@ -529,16 +626,56 @@ export class ActivityWebviewProvider implements vscode.WebviewViewProvider {
       </button>
     </div>
   </div>
+
+  <div id="panel-settings" class="panel">
+    <div class="section-title">Settings</div>
+    
+    <div class="topic" style="margin-top: 12px;">
+      <label for="settings-backendUrl">Backend Endpoint</label>
+      <input id="settings-backendUrl" type="text" value="${backendUrl}" />
+    </div>
+
+    <div class="topic" style="margin-top: 16px;">
+      <label>Mode</label>
+      <div style="margin-top: 4px;">
+        <button id="settings-modeBtn" type="button" style="width: 100%; text-align: center; font-weight: bold; font-size: 0.95rem; padding: 8px;">
+          ${mode.toUpperCase()}
+        </button>
+      </div>
+    </div>
+    
+    <div class="submit-container" style="margin-top: 24px;">
+      <button id="saveSettingsBtn" type="button">Save Settings</button>
+    </div>
   </div>
 
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   <script>
     const vscode = acquireVsCodeApi();
+
+    // Persist webview state
+    let state = vscode.getState() || { 
+      topic: "", 
+      smells: [], 
+      messages: [],
+      activeTab: "generate"
+    };
+
+    function saveState() {
+      vscode.setState(state);
+    }
+
+    // Override settings from extension to keep them in sync
+    state.backendUrl = "${backendUrl}";
+    state.mode = "${mode}";
+    saveState();
 
     const tabs = Array.from(document.querySelectorAll('.tab'));
     const panels = {
       generate: document.getElementById('panel-generate'),
       review: document.getElementById('panel-review'),
       answer: document.getElementById('panel-answer'),
+      settings: document.getElementById('panel-settings'),
     };
 
     function showPanel(name) {
@@ -550,6 +687,9 @@ export class ActivityWebviewProvider implements vscode.WebviewViewProvider {
       Object.entries(panels).forEach(([key, el]) => {
         el.classList.toggle('active', key === name);
       });
+
+      state.activeTab = name;
+      saveState();
     }
 
     tabs.forEach(tab => {
@@ -563,8 +703,87 @@ export class ActivityWebviewProvider implements vscode.WebviewViewProvider {
 
     const generateBtn = document.getElementById("generateBtn");
     const reviewBtn = document.getElementById("reviewBtn");
+    const clearChatBtn = document.getElementById("clearChatBtn");
     const chatMessages = document.getElementById("chat-messages");
     const showAnswerBtn = document.getElementById("showAnswerBtn");
+    const selectedContainer = document.getElementById("selected-smells");
+    const topicInput = document.getElementById("topic");
+
+    const settingsIconBtn = document.getElementById("settingsIconBtn");
+    const saveSettingsBtn = document.getElementById("saveSettingsBtn");
+    const settingsBackendUrl = document.getElementById("settings-backendUrl");
+    const settingsModeBtn = document.getElementById("settings-modeBtn");
+
+    if (settingsIconBtn) {
+      settingsIconBtn.addEventListener('click', () => {
+        showPanel("settings");
+      });
+    }
+
+    if (settingsModeBtn) {
+      settingsModeBtn.addEventListener('click', () => {
+        state.mode = state.mode === "single" ? "multi" : "single";
+        settingsModeBtn.textContent = state.mode.toUpperCase();
+        saveState();
+      });
+    }
+
+    if (saveSettingsBtn) {
+      saveSettingsBtn.addEventListener('click', () => {
+        state.backendUrl = settingsBackendUrl.value;
+        saveState();
+        vscode.postMessage({
+          type: "updateSettings",
+          backendUrl: state.backendUrl,
+          mode: state.mode
+        });
+      });
+    }
+
+    if (topicInput) {
+      topicInput.addEventListener("input", (e) => {
+        state.topic = e.target.value;
+        saveState();
+      });
+    }
+
+function updateSelectedSmells() {
+  if (!selectedContainer) return;
+
+  selectedContainer.innerHTML = "";
+
+  const checked = Array.from(
+    document.querySelectorAll('input[type="checkbox"]:checked')
+  );
+
+  state.smells = checked.map(cb => cb.value);
+  saveState();
+
+  checked.forEach(cb => {
+    const chip = document.createElement("div");
+    chip.classList.add("smell-chip");
+
+    const text = document.createElement("span");
+    text.textContent = cb.value;
+
+    const removeBtn = document.createElement("button");
+    removeBtn.textContent = "✕";
+
+    removeBtn.addEventListener("click", () => {
+      cb.checked = false;
+      updateSelectedSmells();
+    });
+
+    chip.appendChild(text);
+    chip.appendChild(removeBtn);
+    selectedContainer.appendChild(chip);
+  });
+}
+
+document.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+  cb.addEventListener("change", updateSelectedSmells);
+});
+
     if (showAnswerBtn){
       showAnswerBtn.addEventListener("click",() => {
         vscode.postMessage({
@@ -586,7 +805,7 @@ export class ActivityWebviewProvider implements vscode.WebviewViewProvider {
       reviewBtn.textContent = isReviewing ? "Reviewing..." : "Review";
     }
 
-    function appendChatMessage(text, role) {
+    function appendChatMessage(text, role, persist = true) {
       if (!chatMessages) return;
 
       // Remove placeholder on first real message
@@ -600,9 +819,44 @@ export class ActivityWebviewProvider implements vscode.WebviewViewProvider {
       if (role === "ai") {
         row.classList.add("chat-message-ai");
       }
-      row.textContent = text;
+      
+      if (typeof marked !== 'undefined') {
+        row.innerHTML = marked.parse(text);
+      } else {
+        row.textContent = text;
+      }
+      
       chatMessages.appendChild(row);
       chatMessages.scrollTop = chatMessages.scrollHeight;
+
+      if (persist) {
+        state.messages.push({ text, role });
+        saveState();
+      }
+    }
+
+    // Initialize UI using State
+    if (state.topic && topicInput) {
+      topicInput.value = state.topic;
+    }
+    
+    if (state.smells && state.smells.length > 0) {
+      document.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+        if (state.smells.includes(cb.value)) {
+          cb.checked = true;
+        }
+      });
+      updateSelectedSmells();
+    }
+
+    if (state.messages && state.messages.length > 0) {
+      state.messages.forEach(msg => {
+        appendChatMessage(msg.text, msg.role, false);
+      });
+    }
+
+    if (state.activeTab) {
+      showPanel(state.activeTab === 'settings' ? 'generate' : state.activeTab);
     }
 
 window.addEventListener("message", (event) => {
@@ -661,6 +915,15 @@ window.addEventListener("message", (event) => {
       });
     });
 
+    if (clearChatBtn) {
+      clearChatBtn.addEventListener("click", () => {
+        if (!chatMessages) return;
+        chatMessages.innerHTML = '<div class="chat-placeholder">Run a review to see feedback from your backend AI.</div>';
+        state.messages = [];
+        saveState();
+      });
+    }
+
     if (reviewBtn) {
       reviewBtn.addEventListener("click", () => {
         if (reviewBtn.disabled) return;
@@ -694,10 +957,27 @@ window.addEventListener("message", (event) => {
     const timeout = setTimeout(() => controller.abort(), timeoutMs);
 
     try {
-      const response = await fetch("http://localhost:8000/generate", {
+      const payload = { topic, code_smells: smells, mode: this.mode };
+      console.log("=========================================");
+      console.log("[POST /generate] Sending Payload:");
+      console.log(JSON.stringify(payload, null, 2));
+      console.log("=========================================");
+
+      let baseUrl = (this.backendUrl || "").trim();
+      if (!baseUrl.startsWith("http://") && !baseUrl.startsWith("https://")) {
+        baseUrl = "http://" + baseUrl;
+      }
+      if (baseUrl.endsWith("/")) {
+        baseUrl = baseUrl.slice(0, -1);
+      }
+
+      const endpoint = `${baseUrl}/generate`;
+      console.log(`[POST /generate] Endpoint: ${endpoint}`);
+      
+      const response = await fetch(endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ topic, code_smells: smells }),
+        body: JSON.stringify(payload),
         signal: controller.signal
       });
 
@@ -708,6 +988,11 @@ window.addEventListener("message", (event) => {
       }
 
       const data: any = await response.json();
+
+      console.log("=========================================");
+      console.log("[POST /generate] Received Response:");
+      console.log(JSON.stringify(data, null, 2));
+      console.log("=========================================");
 
       if (data.status !== "success") {
         throw new Error(data.message || "Failed to generate exercise");
@@ -733,33 +1018,57 @@ window.addEventListener("message", (event) => {
         ? this.selectedSmells
         : (this.responseData && this.responseData.data && this.responseData.data.code_smells) || [];
 
-      const payload = await buildReviewPayload(this, codeSmells);
-      if (!payload) return;
+      const builtPayload = await buildReviewPayload(this, codeSmells, this.responseData.data.paths_to_ex);
+      if (!builtPayload) {
+        return;
+      }
+      
+      // Attach the mode to the payload dynamically
+      builtPayload.mode = this.mode;
 
-      const response = await fetch("http://localhost:8000/review", {
+      console.log("=========================================");
+      console.log("[POST /review] Sending Payload:");
+      console.log(JSON.stringify(builtPayload, null, 2));
+      console.log("=========================================");
+
+      let baseUrl = (this.backendUrl || "").trim();
+      if (!baseUrl.startsWith("http://") && !baseUrl.startsWith("https://")) {
+        baseUrl = "http://" + baseUrl;
+      }
+      if (baseUrl.endsWith("/")) {
+        baseUrl = baseUrl.slice(0, -1);
+      }
+
+      const endpoint = `${baseUrl}/review`;
+      console.log(`[POST /review] Endpoint: ${endpoint}`);
+
+      const response = await fetch(endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload)
+        body: JSON.stringify(builtPayload)
       });
       if (!response.ok) {
         throw new Error(`Backend review error: ${response.statusText}`);
       }
       const reviewResult = (await response.json()) as ReviewResult;
+      
+      console.log("=========================================");
+      console.log("[POST /review] Received Response:");
+      console.log(JSON.stringify(reviewResult, null, 2));
+      console.log("=========================================");
 
-      let feedbackParsed: Feedback;
+      let parsedFeedback = reviewResult.feedback;
       try {
-        feedbackParsed = JSON.parse(reviewResult.feedback) as Feedback;
-      } catch (err) {
-        throw new Error("Failed to parse feedback JSON from backend.");
+        // If the model still happens to return JSON, gracefully parse it
+        const obj = JSON.parse(reviewResult.feedback);
+        parsedFeedback = Object.values(obj).join("\n\n");
+      } catch (e) {
+        // Expected route: it's plain markdown text
       }
-      const messages: string[] = Object.entries(feedbackParsed).map(([key, value]) => {
-        const title = key.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
-        return `=== ${title} ===\n${value}`;
-      });
 
       this.postMessage({
         type: "reviewResponse",
-        messages
+        messages: [parsedFeedback]
       });
       vscode.window.showInformationMessage("Code submitted successfully!");
     } catch (err: any) {

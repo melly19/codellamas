@@ -8,7 +8,8 @@ import subprocess
 from dataclasses import dataclass
 from typing import Dict, List, Optional, Sequence, Tuple
 
-from codellamas_backend.tools.workspace import Workspace, FileLike
+from codellamas_backend.tools.workspace import Workspace
+from codellamas_backend.schemas.files import ProjectFile
 
 
 @dataclass
@@ -31,7 +32,7 @@ class MavenTool:
     def __init__(
         self,
         mvn_cmd: str = "mvn",
-        timeout_sec: int = 120,
+        timeout_sec: int = 300,
         quiet: bool = True,
     ):
         self.mvn_cmd = mvn_cmd or self._detect_mvn()
@@ -40,8 +41,8 @@ class MavenTool:
 
     def run_tests(
         self,
-        project_files: List[FileLike],
-        override_files: Optional[List[FileLike]] = None,
+        project_files: List[ProjectFile],
+        override_files: Optional[List[ProjectFile]] = None,
         inject_tests: Optional[Dict[str, str]] = None,
         extra_mvn_args: Optional[Sequence[str]] = None,
     ) -> MavenTestResult:
@@ -49,7 +50,7 @@ class MavenTool:
         inject_tests = inject_tests or {}
         extra_mvn_args = list(extra_mvn_args or [])
 
-        with Workspace(prefix="codelamas_") as ws:
+        with Workspace(prefix="codellamas_") as ws:
             # 1) materialize base project (from VS Code)
             ws.write_files(project_files)
 
@@ -103,7 +104,7 @@ class MavenTool:
             if path:
                 return candidate
         raise FileNotFoundError(
-            "Maven executable not found. Ensure Maven is installed and on PATH "
+            "Maven executable not found. Ensure Maven is installed and on PATH"
             "(try running `mvn -version` in the same terminal)."
         )
 

@@ -1,19 +1,20 @@
 from crewai import Agent, Crew, Process, Task, LLM
 from crewai.project import CrewBase, agent, crew, task
-from crewai.agents.agent_builder.base_agent import BaseAgent
+# from crewai.agents.agent_builder.base_agent import BaseAgent
 from typing import List
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
+from codellamas_backend.schemas.files import ProjectFile
 import os
 
 
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
 BASE_URL = "https://openrouter.ai/api/v1"
 MODEL = "openrouter/qwen/qwen3-coder-30b-a3b-instruct"
-# MODEL = "openrouter/deepseek/deepseek-v3.2"
 
-class ProjectFile(BaseModel):
-    path: str = Field(..., description="Relative path including package (e.g., 'src/main/java/com/example/demo/App.java')")
-    content: str
+
+# MODEL = "openrouter/openrouter/free"
+# MODEL = "openrouter/qwen/qwen3-coder-30b-a3b-instruct"
+# MODEL = "openrouter/deepseek/deepseek-v3.2"
 
 
 class SpringBootExercise(BaseModel):
@@ -48,7 +49,7 @@ class CodellamasBackend():
     def general_agent(self) -> Agent:
         return Agent(
             config=self.agents_config['general_agent'],
-            llm = LLM(model=MODEL, base_url=BASE_URL,api_key=OPENROUTER_API_KEY, max_tokens=20000),
+            llm=LLM(model=MODEL, base_url=BASE_URL, api_key=OPENROUTER_API_KEY, max_tokens=20000),
             timeout="1800s",
             verbose=True,
         )

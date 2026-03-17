@@ -5,13 +5,12 @@ import tempfile
 import os
 from crewai.tools import BaseTool
 from typing import Type
-from pydantic import BaseModel
 import json
 
 
 class TestRunnerInput(BaseModel):
     """Input schema for running a Java JUnit 5 test suite."""
-    
+
     source_files: Dict[str, str] = Field(
         ...,
         description="Mapping of Java source file paths to file contents."
@@ -24,6 +23,7 @@ class TestRunnerInput(BaseModel):
         default="maven",
         description="Build tool to use: 'maven' or 'gradle'."
     )
+
 
 class JavaTestRunnerTool(BaseTool):
     name: str = "java_junit_test_runner"
