@@ -11,7 +11,7 @@ from codellamas_backend.crews.crew_single import CodellamasBackend, SpringBootEx
 from codellamas_backend.crews.crew_multi import CodellamasBackendMulti
 from codellamas_backend.runtime.verifier import MavenVerifier
 from codellamas_backend.schemas.files import ProjectFile
-
+from codellamas_backend.crews.crew_single import MODEL
 
 logging.getLogger("LiteLLM").setLevel(logging.CRITICAL)
 
@@ -58,7 +58,7 @@ def ingest_code_smells(code_smells: List[str]) -> str:
     return ", ".join(code_smells)
 
 
-def append_to_csv(exercise: SpringBootExercise, topic: str, model: str, response_data: dict = None):
+def append_to_csv(exercise: SpringBootExercise, topic: str, code_smells: List[str], generation_time_sec: float, model: str, response_data: dict = None):
     try:
         os.makedirs(os.path.dirname(CSV_FILE_PATH), exist_ok=True)
 
@@ -142,10 +142,12 @@ def append_review_to_csv(
 
     return os.path.abspath(REVIEW_CSV_FILE_PATH)
 
-def save_exercise_to_repo(exercise: SpringBootExercise, topic: str):
+def save_exercise_to_repo(exercise: SpringBootExercise, topic: str, code_smells: List[str]):
     timestamp = datetime.datetime.now().strftime("%d%m_%M%S")
     safe_topic = topic.replace(" ", "_")
-    folder_name = f"{safe_topic}_{timestamp}"
+    safe_model = MODEL.replace("/", "-")
+    formatted_smells = "_".join([smell.replace(" ", "_") for smell in code_smells])
+    folder_name = f"{safe_topic}_{safe_model}_{formatted_smells}_{timestamp}"
     base_repo_dir = os.path.join(os.getcwd(), "generated_exercises", folder_name)
     os.makedirs(base_repo_dir, exist_ok=True)
 
@@ -243,7 +245,7 @@ async def generate_exercise(body: GenerateRequest):
             exercise_data = SpringBootExercise(**result.json_dict)
             loop_meta = None
 
-        saved_path = save_exercise_to_repo(exercise_data, body.topic)
+        saved_path = save_exercise_to_repo(exercise_data, body.topic, body.code_smells)
 
         maven_verification = run_maven_verification(
             verify_maven=body.verify_maven,

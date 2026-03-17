@@ -13,7 +13,7 @@ MODEL = "openrouter/qwen/qwen3-coder-30b-a3b-instruct"
 
 
 # MODEL = "openrouter/openrouter/free"
-# MODEL = "openrouter/qwen/qwen3-coder-30b-a3b-instruct"
+# MODEL = "openrouter/z-ai/glm-4.5-air:free"
 # MODEL = "openrouter/deepseek/deepseek-v3.2"
 
 

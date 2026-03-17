@@ -518,6 +518,7 @@ dependencies = [
     { name = "fastapi" },
     { name = "litellm" },
     { name = "pydantic" },
+    { name = "uvicorn" },
 ]
 
 [package.metadata]
@@ -527,6 +528,7 @@ requires-dist = [
     { name = "fastapi", specifier = ">=0.128.0" },
     { name = "litellm", specifier = ">=1.75.3" },
     { name = "pydantic", specifier = ">=2.11.10" },
+    { name = "uvicorn", specifier = ">=0.40.0" },
 ]
 
 [[package]]
