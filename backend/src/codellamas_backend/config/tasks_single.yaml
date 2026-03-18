@@ -2,7 +2,7 @@ generate_exercise:
   description: >
     INPUTS:
     - {topic}: The topic for the Spring Boot project 
-    - {code_smells}: A list of code smells that is tested for this exercise 
+    - {code_smells}: A list of code smells that is tested for this exercise (ONLY use these code smells)
 
 
     SECTION 1: PROJECT AND EXERCISE GENERATION
@@ -23,10 +23,10 @@ generate_exercise:
     Package them accordingly
 
     SECTION 3: REFERENCE SOLUTION GENERATION
-    1. Provide a recommended refactored solution that shows correct coding practices withou {code_smells} smells.
+    1. Provide a recommended refactored solution that shows correct coding practices without {code_smells} smells, including any relevant modified classes to solve the problem.
     2. Show:
        - The original (smelly) implementation (only the files/segments that contain the smell)
-       - Then Only the refactored implementation. Don't show any segments of code that remain unchanged.
+       - ONLY the refactored implementation. Don't show any segments of code that remain unchanged.
     4. Ensure all provided tests pass.
 
     OUTPUT FORMAT:
