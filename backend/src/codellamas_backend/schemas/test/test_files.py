@@ -18,14 +18,16 @@ def test_project_file_missing_path():
     }
     with pytest.raises(ValidationError):
         ProjectFile(**file_data)
-    
+
+
 def test_project_file_missing_content():
     file_data = {
         "path": "src/main/java/com/example/App.java"
     }
     with pytest.raises(ValidationError):
         ProjectFile(**file_data)
-    
+
+
 # def test_project_file_empty_path():
 #     file_data = {
 #         "path": "",
@@ -33,7 +35,7 @@ def test_project_file_missing_content():
 #     }
 #     with pytest.raises(ValidationError):
 #         ProjectFile(**file_data)
-    
+
 # def test_project_file_empty_content():
 #     file_data = {
 #         "path": "src/main/java/com/example/App.java",
@@ -42,6 +44,7 @@ def test_project_file_missing_content():
 #     with pytest.raises(ValidationError):
 #         ProjectFile(**file_data)
 
+
 def test_project_file_invalid_path_type():
     file_data = {
         "path": 123,
@@ -49,7 +52,8 @@ def test_project_file_invalid_path_type():
     }
     with pytest.raises(ValidationError):
         ProjectFile(**file_data)
-    
+
+
 def test_project_file_invalid_content_type():
     file_data = {
         "path": "src/main/java/com/example/App.java",
