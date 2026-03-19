@@ -154,15 +154,15 @@ def run_maven_verification(*, verify_maven: bool, project_files: List[ProjectFil
 
 
 def normalize_project_files(items: list) -> list:
-        out: list[ProjectFile] = []
-        for item in items or []:
-            if isinstance(item, ProjectFile):
-                out.append(item)
-            elif isinstance(item, dict):
-                out.append(ProjectFile(**item))
-            else:
-                raise TypeError(f"Invalid project file entry: {type(item)}")
-        return out
+    out: list[ProjectFile] = []
+    for item in items or []:
+        if isinstance(item, ProjectFile):
+            out.append(item)
+        elif isinstance(item, dict):
+            out.append(ProjectFile(**item))
+        else:
+            raise TypeError(f"Invalid project file entry: {type(item)}")
+    return out
 
 
 @app.get("/")
@@ -228,7 +228,7 @@ async def generate_exercise(body: GenerateRequest):
             "data": exercise_data.model_dump(),
             "maven_verification": maven_verification,
         }
-        
+
         if loop_meta is not None:
             response_data["meta"] = loop_meta
 
