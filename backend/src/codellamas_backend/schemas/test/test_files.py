@@ -1,7 +1,5 @@
 import pytest
-from unittest.mock import Mock, patch, MagicMock
-from typing import List
-from pydantic import BaseModel, Field, ValidationError
+from pydantic import ValidationError
 from codellamas_backend.schemas.files import ProjectFile
 
 
@@ -36,7 +34,6 @@ def test_project_file_missing_content():
 #     with pytest.raises(ValidationError):
 #         ProjectFile(**file_data)
     
-
 # def test_project_file_empty_content():
 #     file_data = {
 #         "path": "src/main/java/com/example/App.java",
@@ -44,7 +41,6 @@ def test_project_file_missing_content():
 #     }
 #     with pytest.raises(ValidationError):
 #         ProjectFile(**file_data)
-
 
 def test_project_file_invalid_path_type():
     file_data = {
@@ -61,5 +57,3 @@ def test_project_file_invalid_content_type():
     }
     with pytest.raises(ValidationError):
         ProjectFile(**file_data)
-    
-
