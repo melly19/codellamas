@@ -12,6 +12,7 @@ def test_project_file_valid():
     assert project_file.path == file_data["path"]
     assert project_file.content == file_data["content"]
 
+
 def test_project_file_missing_path():
     file_data = {
         "content": "public class App {}"
