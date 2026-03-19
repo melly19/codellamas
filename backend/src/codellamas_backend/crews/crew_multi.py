@@ -33,21 +33,6 @@ class SpringBootExercise(BaseModel):
 
 
 class VerifyToolInput(BaseModel):
-    """
-    Runtime inputs for Maven verification.
-
-    base_project_files:
-        The Spring Initializr scaffold / base project.
-
-    override_project_files:
-        Files that override the scaffold during verification.
-        For smelly verification: exercise.project_files
-        For reference verification: exercise.answers_list
-
-    injected_tests:
-        Canonical JUnit test files to inject into the project.
-    """
-
     base_project_files: List[ProjectFile]
     override_project_files: List[ProjectFile] = Field(default_factory=list)
     injected_tests: List[ProjectFile] = Field(default_factory=list)
@@ -424,16 +409,8 @@ class CodellamasBackendMulti:
         topic: str,
         code_smells: List[str],
         existing_codebase: str,
-        project_files: List[Any],  # scaffold from API (ProjectFile-like)
+        project_files: List[Any],
     ) -> tuple[SpringBootExercise, Dict[str, Any]]:
-        """
-        Verification + patching loops in Python.
-
-        Use this if:
-        - mode == "multi"
-        - verify_maven == True
-        - Spring scaffold project_files are provided from API
-        """
         base_project_files = self._to_project_files(project_files)
 
         meta: Dict[str, Any] = {

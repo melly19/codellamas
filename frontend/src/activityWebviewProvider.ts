@@ -63,7 +63,8 @@ export class ActivityWebviewProvider implements vscode.WebviewViewProvider {
     this.selectedSmells = 
       this.context.workspaceState.get<string[]>("selectedSmells")??[];
     this.backendUrl = 
-      this.context.workspaceState.get<string>("backendUrl") ?? "http://127.0.0.1:8000";
+      // this.context.workspaceState.get<string>("backendUrl") ?? "http://CS480G4@10.193.104.102:8000";
+      vscode.workspace.getConfiguration("javaExerciseGenerator").get("backendBaseUrl") ?? "http://127.0.0.1:8000";
     this.mode = 
       this.context.workspaceState.get<string>("mode") ?? "single";
   }

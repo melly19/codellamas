@@ -1,6 +1,5 @@
 from crewai import Agent, Crew, Process, Task, LLM
 from crewai.project import CrewBase, agent, crew, task
-# from crewai.agents.agent_builder.base_agent import BaseAgent
 from typing import List
 from pydantic import BaseModel
 from codellamas_backend.schemas.files import ProjectFile
@@ -10,11 +9,6 @@ import os
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
 BASE_URL = "https://openrouter.ai/api/v1"
 MODEL = "openrouter/qwen/qwen3-coder-30b-a3b-instruct"
-
-
-# MODEL = "openrouter/openrouter/free"
-# MODEL = "openrouter/qwen/qwen3-coder-30b-a3b-instruct"
-# MODEL = "openrouter/deepseek/deepseek-v3.2"
 
 
 class SpringBootExercise(BaseModel):
