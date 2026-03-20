@@ -4,7 +4,7 @@ define_problem:
   description: > 
     INPUTS:
     - {topic}: The business domain for the Spring Boot project (e.g. "banking", "e-commerce")
-    - {code_smells}: A list of target code smells that this exercise should contain
+    - {code_smells}: A list of target code smells that this exercise should contain (ONLY use these code smells)
       (e.g. ["Long Method", "God Class", "Duplicate Code"])
     - {existing_codebase}: OPTIONAL. A structured string containing an existing Spring Boot codebase.
       Use "NONE" if a fresh project should be generated.
