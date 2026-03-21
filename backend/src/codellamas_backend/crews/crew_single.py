@@ -25,11 +25,16 @@ class CodellamasBackend():
     agents_config = "../config/agents_single.yaml"
     tasks_config = "../config/tasks_single.yaml"
 
+    def __init__(self, model_name: str = None, api_endpoint: str = None, api_key: str = None):
+        self.model_name = model_name or MODEL
+        self.api_endpoint = api_endpoint or BASE_URL
+        self.api_key = api_key or OPENROUTER_API_KEY
+
     @agent
     def general_agent(self) -> Agent:
         return Agent(
             config=self.agents_config['general_agent'],
-            llm=LLM(model=MODEL, base_url=BASE_URL, api_key=OPENROUTER_API_KEY, max_tokens=20000),
+            llm=LLM(model=self.model_name, base_url=self.api_endpoint, api_key=self.api_key, max_tokens=20000),
             timeout="1800s",
             verbose=True,
         )

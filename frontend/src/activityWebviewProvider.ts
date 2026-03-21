@@ -45,6 +45,9 @@ export class ActivityWebviewProvider implements vscode.WebviewViewProvider {
 
   private backendUrl: string;
   private mode: string;
+  private modelName: string;
+  private apiEndpoint: string;
+  private apiKey: string;
 
   public revealReviewPanel() {
     if (this.webviewView) {
@@ -56,6 +59,8 @@ export class ActivityWebviewProvider implements vscode.WebviewViewProvider {
     return this.solutionExp;
   }
   constructor(private readonly context: vscode.ExtensionContext) { 
+    require("dotenv").config({ path: require("path").join(this.context.extensionPath, '.env') });
+    
     this.solutionExp =
       this.context.workspaceState.get<any[] | string | null>("solutionExp")??null;
     this.responseData =
@@ -67,6 +72,10 @@ export class ActivityWebviewProvider implements vscode.WebviewViewProvider {
       vscode.workspace.getConfiguration("javaExerciseGenerator").get("backendBaseUrl") ?? "http://127.0.0.1:8000";
     this.mode = 
       this.context.workspaceState.get<string>("mode") ?? "single";
+
+    this.modelName = this.context.workspaceState.get<string>("modelName") ?? process.env.AI_MODEL_NAME ?? "openrouter/qwen/qwen3-coder-30b-a3b-instruct";
+    this.apiEndpoint = this.context.workspaceState.get<string>("apiEndpoint") ?? process.env.AI_API_ENDPOINT ?? "https://openrouter.ai/api/v1";
+    this.apiKey = this.context.workspaceState.get<string>("apiKey") ?? process.env.AI_API_KEY ?? "";
   }
 
   /* =========================
@@ -163,8 +172,16 @@ export class ActivityWebviewProvider implements vscode.WebviewViewProvider {
       } else if (message.type === "updateSettings") {
         this.backendUrl = message.backendUrl;
         this.mode = message.mode;
+        this.modelName = message.modelName;
+        this.apiEndpoint = message.apiEndpoint;
+        this.apiKey = message.apiKey;
+
         this.context.workspaceState.update("backendUrl", this.backendUrl);
         this.context.workspaceState.update("mode", this.mode);
+        this.context.workspaceState.update("modelName", this.modelName);
+        this.context.workspaceState.update("apiEndpoint", this.apiEndpoint);
+        this.context.workspaceState.update("apiKey", this.apiKey);
+
         vscode.window.showInformationMessage("Settings saved!");
       }
 
@@ -212,6 +229,9 @@ export class ActivityWebviewProvider implements vscode.WebviewViewProvider {
   private getActivityHtml(): string {
     const backendUrl = this.backendUrl;
     const mode = this.mode;
+    const modelName = this.modelName;
+    const apiEndpoint = this.apiEndpoint;
+    const apiKey = this.apiKey;
     
     return /* html */ `
 <!DOCTYPE html>
@@ -636,6 +656,21 @@ export class ActivityWebviewProvider implements vscode.WebviewViewProvider {
       <input id="settings-backendUrl" type="text" value="${backendUrl}" />
     </div>
 
+    <div class="topic" style="margin-top: 12px;">
+      <label for="settings-modelName">Model Name</label>
+      <input id="settings-modelName" type="text" value="${modelName}" />
+    </div>
+
+    <div class="topic" style="margin-top: 12px;">
+      <label for="settings-apiEndpoint">AI API Endpoint</label>
+      <input id="settings-apiEndpoint" type="text" value="${apiEndpoint}" />
+    </div>
+
+    <div class="topic" style="margin-top: 12px;">
+      <label for="settings-apiKey">AI API Key</label>
+      <input id="settings-apiKey" type="password" value="${apiKey}" />
+    </div>
+
     <div class="topic" style="margin-top: 16px;">
       <label>Mode</label>
       <div style="margin-top: 4px;">
@@ -669,6 +704,9 @@ export class ActivityWebviewProvider implements vscode.WebviewViewProvider {
     // Override settings from extension to keep them in sync
     state.backendUrl = "${backendUrl}";
     state.mode = "${mode}";
+    state.modelName = "${modelName}";
+    state.apiEndpoint = "${apiEndpoint}";
+    state.apiKey = "${apiKey}";
     saveState();
 
     const tabs = Array.from(document.querySelectorAll('.tab'));
@@ -713,6 +751,9 @@ export class ActivityWebviewProvider implements vscode.WebviewViewProvider {
     const settingsIconBtn = document.getElementById("settingsIconBtn");
     const saveSettingsBtn = document.getElementById("saveSettingsBtn");
     const settingsBackendUrl = document.getElementById("settings-backendUrl");
+    const settingsModelName = document.getElementById("settings-modelName");
+    const settingsApiEndpoint = document.getElementById("settings-apiEndpoint");
+    const settingsApiKey = document.getElementById("settings-apiKey");
     const settingsModeBtn = document.getElementById("settings-modeBtn");
 
     if (settingsIconBtn) {
@@ -732,10 +773,16 @@ export class ActivityWebviewProvider implements vscode.WebviewViewProvider {
     if (saveSettingsBtn) {
       saveSettingsBtn.addEventListener('click', () => {
         state.backendUrl = settingsBackendUrl.value;
+        state.modelName = settingsModelName.value;
+        state.apiEndpoint = settingsApiEndpoint.value;
+        state.apiKey = settingsApiKey.value;
         saveState();
         vscode.postMessage({
           type: "updateSettings",
           backendUrl: state.backendUrl,
+          modelName: state.modelName,
+          apiEndpoint: state.apiEndpoint,
+          apiKey: state.apiKey,
           mode: state.mode
         });
       });
@@ -882,16 +929,25 @@ window.addEventListener("message", (event) => {
           appendChatMessage(m, "ai");
         } else if (m && typeof m.text === "string") {
           appendChatMessage(m.text, "ai");
+        } else if (typeof m === "object" && m !== null) {
+          appendChatMessage('\`\`\`json\\n' + JSON.stringify(m, null, 2) + '\\n\`\`\`', "ai");
+        } else if (m) {
+          appendChatMessage(String(m), "ai");
         }
       });
     } else if (msg.message) {
-      appendChatMessage(String(msg.message), "ai");
+      const out = typeof msg.message === "object" ? '\`\`\`json\\n' + JSON.stringify(msg.message, null, 2) + '\\n\`\`\`' : String(msg.message);
+      appendChatMessage(out, "ai");
+    } else if (msg.feedback) {
+      const out = typeof msg.feedback === "object" ? '\`\`\`json\\n' + JSON.stringify(msg.feedback, null, 2) + '\\n\`\`\`' : String(msg.feedback);
+      appendChatMessage(out, "ai");
     }
   }
 
   if (msg.type === "reviewError") {
     setReviewing(false);
-    const text = msg.error || "Review failed. See extension logs for details.";
+    const errObj = msg.error || "Review failed. See extension logs for details.";
+    const text = typeof errObj === "object" ? '\`\`\`json\\n' + JSON.stringify(errObj, null, 2) + '\\n\`\`\`' : String(errObj);
     appendChatMessage(String(text), "ai");
   }
 });
@@ -958,7 +1014,14 @@ window.addEventListener("message", (event) => {
     const timeout = setTimeout(() => controller.abort(), timeoutMs);
 
     try {
-      const payload = { topic, code_smells: smells, mode: this.mode };
+      const payload = { 
+        topic, 
+        code_smells: smells, 
+        mode: this.mode,
+        model_name: this.modelName,
+        api_endpoint: this.apiEndpoint,
+        api_key: this.apiKey 
+      };
       console.log("=========================================");
       console.log("[POST /generate] Sending Payload:");
       console.log(JSON.stringify(payload, null, 2));
@@ -1024,8 +1087,11 @@ window.addEventListener("message", (event) => {
         return;
       }
       
-      // Attach the mode to the payload dynamically
+      // Attach the mode and other settings to the payload dynamically
       builtPayload.mode = this.mode;
+      builtPayload.model_name = this.modelName;
+      builtPayload.api_endpoint = this.apiEndpoint;
+      builtPayload.api_key = this.apiKey;
 
       console.log("=========================================");
       console.log("[POST /review] Sending Payload:");
@@ -1061,10 +1127,25 @@ window.addEventListener("message", (event) => {
       let parsedFeedback = reviewResult.feedback;
       try {
         // If the model still happens to return JSON, gracefully parse it
-        const obj = JSON.parse(reviewResult.feedback);
-        parsedFeedback = Object.values(obj).join("\n\n");
+        const extracted = typeof reviewResult.feedback === "string" 
+           ? JSON.parse(reviewResult.feedback) 
+           : reviewResult.feedback;
+           
+        if (typeof extracted === "object" && extracted !== null) {
+          parsedFeedback = Object.entries(extracted)
+            .map(([key, val]) => {
+              const strVal = typeof val === "object" ? JSON.stringify(val, null, 2) : String(val);
+              // Capitalize key for better appearance
+              const formatKey = key.charAt(0).toUpperCase() + key.slice(1).replace(/_/g, " ");
+              return `### ${formatKey}\n${strVal}`;
+            })
+            .join("\n\n");
+        } else {
+          parsedFeedback = String(extracted);
+        }
       } catch (e) {
         // Expected route: it's plain markdown text
+        parsedFeedback = typeof reviewResult.feedback === "object" ? JSON.stringify(reviewResult.feedback, null, 2) : String(reviewResult.feedback);
       }
 
       this.postMessage({

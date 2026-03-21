@@ -19,13 +19,13 @@ app = FastAPI()
 CSV_FILE_PATH = "output/exercises_evaluation.csv"
 
 
-def get_backend(mode: str):
+def get_backend(mode: str, model_name: str | None = None, api_endpoint: str | None = None, api_key: str | None = None):
     if mode not in {"single", "multi"}:
         raise HTTPException(
             status_code=400,
             detail=f"Invalid mode '{mode}'. Use 'single' or 'multi'."
         )
-    return CodellamasBackendMulti() if mode == "multi" else CodellamasBackend()
+    return CodellamasBackendMulti(model_name, api_endpoint, api_key) if mode == "multi" else CodellamasBackend(model_name, api_endpoint, api_key)
 
 
 class GenerateRequest(BaseModel):
@@ -35,6 +35,9 @@ class GenerateRequest(BaseModel):
     mode: str = "single"  # "single" or "multi"
     verify_maven: bool = False
     project_files: List[ProjectFile] = Field(default_factory=list)
+    model_name: str | None = None
+    api_endpoint: str | None = None
+    api_key: str | None = None
 
 
 class EvaluateRequest(BaseModel):
@@ -45,6 +48,9 @@ class EvaluateRequest(BaseModel):
     query: str = ""  # additional context or specific questions for the review
     test_results: str = ""  # output of mvn test in the frontend
     verify_maven: bool = False
+    model_name: str | None = None
+    api_endpoint: str | None = None
+    api_key: str | None = None
 
 
 def ingest_code_smells(code_smells: List[str]) -> str:
@@ -194,7 +200,7 @@ async def generate_exercise(body: GenerateRequest):
     formatted_code_smells = ingest_code_smells(body.code_smells)
 
     try:
-        backend = get_backend(body.mode)
+        backend = get_backend(body.mode, model_name=body.model_name, api_endpoint=body.api_endpoint, api_key=body.api_key)
 
         if body.mode == "multi" and body.verify_maven and body.project_files:
             exercise_data, loop_meta = backend.generate_with_fix_loop(
@@ -279,7 +285,7 @@ async def review_solution(body: EvaluateRequest):
             "verify_maven": body.verify_maven
         }
 
-        backend = get_backend(body.mode)
+        backend = get_backend(body.mode, model_name=body.model_name, api_endpoint=body.api_endpoint, api_key=body.api_key)
         raw = backend.review_crew().kickoff(inputs=inputs)
 
         return {"feedback": str(raw), "maven_verification": maven_verification}
