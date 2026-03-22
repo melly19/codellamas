@@ -331,11 +331,15 @@ export class ActivityWebviewProvider implements vscode.WebviewViewProvider {
       font-size: 0.9rem;
     }
 
-    input[type="checkbox"] {
-      accent-color: var(--vscode-checkbox-border, #007acc);
-      width: 14px;
-      height: 14px;
-    }
+  input[type="checkbox"]:focus {
+  outline: none !important;
+  box-shadow: none !important;
+  }
+
+  input[type="checkbox"]:focus-visible {
+  outline: none !important;
+  box-shadow: none !important;
+  }
 
     .topic {
       margin-top: 16px;
@@ -506,6 +510,12 @@ export class ActivityWebviewProvider implements vscode.WebviewViewProvider {
         <label class="smell-option">
           <input type="checkbox" value="Primitive Obsession" /> Primitive Obsession
         </label>
+        <label class="smell-option">
+          <input type="checkbox" value="Data Clumps" /> Data Clumps
+        </label>
+        <label class="smell-option">
+          <input type="checkbox" value="Long Parameter List" /> Long Parameter List
+        </label>
       </div>
     </details>
 
@@ -518,6 +528,51 @@ export class ActivityWebviewProvider implements vscode.WebviewViewProvider {
         <label class="smell-option">
           <input type="checkbox" value="Dead Code" /> Dead Code
         </label>
+        <label class="smell-option">
+          <input type="checkbox" value="Comments" /> Comments
+        </label>
+        <label class="smell-option">
+          <input type="checkbox" value="Data Class" /> Data Class
+        </label>
+        <label class="smell-option">
+          <input type="checkbox" value="Lazy Class" /> Lazy Class 
+        </label>
+        <label class="smell-option">
+          <input type="checkbox" value="Speculative Generality" /> Speculative Generality
+        </label>
+      </div>
+    </details>
+
+    <details>
+      <summary>Object-Orientation Abusers</summary>
+      <div class="smell-options">
+        <label class="smell-option">
+          <input type="checkbox" value="Alternative Classes With Different Interfaces" /> Alternative Classes With Different Interfaces
+        </label>
+        <label class="smell-option">
+          <input type="checkbox" value="Refused Bequest" /> Refused Bequest
+        </label>
+        <label class="smell-option">
+          <input type="checkbox" value="Temporary Field" /> Temporary Field
+        </label>
+        <label class="smell-option">
+          <input type="checkbox" value="Switch Statements" /> Switch Statements
+        </label>
+      </div>
+    </details>
+
+    <details>
+      <summary>Change Preventers</summary>
+      <div class="smell-options">
+        <label class="smell-option">
+          <input type="checkbox" value="Divergent Change" /> Divergent Change 
+        </label>
+        <label class="smell-option">
+          <input type="checkbox" value="Parallel Inheritance Hierarchies" /> Parallel Inheritance Hierarchies
+        </label>
+        <label class="smell-option">
+          <input type="checkbox" value="Shotgun Surgery" /> Shortgun Surgery
+        </label>
       </div>
     </details>
 
@@ -529,6 +584,15 @@ export class ActivityWebviewProvider implements vscode.WebviewViewProvider {
         </label>
         <label class="smell-option">
           <input type="checkbox" value="Message Chains" /> Message Chains
+        </label>
+        <label class="smell-option">
+          <input type="checkbox" value="Incomplete Library Class" /> Incomplete Library Class
+        </label>
+        <label class="smell-option">
+          <input type="checkbox" value="Middle Man" /> Middle Man
+        </label>
+        <label class="smell-option">
+          <input type="checkbox" value="Inappropriate Initimacy" /> Inappropriate Initimacy 
         </label>
       </div>
     </details>
