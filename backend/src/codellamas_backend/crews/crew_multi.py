@@ -117,7 +117,8 @@ class CodellamasBackendMulti:
             model=self.model_name,
             base_url=self.api_endpoint,
             api_key=self.api_key,
-            request_timeout=self.request_timeout_sec
+            request_timeout=self.request_timeout_sec,
+            max_tokens=30000
         )
         self.verify_tool = MavenVerifyTool()
 
