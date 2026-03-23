@@ -183,6 +183,11 @@ export class ActivityWebviewProvider implements vscode.WebviewViewProvider {
         this.context.workspaceState.update("apiKey", this.apiKey);
 
         vscode.window.showInformationMessage("Settings saved!");
+        
+        // Refresh the webview to update injected strings
+        if (this.webviewView) {
+          this.webviewView.webview.html = this.getActivityHtml();
+        }
       }
 
     });
@@ -950,6 +955,22 @@ document.querySelectorAll('input[type="checkbox"]').forEach(cb => {
     // Initialize UI using State
     if (state.topic && topicInput) {
       topicInput.value = state.topic;
+    }
+    
+    if (state.backendUrl && settingsBackendUrl) {
+      settingsBackendUrl.value = state.backendUrl;
+    }
+    if (state.modelName && settingsModelName) {
+      settingsModelName.value = state.modelName;
+    }
+    if (state.apiEndpoint && settingsApiEndpoint) {
+      settingsApiEndpoint.value = state.apiEndpoint;
+    }
+    if (state.apiKey && settingsApiKey) {
+      settingsApiKey.value = state.apiKey;
+    }
+    if (state.mode && settingsModeBtn) {
+      settingsModeBtn.textContent = state.mode.toUpperCase();
     }
     
     if (state.smells && state.smells.length > 0) {
