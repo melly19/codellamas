@@ -244,7 +244,55 @@ export class ActivityWebviewProvider implements vscode.WebviewViewProvider {
 <head>
   <meta charset="UTF-8" />
   <title>Codellamas</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/treeselectjs@0.14.2/dist/treeselectjs.css" />
   <style>
+    :root {
+      --treeselectjs-bg: var(--vscode-dropdown-background, #111e2c);
+      --treeselectjs-border-color: var(--vscode-dropdown-border, #1c324a);
+      --treeselectjs-border-focus: var(--vscode-focusBorder, #4aa6ff);
+      --treeselectjs-tag-bg: var(--vscode-badge-background, #1c324a);
+      --treeselectjs-tag-bg-hover: var(--vscode-list-hoverBackground, #264363);
+      --treeselectjs-tag-remove-hover: var(--vscode-errorForeground, #ff6b6b);
+      --treeselectjs-icon: var(--vscode-icon-foreground, #a0b9d9);
+      --treeselectjs-icon-hover: var(--vscode-foreground, #ffffff);
+      --treeselectjs-item-counter: var(--vscode-descriptionForeground, #8a9fb5);
+      --treeselectjs-item-focus-bg: var(--vscode-list-activeSelectionBackground, #162a42);
+      --treeselectjs-item-selected-bg: var(--vscode-list-inactiveSelectionBackground, #1c3654);
+      --treeselectjs-item-disabled-text: var(--vscode-disabledForeground, #59738c);
+      --treeselectjs-checkbox-bg: var(--vscode-checkbox-background, #0b141e);
+      --treeselectjs-checkbox-border-color: var(--vscode-checkbox-border, #2a4b6e);
+      --treeselectjs-checkbox-checked-bg: var(--vscode-button-background, #0e639c);
+      --treeselectjs-checkbox-checked-icon: var(--vscode-button-foreground, #ffffff);
+    }
+    .treeselect-list {
+      background: var(--treeselectjs-bg);
+      border: 1px solid var(--treeselectjs-border-color);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+      color: var(--vscode-foreground, #ffffff);
+    }
+    .treeselect-input__edit {
+      color: var(--vscode-input-foreground, #ffffff) !important;
+    }
+    .treeselect-input__tags-element {
+      color: var(--vscode-badge-foreground, #ffffff) !important;
+    }
+    .treeselect-input__tags-name {
+      color: var(--vscode-badge-foreground, #ffffff) !important;
+    }
+    .treeselect-item {
+      color: var(--vscode-foreground, #ffffff) !important;
+    }
+    .treeselect-item__name {
+      color: inherit;
+    }
+    .treeselect-input,
+    .treeselect-input * {
+      color: var(--vscode-foreground, #ffffff);
+    }
+    .treeselect-input__tags-count {
+      color: var(--vscode-foreground, #ffffff);
+    }
+
     body {
       font-family: var(--vscode-font-family);
       padding: 16px 20px;
@@ -577,106 +625,8 @@ export class ActivityWebviewProvider implements vscode.WebviewViewProvider {
     <div class="section-subtitle">
       Choose one or more refactoring topics to practise.
     </div>
-    <div id="selected-smells" class="selected-smells"></div>
-
-    <details open>
-      <summary>Bloaters</summary>
-      <div class="smell-options">
-        <label class="smell-option">
-          <input type="checkbox" value="Long Method" /> Long Method
-        </label>
-        <label class="smell-option">
-          <input type="checkbox" value="Large Class" /> Large Class
-        </label>
-        <label class="smell-option">
-          <input type="checkbox" value="Primitive Obsession" /> Primitive Obsession
-        </label>
-        <label class="smell-option">
-          <input type="checkbox" value="Data Clumps" /> Data Clumps
-        </label>
-        <label class="smell-option">
-          <input type="checkbox" value="Long Parameter List" /> Long Parameter List
-        </label>
-      </div>
-    </details>
-
-    <details>
-      <summary>Dispensables</summary>
-      <div class="smell-options">
-        <label class="smell-option">
-          <input type="checkbox" value="Duplicate Code" /> Duplicate Code
-        </label>
-        <label class="smell-option">
-          <input type="checkbox" value="Dead Code" /> Dead Code
-        </label>
-        <label class="smell-option">
-          <input type="checkbox" value="Comments" /> Comments
-        </label>
-        <label class="smell-option">
-          <input type="checkbox" value="Data Class" /> Data Class
-        </label>
-        <label class="smell-option">
-          <input type="checkbox" value="Lazy Class" /> Lazy Class 
-        </label>
-        <label class="smell-option">
-          <input type="checkbox" value="Speculative Generality" /> Speculative Generality
-        </label>
-      </div>
-    </details>
-
-    <details>
-      <summary>Object-Orientation Abusers</summary>
-      <div class="smell-options">
-        <label class="smell-option">
-          <input type="checkbox" value="Alternative Classes With Different Interfaces" /> Alternative Classes With Different Interfaces
-        </label>
-        <label class="smell-option">
-          <input type="checkbox" value="Refused Bequest" /> Refused Bequest
-        </label>
-        <label class="smell-option">
-          <input type="checkbox" value="Temporary Field" /> Temporary Field
-        </label>
-        <label class="smell-option">
-          <input type="checkbox" value="Switch Statements" /> Switch Statements
-        </label>
-      </div>
-    </details>
-
-    <details>
-      <summary>Change Preventers</summary>
-      <div class="smell-options">
-        <label class="smell-option">
-          <input type="checkbox" value="Divergent Change" /> Divergent Change 
-        </label>
-        <label class="smell-option">
-          <input type="checkbox" value="Parallel Inheritance Hierarchies" /> Parallel Inheritance Hierarchies
-        </label>
-        <label class="smell-option">
-          <input type="checkbox" value="Shotgun Surgery" /> Shortgun Surgery
-        </label>
-      </div>
-    </details>
-
-    <details>
-      <summary>Couplers</summary>
-      <div class="smell-options">
-        <label class="smell-option">
-          <input type="checkbox" value="Feature Envy" /> Feature Envy
-        </label>
-        <label class="smell-option">
-          <input type="checkbox" value="Message Chains" /> Message Chains
-        </label>
-        <label class="smell-option">
-          <input type="checkbox" value="Incomplete Library Class" /> Incomplete Library Class
-        </label>
-        <label class="smell-option">
-          <input type="checkbox" value="Middle Man" /> Middle Man
-        </label>
-        <label class="smell-option">
-          <input type="checkbox" value="Inappropriate Initimacy" /> Inappropriate Initimacy 
-        </label>
-      </div>
-    </details>
+    
+    <div class="example" style="margin-bottom: 20px;"></div>
 
     <div class="topic">
       <label for="topic">Topic</label>
@@ -755,7 +705,8 @@ export class ActivityWebviewProvider implements vscode.WebviewViewProvider {
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-  <script>
+  <script type="module">
+    import Treeselect from 'https://cdn.jsdelivr.net/npm/treeselectjs@0.14.2/dist/treeselectjs.mjs';
     const vscode = acquireVsCodeApi();
 
     // Persist webview state
@@ -793,6 +744,7 @@ export class ActivityWebviewProvider implements vscode.WebviewViewProvider {
       });
 
       Object.entries(panels).forEach(([key, el]) => {
+        if (!el) return;
         el.classList.toggle('active', key === name);
       });
 
@@ -814,7 +766,6 @@ export class ActivityWebviewProvider implements vscode.WebviewViewProvider {
     const clearChatBtn = document.getElementById("clearChatBtn");
     const chatMessages = document.getElementById("chat-messages");
     const showAnswerBtn = document.getElementById("showAnswerBtn");
-    const selectedContainer = document.getElementById("selected-smells");
     const topicInput = document.getElementById("topic");
 
     const settingsIconBtn = document.getElementById("settingsIconBtn");
@@ -864,42 +815,78 @@ export class ActivityWebviewProvider implements vscode.WebviewViewProvider {
       });
     }
 
-function updateSelectedSmells() {
-  if (!selectedContainer) return;
+    const treeselectOptions = [
+      {
+        name: 'Bloaters',
+        value: 'Bloaters',
+        children: [
+          { name: 'Long Method', value: 'Long Method' },
+          { name: 'Large Class', value: 'Large Class' },
+          { name: 'Primitive Obsession', value: 'Primitive Obsession' },
+          { name: 'Data Clumps', value: 'Data Clumps' },
+          { name: 'Long Parameter List', value: 'Long Parameter List' }
+        ]
+      },
+      {
+        name: 'Dispensables',
+        value: 'Dispensables',
+        children: [
+          { name: 'Duplicate Code', value: 'Duplicate Code' },
+          { name: 'Dead Code', value: 'Dead Code' },
+          { name: 'Comments', value: 'Comments' },
+          { name: 'Data Class', value: 'Data Class' },
+          { name: 'Lazy Class', value: 'Lazy Class' },
+          { name: 'Speculative Generality', value: 'Speculative Generality' }
+        ]
+      },
+      {
+        name: 'Object-Orientation Abusers',
+        value: 'Object-Orientation Abusers',
+        children: [
+          { name: 'Alternative Classes With Different Interfaces', value: 'Alternative Classes With Different Interfaces' },
+          { name: 'Refused Bequest', value: 'Refused Bequest' },
+          { name: 'Temporary Field', value: 'Temporary Field' },
+          { name: 'Switch Statements', value: 'Switch Statements' }
+        ]
+      },
+      {
+        name: 'Change Preventers',
+        value: 'Change Preventers',
+        children: [
+          { name: 'Divergent Change', value: 'Divergent Change' },
+          { name: 'Parallel Inheritance Hierarchies', value: 'Parallel Inheritance Hierarchies' },
+          { name: 'Shotgun Surgery', value: 'Shotgun Surgery' }
+        ]
+      },
+      {
+        name: 'Couplers',
+        value: 'Couplers',
+        children: [
+          { name: 'Feature Envy', value: 'Feature Envy' },
+          { name: 'Message Chains', value: 'Message Chains' },
+          { name: 'Incomplete Library Class', value: 'Incomplete Library Class' },
+          { name: 'Middle Man', value: 'Middle Man' },
+          { name: 'Inappropriate Initimacy', value: 'Inappropriate Initimacy' }
+        ]
+      }
+    ];
 
-  selectedContainer.innerHTML = "";
-
-  const checked = Array.from(
-    document.querySelectorAll('input[type="checkbox"]:checked')
-  );
-
-  state.smells = checked.map(cb => cb.value);
-  saveState();
-
-  checked.forEach(cb => {
-    const chip = document.createElement("div");
-    chip.classList.add("smell-chip");
-
-    const text = document.createElement("span");
-    text.textContent = cb.value;
-
-    const removeBtn = document.createElement("button");
-    removeBtn.textContent = "✕";
-
-    removeBtn.addEventListener("click", () => {
-      cb.checked = false;
-      updateSelectedSmells();
+    const treeselect = new Treeselect({
+      parentHtmlContainer: document.querySelector('.example'),
+      value: state.smells || [],
+      options: treeselectOptions,
+      isGroupedValue: true,
+      showTags: true,
+      searchable: true,
+      placeholder: 'Search Code Smells...',
+      alwaysOpen: false
     });
 
-    chip.appendChild(text);
-    chip.appendChild(removeBtn);
-    selectedContainer.appendChild(chip);
-  });
-}
-
-document.querySelectorAll('input[type="checkbox"]').forEach(cb => {
-  cb.addEventListener("change", updateSelectedSmells);
-});
+    treeselect.srcElement.addEventListener('input', (e) => {
+      // Treeselect passes the new value via e.detail
+      state.smells = e.detail;
+      saveState();
+    });
 
     if (showAnswerBtn){
       showAnswerBtn.addEventListener("click",() => {
@@ -973,15 +960,6 @@ document.querySelectorAll('input[type="checkbox"]').forEach(cb => {
       settingsModeBtn.textContent = state.mode.toUpperCase();
     }
     
-    if (state.smells && state.smells.length > 0) {
-      document.querySelectorAll('input[type="checkbox"]').forEach(cb => {
-        if (state.smells.includes(cb.value)) {
-          cb.checked = true;
-        }
-      });
-      updateSelectedSmells();
-    }
-
     if (state.messages && state.messages.length > 0) {
       state.messages.forEach(msg => {
         appendChatMessage(msg.text, msg.role, false);
@@ -1041,9 +1019,25 @@ window.addEventListener("message", (event) => {
     generateBtn.addEventListener("click", () => {
       if (generateBtn.disabled) return;
 
-      const smells = Array.from(
-        document.querySelectorAll('input[type="checkbox"]:checked')
-      ).map(cb => cb.value);
+      const rawSmells = state.smells || [];
+      const expandedSmells = new Set();
+      
+      const optionsMap = {};
+      treeselectOptions.forEach(group => {
+        optionsMap[group.value] = group.children.map(child => child.value);
+      });
+
+      rawSmells.forEach(smell => {
+        // If it's a category group, push all its children
+        if (optionsMap[smell]) {
+          optionsMap[smell].forEach(childVal => expandedSmells.add(childVal));
+        } else {
+          // Otherwise it's a specific subcategory
+          expandedSmells.add(smell);
+        }
+      });
+
+      const smells = Array.from(expandedSmells);
 
       setGenerating(true);
 
