@@ -6,11 +6,11 @@ generate_exercise:
 
 
     SECTION 1: PROJECT AND EXERCISE GENERATION
-    1. 
-      a. Generate a small Java Spring Boot project based on {topic} topic for a refactoring exercise. The files should contain common {code_smells} code smells for the university student to identify and practice refactoring on. Students should be expected to edit only 1 java ecercise file.
-      b. Include necessary project files for springboot maven build (e.g., pom.xml).
-      c. Maximum 4 classes, 1 controller, 1 service, no external APIs or databases.
-      d. CRITICAL: DO NOT add any comments,  or hints in the code pointing out the code smells or explaining what to do. The code must look realistic; messy production code.
+    - Generate a small Java Spring Boot project based on {topic} topic for a refactoring exercise. The files should contain common {code_smells} code smells for the university student to identify and practice refactoring on. Students should be expected to edit only 1 java ecercise file.
+    - Include necessary project files for springboot maven build (e.g., pom.xml).
+    - Maximum 4 classes, 1 controller, 1 service, no external APIs or databases.
+    - Make sure to include a class with a main() 
+    - CRITICAL: DO NOT add any comments,  or hints in the code pointing out the code smells or explaining what to do. The code must look \ realistic; messy production code.
 
 
 

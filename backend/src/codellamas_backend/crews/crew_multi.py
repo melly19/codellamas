@@ -33,21 +33,6 @@ class SpringBootExercise(BaseModel):
 
 
 class VerifyToolInput(BaseModel):
-    """
-    Runtime inputs for Maven verification.
-
-    base_project_files:
-        The Spring Initializr scaffold / base project.
-
-    override_project_files:
-        Files that override the scaffold during verification.
-        For smelly verification: exercise.project_files
-        For reference verification: exercise.answers_list
-
-    injected_tests:
-        Canonical JUnit test files to inject into the project.
-    """
-
     base_project_files: List[ProjectFile]
     override_project_files: List[ProjectFile] = Field(default_factory=list)
     injected_tests: List[ProjectFile] = Field(default_factory=list)
@@ -124,12 +109,16 @@ class CodellamasBackendMulti:
     maven_timeout_sec: int = 180
     max_patch_iters: int = 2
 
-    def __init__(self):
+    def __init__(self, model_name: str = None, api_endpoint: str = None, api_key: str = None):
+        self.model_name = model_name or MODEL
+        self.api_endpoint = api_endpoint or BASE_URL
+        self.api_key = api_key or OPENROUTER_API_KEY
         self.llm = LLM(
-            model=MODEL,
-            base_url=BASE_URL,
-            api_key=OPENROUTER_API_KEY,
-            request_timeout=self.request_timeout_sec
+            model=self.model_name,
+            base_url=self.api_endpoint,
+            api_key=self.api_key,
+            request_timeout=self.request_timeout_sec,
+            max_tokens=30000
         )
         self.verify_tool = MavenVerifyTool()
 
@@ -424,16 +413,8 @@ class CodellamasBackendMulti:
         topic: str,
         code_smells: List[str],
         existing_codebase: str,
-        project_files: List[Any],  # scaffold from API (ProjectFile-like)
+        project_files: List[Any],
     ) -> tuple[SpringBootExercise, Dict[str, Any]]:
-        """
-        Verification + patching loops in Python.
-
-        Use this if:
-        - mode == "multi"
-        - verify_maven == True
-        - Spring scaffold project_files are provided from API
-        """
         base_project_files = self._to_project_files(project_files)
 
         meta: Dict[str, Any] = {

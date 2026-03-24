@@ -21,13 +21,13 @@ CSV_FILE_PATH = "output/exercises_evaluation.csv"
 REVIEW_CSV_FILE_PATH = "output/reviews_evaluation.csv"
 
 
-def get_backend(mode: str):
+def get_backend(mode: str, model_name: str | None = None, api_endpoint: str | None = None, api_key: str | None = None):
     if mode not in {"single", "multi"}:
         raise HTTPException(
             status_code=400,
             detail=f"Invalid mode '{mode}'. Use 'single' or 'multi'."
         )
-    return CodellamasBackendMulti() if mode == "multi" else CodellamasBackend()
+    return CodellamasBackendMulti(model_name, api_endpoint, api_key) if mode == "multi" else CodellamasBackend(model_name, api_endpoint, api_key)
 
 
 class GenerateRequest(BaseModel):
@@ -35,9 +35,11 @@ class GenerateRequest(BaseModel):
     code_smells: List[str]
     existing_codebase: str = "NONE"
     mode: str = "single"  # "single" or "multi"
-    # optional
     verify_maven: bool = False
     project_files: List[ProjectFile] = Field(default_factory=list)
+    model_name: str | None = None
+    api_endpoint: str | None = None
+    api_key: str | None = None
 
 
 class EvaluateRequest(BaseModel):
@@ -46,16 +48,15 @@ class EvaluateRequest(BaseModel):
     code_smells: List[str]
     mode: str = "single"  # "single" or "multi"
     query: str = ""  # additional context or specific questions for the review
-
-    # optional
     test_results: str = ""  # output of mvn test in the frontend
     verify_maven: bool = False
+    model_name: str | None = None
+    api_endpoint: str | None = None
+    api_key: str | None = None
 
 
 def ingest_code_smells(code_smells: List[str]) -> str:
-    if not code_smells:
-        return "None"
-    return ", ".join(code_smells)
+    return "None" if not code_smells else ", ".join(code_smells)
 
 
 def append_to_csv(exercise: SpringBootExercise, topic: str, code_smells: List[str], generation_time_sec: float, model: str, response_data: dict = None):
@@ -214,9 +215,40 @@ def run_maven_verification(*, verify_maven: bool, project_files: List[ProjectFil
     return maven_verification
 
 
+def normalize_project_files(items: list) -> list:
+    out: list[ProjectFile] = []
+    for item in items or []:
+        if isinstance(item, ProjectFile):
+            out.append(item)
+        elif isinstance(item, dict):
+            out.append(ProjectFile(**item))
+        else:
+            raise TypeError(f"Invalid project file entry: {type(item)}")
+    return out
+
+
 @app.get("/")
 async def root():
-    return {"status": "ok", "backends": ["single-agent", "multi-agent"]}
+    return {"status": "healthy", "backends": ["single-agent", "multi-agent"]}
+
+
+@app.get("/health")
+async def health():
+    return {
+        "status": "healthy",
+        "service": "codellamas-backend",
+        "backends": ["single-agent", "multi-agent"],
+        "timestamp": datetime.datetime.now().isoformat(),
+    }
+
+
+@app.get("/capabilities")
+async def capabilities():
+    return {
+        "backends": ["single-agent", "multi-agent"],
+        "maven_verification": "available",
+        "exercise_format": "Spring Boot with PROBLEM.md, SOLUTION_EXP.md, project files and test files.",
+    }
 
 
 @app.post("/generate")
@@ -224,7 +256,7 @@ async def generate_exercise(body: GenerateRequest):
     formatted_code_smells = ingest_code_smells(body.code_smells)
 
     try:
-        backend = get_backend(body.mode)
+        backend = get_backend(body.mode, model_name=body.model_name, api_endpoint=body.api_endpoint, api_key=body.api_key)
 
         if body.mode == "multi" and body.verify_maven and body.project_files:
             exercise_data, loop_meta = backend.generate_with_fix_loop(
@@ -261,6 +293,7 @@ async def generate_exercise(body: GenerateRequest):
             "data": exercise_data.model_dump(),
             "maven_verification": maven_verification,
         }
+
         if loop_meta is not None:
             response_data["meta"] = loop_meta
 
@@ -274,30 +307,14 @@ async def generate_exercise(body: GenerateRequest):
 
 @app.post("/review")
 async def review_solution(body: EvaluateRequest):
-    parsed_q: Any = {}
-    try:
-        parsed_q = json.loads(body.question_json) if body.question_json else {}
-    except Exception:
-        parsed_q = {"raw": body.question_json}
+    parsed_q: Dict[str, Any] = body.question_json or {}
 
     project_files_q = parsed_q.get("project_files", [])
     injected_tests_q = parsed_q.get("test_files", [])
 
-    def _normalize(items: list) -> list:
-        out: list[ProjectFile] = []
-        for it in items or []:
-            if isinstance(it, ProjectFile):
-                out.append(it)
-            elif isinstance(it, dict):
-                try:
-                    out.append(ProjectFile(**it))
-                except Exception:
-                    continue
-        return out
-
-    project_files = _normalize(project_files_q)
-    student_code = _normalize(body.student_code or [])
-    injected_tests = _normalize(injected_tests_q)
+    project_files = normalize_project_files(project_files_q)
+    student_code = normalize_project_files(body.student_code or [])
+    injected_tests = normalize_project_files(injected_tests_q)
 
     formatted_code_smells = ingest_code_smells(getattr(body, "code_smells", []))
 
@@ -327,11 +344,8 @@ async def review_solution(body: EvaluateRequest):
             "query": body.query or "",
             "verify_maven": body.verify_maven
         }
-        
-        # 🔹 Measure review time (same pattern as generate)
-        start_time = time.perf_counter()
-        
-        backend = get_backend(body.mode)
+
+        backend = get_backend(body.mode, model_name=body.model_name, api_endpoint=body.api_endpoint, api_key=body.api_key)
         raw = backend.review_crew().kickoff(inputs=inputs)
 
         end_time = time.perf_counter()

@@ -12,6 +12,9 @@ interface ReviewPayload {
   question_json: Record<string, any>;
   student_code: ProjectFile[];
   mode?: string;
+  model_name?: string;
+  api_endpoint?: string;
+  api_key?: string;
   query?: string;
   test_results?: string;
   verify_maven?: boolean;

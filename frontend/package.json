@@ -38,6 +38,16 @@
           "type": "webview"
         }
       ]
+    },
+    "configuration": {
+      "title": "Java Spring Boot Exercise Generator",
+      "properties": {
+        "javaExerciseGenerator.backendBaseUrl": {
+          "type": "string",
+          "default": "http://127.0.0.1:8000",
+          "description": "Base URL of the internal backend API running on the GPU cluster or via SSH tunnel."
+        }
+      }
     }
   },
   "scripts": {
