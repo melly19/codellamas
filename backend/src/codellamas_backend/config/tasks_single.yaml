@@ -1,100 +1,204 @@
-generate_exercise:
+generate_contract:
   description: >
     INPUTS:
-    - {topic}: The topic for the Spring Boot project 
-    - {code_smells}: A list of code smells should be tested for this exercise 
+    - {topic}: The topic or business domain for the refactoring exercise.
+    - {code_smells}: A list of target code smells for the exercise.
+    - {existing_codebase}: OPTIONAL. Existing project context. Use "NONE" when not applicable.
 
+    Generate ONLY the contract for ONE small Java Maven refactoring exercise.
 
-    SECTION 1: PROJECT AND EXERCISE GENERATION
-    - Generate a small Java Spring Boot project based on {topic} topic for a refactoring exercise. The files should contain common {code_smells} code smells for the university student to identify and practice refactoring on. Students should be expected to edit only 1 java ecercise file.
-    - Include necessary project files for springboot maven build (e.g., pom.xml).
-    - Maximum 4 classes, 1 controller, 1 service, no external APIs or databases.
-    - Make sure to include a class with a main() 
-    - CRITICAL: DO NOT add any comments,  or hints in the code pointing out the code smells or explaining what to do. The code must look \ realistic; messy production code.
+    The contract consists of:
+    1. problem_description
+    2. test_files
+    3. paths_to_ex
 
+    HARD CONSTRAINTS:
+    1. Keep the exercise small and focused on one business feature only.
+    2. Prefer plain Maven + JUnit 5. Do NOT require Spring Boot unless absolutely necessary.
+    3. The student should edit at most 2 Java files.
+    4. Prefer exactly 1 editable Java file when possible.
+    5. Prefer exactly 1 test file.
+    6. Do not design an architecture that requires controllers, repositories, DTOs, configs, databases, or external APIs.
+    7. The eventual implementation should realistically fit within at most 5 Java source files total.
+    8. The tests must define the authoritative public API.
+    9. The tests must be deterministic, small, and easy to satisfy with a minimal Java implementation.
+    10. Use full relative paths for every test file, such as src/test/java/com/example/... .
+    11. Every Java file path must match its package declaration.
+    12. Prefer a single public class for the main business logic unless a second class is clearly useful.
 
+    REQUIREMENTS FOR problem_description:
+    1. Briefly describe the feature.
+    2. Clearly state which Java file(s) the student is expected to edit.
+    3. Briefly name the target code smells.
+    4. Do not give step-by-step refactoring hints.
+    5. Do not mention solution design patterns.
 
-    SECTION 2: TEST CASE GENERATION
-    Generate simple JUnit test cases that define the correct behavior.
-    Tests should Pass with the original implementation (with the code smell) and also  after correct refactoring
-    Include:
-       - One or more normal case
-       - One or more edge or invalid input case.
-    Package them accordingly
+    REQUIREMENTS FOR test_files:
+    1. Generate a small JUnit 5 test suite that defines the expected behavior.
+    2. Include at least one normal case and at least one edge or invalid-input case when appropriate.
+    3. Test only observable behavior.
+    4. Do not require mocking frameworks.
+    5. Do not require Spring annotations, Spring context, or dependency injection unless absolutely necessary.
+    6. The API implied by the tests should be simple and minimal.
 
-    SECTION 3: REFERENCE SOLUTION GENERATION
-    1. Provide a recommended refactored solution that shows correct coding practices withou {code_smells} smells.
-    2. Show:
-       - The original (smelly) implementation (only the files/segments that contain the smell)
-       - Then Only the refactored implementation. Don't show any segments of code that remain unchanged.
-    4. Ensure all provided tests pass.
+    REQUIREMENTS FOR paths_to_ex:
+    1. Must contain the full relative Java file path(s) the student is expected to edit.
+    2. Must not be empty unless absolutely necessary.
+    3. Prefer exactly one path.
 
-    OUTPUT FORMAT:
-    1. problem_description:  Short description. What specific Java file student need to edit. Short definition of each each code smell. No other hints. Format should be in markdown (only for problem_description)
-    2. project_files: (with code smell) - This will be the full set of files for a new project. No comments (including pom.xml)
-    3. test_files: JUnit 5 test cases
-    4. solution_explanation_md: on how to solve the exercise in markdown 
-    5. paths_to_ex: List of exercise file paths that sudent has to edit 
-    6. answers_list: List of answer files (solved exercises in java format)
+    OUTPUT RULES:
+    - OUTPUT ONLY VALID JSON.
+    - No markdown fences.
+    - No commentary before or after the JSON.
+    - Return exactly one JSON object with this shape:
+      {
+        "problem_description": ".",
+        "test_files": [
+          {"path": "src/test/java/.", "content": "."}
+        ],
+        "paths_to_ex": ["src/main/java/."]
+      }
+
   expected_output: >
-    A structured JSON object In the below format
-    {
-      "problem_description": "",
-      "project_files": [
-        {
-          "path": "",
-          "content": ""
-        }
-      ],
-      "test_files": [
-        {
-          "path": "",
-          "content": ""
-        }
-      ],
-      "solution_explanation_md": "",
-      "paths_to_ex": [],
-      "answers_list": [  
-        {
-          "path": "<just file name no parent directory>",
-          "content": ""
-        }
-      ]
-    }
+    A strict JSON object containing only problem_description, test_files, and paths_to_ex.
 
   agent: general_agent
 
+
+generate_implementation:
+  description: >
+    INPUTS:
+    - {topic}: The topic or business domain for the exercise.
+    - {code_smells}: A list of target code smells for the exercise.
+    - {contract_json}: The authoritative contract JSON containing:
+      - problem_description
+      - test_files
+      - paths_to_ex
+    - {maven_failure_context}: OPTIONAL. Real verifier feedback from a previous implementation attempt.
+    - {previous_exercise_json}: OPTIONAL. The previously generated implementation payload.
+
+    Generate ONLY the implementation payload for the given contract.
+
+    The contract_json is authoritative.
+    You MUST preserve:
+    - problem_description
+    - test_files
+    - paths_to_ex
+
+    Your job is to generate:
+    1. project_files
+    2. solution_explanation_md
+    3. answers_list
+
+    HARD CONSTRAINTS:
+    1. Follow the public API defined by test_files exactly.
+    2. Prefer plain Maven + JUnit 5. Do NOT introduce Spring Boot unless the tests require it.
+    3. Keep the implementation very small.
+    4. The total number of Java source files in project_files must be at most 5.
+    5. Prefer 2-4 Java source files when possible.
+    6. Include a root-level pom.xml in project_files.
+    7. pom.xml does NOT count toward the Java source file limit.
+    8. Avoid controllers, repositories, DTOs, configs, databases, application.properties, Docker files, Gradle files, wrappers, and other infrastructure.
+    9. Do not add comments or hints in the smelly implementation that reveal the code smells.
+    10. The smelly implementation must still pass the tests logically.
+    11. The clean solution in answers_list must preserve the exact same public API and package structure.
+    12. answers_list must contain only changed solution files, not the full project.
+    13. Every answers_list entry must use the full relative path of the file it replaces.
+    14. The files in answers_list should normally correspond to paths_to_ex.
+    15. Every Java file path must match its package declaration.
+
+    RETRY BEHAVIOR:
+    1. If {maven_failure_context} is empty, generate the best implementation normally.
+    2. If {maven_failure_context} is provided, treat it as authoritative verifier feedback.
+    3. If {previous_exercise_json} is non-empty, treat it as the source of truth for the previous implementation payload.
+    4. In retry mode, preserve the contract_json exactly.
+    5. In retry mode, make the smallest reasonable corrections needed to pass verification.
+    6. If the retry context says the SMELLY implementation failed, primarily fix project_files.
+    7. If the retry context says the SOLUTION failed, primarily fix answers_list.
+    8. Do not rename packages, classes, methods, or file paths unless the verifier feedback clearly shows they are wrong.
+    9. Do not rewrite tests.
+    10. Output ONLY valid JSON.
+
+    REQUIREMENTS FOR project_files:
+    1. Must include pom.xml.
+    2. Must include all required Java files under src/main/java/...
+    3. Must compile against the tests.
+    4. Must contain the requested code smells naturally.
+    5. Must keep the exercise small and realistic.
+
+    REQUIREMENTS FOR pom.xml:
+    1. Minimal valid Maven pom.
+    2. Java 17.
+    3. JUnit 5 dependency.
+    4. Maven Surefire plugin.
+    5. No unnecessary dependencies.
+
+    REQUIREMENTS FOR answers_list:
+    1. Must be a clean refactored solution.
+    2. Must preserve public API and behavior required by tests.
+    3. Must normally contain only the changed Java files.
+    4. May include pom.xml only if absolutely required for correctness.
+
+    OUTPUT RULES:
+    - OUTPUT ONLY VALID JSON.
+    - No markdown fences.
+    - No commentary before or after the JSON.
+    - Return exactly one JSON object with this shape:
+      {
+        "project_files": [
+          {"path": "pom.xml", "content": "."},
+          {"path": "src/main/java/.", "content": "."}
+        ],
+        "solution_explanation_md": ".",
+        "answers_list": [
+          {"path": "src/main/java/.", "content": "."}
+        ]
+      }
+
+  expected_output: >
+    A strict JSON object containing only project_files, solution_explanation_md, and answers_list.
+
+  agent: general_agent
+
+
 review_solution:
   description: >
-    You are reviewing a java springboot exercise. First read and understand the original exercise then
-    compare student's submitted code with the actual solution. Give the student feedback on how he did 
-    - Answer: {query}
+    You are reviewing a Java Maven / Spring Boot refactoring exercise.
+    First understand the original exercise, then compare the student's submitted code with the intended solution.
+
     Context:
     - Original exercise and solution files: {question_json}
     - The student's submitted files: {student_code}
-    - The code smells that were tested for the task (list): {code_smells}:
-    - {test_results}
+    - The code smells that were tested for the task: {code_smells}
+    - Test or verifier results: {test_results}
+    - Additional user query: {query}
 
-     OUTPUT FORMAT:
-     1. How did the student do in this exercise
-     3. Hints on how the student can do better if any. Without revealing too much
-     5. A rating of the solution out of 5
-       0 - did not change the code at all
-       5 - solution matches intention of the answer files
-    Include headers and output in markdown format
-    Use concise points
+    OUTPUT FORMAT:
+    1. Overall performance in this exercise
+    2. Areas for improvement
+    3. Code smell observations
+    4. Rating out of 5
+
+    Rating guide:
+    - 0 = did not meaningfully change the code
+    - 5 = solution matches the intention of the answer files and preserves correctness
+
+    Include headers and output in markdown format.
+    Use concise points.
+
   expected_output: >
     ### Review of Student Submission
 
-      #### 1. Overall Performance
-      [concise points]
+    #### 1. Overall Performance
+    [concise points]
 
-      #### 2. Areas for Improvement
-      [concise points]
+    #### 2. Areas for Improvement
+    [concise points]
 
-      #### 3. Code Smell Observations
-      [concise points]
+    #### 3. Code Smell Observations
+    [concise points]
 
-      #### 4. Rating
-      [number 0-5]
+    #### 4. Rating
+    [number 0-5]
+
   agent: general_agent

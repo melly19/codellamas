@@ -1097,6 +1097,7 @@ window.addEventListener("message", (event) => {
         topic, 
         code_smells: smells, 
         mode: this.mode,
+        verify_maven: true,
         model_name: this.modelName,
         api_endpoint: this.apiEndpoint,
         api_key: this.apiKey 
@@ -1168,6 +1169,7 @@ window.addEventListener("message", (event) => {
       
       // Attach the mode and other settings to the payload dynamically
       builtPayload.mode = this.mode;
+      builtPayload.verify_maven = true;
       builtPayload.model_name = this.modelName;
       builtPayload.api_endpoint = this.apiEndpoint;
       builtPayload.api_key = this.apiKey;
