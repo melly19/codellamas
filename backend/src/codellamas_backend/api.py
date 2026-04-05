@@ -1,4 +1,5 @@
 import os
+import re
 import logging
 import datetime
 import json
@@ -28,8 +29,8 @@ class GenerateRequest(BaseModel):
     topic: str
     code_smells: List[str]
     existing_codebase: str = "NONE"
-    mode: str = "single"  # "single" or "multi"
-    verify_maven: bool = False
+    mode: str = "single"
+    verify_maven: bool = True
     project_files: List[ProjectFile] = Field(default_factory=list)
     model_name: str | None = None
     api_endpoint: str | None = None
@@ -39,6 +40,9 @@ class EvaluateRequest(BaseModel):
     question_json: Dict[str, Any] = Field(default_factory=dict)
     student_code: List[ProjectFile] = Field(default_factory=list)
     code_smells: List[str]
+    mode: str = "single"
+    query: str = ""
+    test_results: str = ""
     mode: str = "single"
     query: str = ""
     test_results: str = ""
@@ -181,31 +185,31 @@ def save_exercise_to_repo(exercise: SpringBootExercise, topic: str, code_smells:
     base_repo_dir = os.path.join(os.getcwd(), "generated_exercises", folder_name)
     os.makedirs(base_repo_dir, exist_ok=True)
 
-    with open(os.path.join(base_repo_dir, "PROBLEM.md"), "w") as f:
+    with open(os.path.join(base_repo_dir, "PROBLEM.md"), "w", encoding="utf-8") as f:
         f.write(exercise.problem_description)
 
     for file in exercise.project_files:
         full_path = os.path.join(base_repo_dir, file.path)
         os.makedirs(os.path.dirname(full_path), exist_ok=True)
-        with open(full_path, "w") as f:
+        with open(full_path, "w", encoding="utf-8") as f:
             f.write(file.content)
 
     for file in exercise.test_files:
         full_path = os.path.join(base_repo_dir, file.path)
         os.makedirs(os.path.dirname(full_path), exist_ok=True)
-        with open(full_path, "w") as f:
+        with open(full_path, "w", encoding="utf-8") as f:
             f.write(file.content)
 
-    with open(os.path.join(base_repo_dir, "SOLUTION_EXP.md"), "w") as f:
+    with open(os.path.join(base_repo_dir, "SOLUTION_EXP.md"), "w", encoding="utf-8") as f:
         f.write(exercise.solution_explanation_md)
 
-    if hasattr(exercise, 'answers_list') and exercise.answers_list:
+    if exercise.answers_list:
         answers_dir = os.path.join(base_repo_dir, "answers")
         os.makedirs(answers_dir, exist_ok=True)
         for file in exercise.answers_list:
             full_path = os.path.join(answers_dir, file.path)
             os.makedirs(os.path.dirname(full_path), exist_ok=True)
-            with open(full_path, "w") as f:
+            with open(full_path, "w", encoding="utf-8") as f:
                 f.write(file.content)
 
     return base_repo_dir, folder_name
@@ -233,7 +237,8 @@ def run_maven_verification(*, verify_maven: bool, project_files: List[ProjectFil
         injected_tests=inject_tests_dict,
     )
 
-    maven_verification.update({
+    maven_verification.update(
+        {
             "status": verification.status,
             "failed_tests": verification.failed_tests,
             "errors": verification.errors,
@@ -261,7 +266,7 @@ async def capabilities():
     return {
         "backends": ["single-agent", "multi-agent"],
         "maven_verification": "available",
-        "exercise_format": "Spring Boot with PROBLEM.md, SOLUTION_EXP.md, project files and test files.",
+        "exercise_format": "Java Maven refactoring exercise with PROBLEM.md, SOLUTION_EXP.md, project files and test files.",
     }
 
 @app.post("/generate")
@@ -273,12 +278,20 @@ async def generate_exercise(body: GenerateRequest):
         
         start_time = time.perf_counter()
 
-        if body.mode == "multi" and body.verify_maven and body.project_files:
+        base_project_files = (
+            normalize_project_files(body.project_files)
+            if body.project_files
+            else default_base_project_files()
+        )
+
+        loop_meta = None
+
+        if body.mode == "multi" and body.verify_maven:
             exercise_data, loop_meta = backend.generate_with_fix_loop(
                 topic=body.topic,
                 code_smells=body.code_smells,
                 existing_codebase=body.existing_codebase,
-                project_files=body.project_files
+                project_files=base_project_files,
             )
         else:
             result = backend.generation_crew().kickoff(inputs={
@@ -295,9 +308,9 @@ async def generate_exercise(body: GenerateRequest):
         # Save to disk and get the folder name for CSV logging
         saved_path, folder_name = save_exercise_to_repo(exercise_data, body.topic, body.code_smells, body.mode)
 
-        maven_verification = run_maven_verification(
+        smelly_verification = run_maven_verification(
             verify_maven=body.verify_maven,
-            project_files=body.project_files,
+            project_files=base_project_files,
             override_files=exercise_data.project_files,
             injected_tests=exercise_data.test_files,
             timeout_sec=180,
@@ -365,8 +378,11 @@ async def review_solution(body: EvaluateRequest):
         )
 
         test_results = body.test_results or ""
-        if (maven_verification.get("enabled") and maven_verification.get("status") not in (None, "SKIPPED")
-                and maven_verification.get("raw_log_head")):
+        if (
+            maven_verification.get("enabled")
+            and maven_verification.get("status") not in (None, "SKIPPED")
+            and maven_verification.get("raw_log_head")
+        ):
             test_results = maven_verification["raw_log_head"]
 
         inputs: Dict[str, Any] = {
@@ -378,10 +394,15 @@ async def review_solution(body: EvaluateRequest):
             "code_smells": formatted_code_smells,
             "mode": body.mode,
             "query": body.query or "",
-            "verify_maven": body.verify_maven
+            "verify_maven": body.verify_maven,
         }
 
-        backend = get_backend(body.mode, model_name=body.model_name, api_endpoint=body.api_endpoint, api_key=body.api_key)
+        backend = get_backend(
+            body.mode,
+            model_name=body.model_name,
+            api_endpoint=body.api_endpoint,
+            api_key=body.api_key,
+        )
         raw = backend.review_crew().kickoff(inputs=inputs)
 
         end_time = time.perf_counter()
