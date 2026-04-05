@@ -9,10 +9,10 @@ from codellamas_backend.schemas.files import ProjectFile
 
 
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+# GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 BASE_URL = "https://openrouter.ai/api/v1"
-# MODEL = "openrouter/qwen/qwen3-coder-30b-a3b-instruct"
-MODEL = "gemini/gemini-3.1-flash-lite-preview"
+MODEL = "openrouter/qwen/qwen3-coder-30b-a3b-instruct"
+# MODEL = "gemini/gemini-3.1-flash-lite-preview"
 
 
 # MODEL = "openrouter/z-ai/glm-4.5-air:free"
@@ -55,7 +55,7 @@ class CodellamasBackend:
     ):
         self.model_name = model_name or MODEL
         self.api_endpoint = api_endpoint or BASE_URL
-        self.api_key = api_key or GEMINI_API_KEY
+        self.api_key = api_key or OPENROUTER_API_KEY
 
     @agent
     def general_agent(self) -> Agent:
