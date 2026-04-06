@@ -1,8 +1,9 @@
 {
-  "name": "code-llamas",
-  "displayName": "code llamas",
-  "description": "refactoring assistance",
-  "version": "0.0.1",
+  "name": "codellamas",
+  "displayName": "codellamas",
+  "publisher": "MichaelSuteja",
+  "description": "Java Spring Boot Refactoring Exercise Generator",
+  "version": "1.3.0",
   "engines": {
     "vscode": "^1.108.0"
   },
@@ -12,7 +13,7 @@
   "activationEvents": [
     "onView:codellamas_activityView",
     "onCommand:code-llamas.helloWorld"
-    ],
+  ],
   "main": "./out/extension.js",
   "contributes": {
     "commands": [
@@ -70,6 +71,8 @@
     "typescript-eslint": "^8.52.0"
   },
   "dependencies": {
+    "marked": "^17.0.6",
+    "treeselectjs": "^0.14.2",
     "unzipper": "^0.12.3"
   }
 }
