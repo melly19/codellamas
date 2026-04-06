@@ -4,9 +4,11 @@ import logging
 import datetime
 import json
 import csv
+import time
+import asyncio
 from typing import List, Dict, Any, Tuple
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, BackgroundTasks
 from pydantic import BaseModel, Field
 
 from codellamas_backend.crews.crew_single import (
@@ -24,7 +26,10 @@ logging.getLogger("LiteLLM").setLevel(logging.CRITICAL)
 
 app = FastAPI()
 CSV_FILE_PATH = "output/exercises_evaluation.csv"
-
+csv_write_lock = asyncio.Lock()
+request_queue_counter = 0
+request_current_turn = 0
+write_condition = asyncio.Condition()
 
 def get_backend(
     mode: str,
@@ -49,6 +54,7 @@ class GenerateRequest(BaseModel):
     code_smells: List[str]
     existing_codebase: str = "NONE"
     mode: str = "single"
+    count: int = 1
     verify_maven: bool = True
     project_files: List[ProjectFile] = Field(default_factory=list)
     model_name: str | None = None
@@ -635,99 +641,155 @@ async def capabilities():
     }
 
 
-@app.post("/generate")
-async def generate_exercise(body: GenerateRequest):
-    formatted_code_smells = ingest_code_smells(body.code_smells)
-
-    try:
-        backend = get_backend(
-            body.mode,
-            model_name=body.model_name,
-            api_endpoint=body.api_endpoint,
-            api_key=body.api_key,
-        )
-
-        base_project_files = (
-            normalize_project_files(body.project_files)
-            if body.project_files
-            else default_base_project_files()
-        )
-
-        loop_meta = None
-
-        if body.mode == "multi" and body.verify_maven:
-            exercise_data, loop_meta = backend.generate_with_fix_loop(
-                topic=body.topic,
-                code_smells=body.code_smells,
-                existing_codebase=body.existing_codebase,
-                project_files=base_project_files,
-            )
-        else:
-            contract = generate_single_contract(
-                backend=backend,
-                topic=body.topic,
-                code_smells=formatted_code_smells,
-                existing_codebase=body.existing_codebase,
+def _execute_single_generation(body: GenerateRequest, max_retries: int = 3):
+    last_error = None
+    for attempt in range(max_retries):
+        try:
+            formatted_code_smells = ingest_code_smells(body.code_smells)
+            backend = get_backend(
+                body.mode,
+                model_name=body.model_name,
+                api_endpoint=body.api_endpoint,
+                api_key=body.api_key,
             )
 
-            exercise_data, loop_meta = generate_single_implementation_with_retries(
-                backend=backend,
-                topic=body.topic,
-                code_smells=formatted_code_smells,
-                contract=contract,
-                base_project_files=base_project_files,
-                verify_maven=body.verify_maven,
+            base_project_files = (
+                normalize_project_files(body.project_files)
+                if body.project_files
+                else default_base_project_files()
             )
 
-        saved_path = save_exercise_to_repo(exercise_data, body.topic)
+            loop_meta = None
 
-        smelly_verification = run_maven_verification(
-            verify_maven=body.verify_maven,
-            project_files=base_project_files,
-            override_files=exercise_data.project_files,
-            injected_tests=exercise_data.test_files,
-            timeout_sec=180,
-        )
+            if body.mode == "multi" and body.verify_maven:
+                exercise_data, loop_meta = backend.generate_with_fix_loop(
+                    topic=body.topic,
+                    code_smells=body.code_smells,
+                    existing_codebase=body.existing_codebase,
+                    project_files=base_project_files,
+                )
+            else:
+                contract = generate_single_contract(
+                    backend=backend,
+                    topic=body.topic,
+                    code_smells=formatted_code_smells,
+                    existing_codebase=body.existing_codebase,
+                )
 
-        maven_verification: Dict[str, Any] = smelly_verification
+                exercise_data, loop_meta = generate_single_implementation_with_retries(
+                    backend=backend,
+                    topic=body.topic,
+                    code_smells=formatted_code_smells,
+                    contract=contract,
+                    base_project_files=base_project_files,
+                    verify_maven=body.verify_maven,
+                )
 
-        if body.mode == "single":
-            solution_override_files = build_solution_override_files(
-                project_files=exercise_data.project_files,
-                answers_list=exercise_data.answers_list,
-                paths_to_ex=exercise_data.paths_to_ex,
-            )
+            saved_path = save_exercise_to_repo(exercise_data, body.topic)
 
-            solution_verification = run_maven_verification(
+            smelly_verification = run_maven_verification(
                 verify_maven=body.verify_maven,
                 project_files=base_project_files,
-                override_files=solution_override_files,
+                override_files=exercise_data.project_files,
                 injected_tests=exercise_data.test_files,
                 timeout_sec=180,
-                skipped_reason="verify_maven=true but no base project_files provided for solution verification",
             )
 
-            maven_verification = {
-                "smelly": smelly_verification,
-                "solution": solution_verification,
+            maven_verification: Dict[str, Any] = smelly_verification
+
+            if body.mode == "single":
+                solution_override_files = build_solution_override_files(
+                    project_files=exercise_data.project_files,
+                    answers_list=exercise_data.answers_list,
+                    paths_to_ex=exercise_data.paths_to_ex,
+                )
+
+                solution_verification = run_maven_verification(
+                    verify_maven=body.verify_maven,
+                    project_files=base_project_files,
+                    override_files=solution_override_files,
+                    injected_tests=exercise_data.test_files,
+                    timeout_sec=180,
+                    skipped_reason="verify_maven=true but no base project_files provided for solution verification",
+                )
+
+                maven_verification = {
+                    "smelly": smelly_verification,
+                    "solution": solution_verification,
+                }
+
+            response_data: Dict[str, Any] = {
+                "status": "success",
+                "message": f"Exercise generated and saved to {saved_path}",
+                "data": exercise_data.model_dump(),
+                "maven_verification": maven_verification,
             }
 
-        response_data: Dict[str, Any] = {
-            "status": "success",
-            "message": f"Exercise generated and saved to {saved_path}",
-            "data": exercise_data.model_dump(),
-            "maven_verification": maven_verification,
-        }
+            if loop_meta is not None:
+                response_data["meta"] = loop_meta
 
-        if loop_meta is not None:
-            response_data["meta"] = loop_meta
+            csv_row_args = {
+                "exercise": exercise_data,
+                "topic": body.topic,
+                "model": body.mode,
+                "response_data": response_data,
+            }
 
-        append_to_csv(exercise_data, body.topic, model=body.mode, response_data=response_data)
-        return response_data
+            return response_data, csv_row_args
 
+        except Exception as e:
+            logging.warning(f"Generation attempt {attempt+1} failed: {e}")
+            last_error = e
+
+    return {"status": "error", "message": f"Generation failed after {max_retries} attempts: {last_error}"}, None
+
+@app.post("/generate")
+async def generate_exercise(body: GenerateRequest):
+    global request_queue_counter, request_current_turn
+    
+    async with csv_write_lock:
+        my_turn = request_queue_counter
+        request_queue_counter += 1
+
+    try:
+        # Run generations in parallel in separate threads
+        tasks = [asyncio.to_thread(_execute_single_generation, body, 3) for _ in range(body.count)]
+        results = await asyncio.gather(*tasks)
     except Exception as e:
+        # Prevent queue from blocking on exception
+        async with write_condition:
+            while request_current_turn != my_turn:
+                await write_condition.wait()
+            request_current_turn += 1
+            write_condition.notify_all()
+            
+        logging.error(f"Generation failed: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
+    # Sequential write phase
+    async with write_condition:
+        while request_current_turn != my_turn:
+            await write_condition.wait()
+        
+        try:
+            for response, csv_args in results:
+                if csv_args is not None:
+                    append_to_csv(**csv_args)
+        finally:
+            request_current_turn += 1
+            write_condition.notify_all()
+
+    responses = [res for res, _ in results]
+    if body.count == 1:
+        if responses[0].get("status") == "error":
+            raise HTTPException(status_code=500, detail=responses[0].get("message"))
+        return responses[0]
+    
+    return {
+        "status": "success",
+        "message": f"Finished generating {body.count} exercises.",
+        "results": responses
+    }
 
 @app.post("/review")
 async def review_solution(body: EvaluateRequest):
@@ -784,3 +846,4 @@ async def review_solution(body: EvaluateRequest):
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Review crew failed: {e}")
+
