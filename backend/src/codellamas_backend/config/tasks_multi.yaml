@@ -1,11 +1,10 @@
 # --- GENERATION CREW TASKS ---
 
 define_problem:
-  description: > 
+  description: >
     INPUTS:
     - {topic}: The business domain for the Spring Boot project (e.g. "banking", "e-commerce")
-    - {code_smells}: A list of target code smells that this exercise should contain (ONLY use these code smells)
-      (e.g. ["Long Method", "God Class", "Duplicate Code"])
+    - {code_smells}: A list of target code smells that this exercise should contain
     - {existing_codebase}: OPTIONAL. A structured string containing an existing Spring Boot codebase.
       Use "NONE" if a fresh project should be generated.
 
@@ -243,16 +242,17 @@ run_tests_on_answers_list:
     Using the FULL exercise JSON from the previous task, call the maven_verify tool
     to verify the CLEAN reference solution.
 
+    IMPORTANT:
+    - `answers_list` contains only the changed clean files.
+    - The actual clean solution to verify is:
+      the smelly `project_files`, overridden by `answers_list`.
+
     Tool arguments MUST be:
     - base_project_files = the Spring scaffold/base project provided at runtime
-    - override_project_files = the full `answers_list` from the exercise JSON
+    - override_project_files = the FULL merged clean solution override set
+      (that is, smelly `project_files` with `answers_list` applied on top)
     - injected_tests = the full `test_files` from the exercise JSON
     - timeout_sec = 180
-
-    Interpretation:
-    - base_project_files = scaffold/base project
-    - answers_list = the clean solution files that override the scaffold
-    - test_files = the canonical tests
 
     Return STRICT JSON ONLY with this exact schema:
     {
@@ -314,16 +314,19 @@ audit_exercise:
     8. A valid root-level pom.xml exists in project_files or is preserved for the final package
     9. pom.xml is mandatory but does not count toward the Java file limit
 
-    If the exercise is overly large or complex, simplify it while preserving intent.
+    IMPORTANT:
+    - This is an audit, not a rewrite step.
+    - Preserve project_files, test_files, paths_to_ex, and answers_list exactly unless a field is empty or invalid.
+    - Do not change code or tests just to "improve" them.
 
     OUTPUT MUST BE STRICT JSON ONLY.
 
     Return the final FULL exercise package in exactly this shape:
     {
-      "problem_description": "<markdown short description + student file(s) to edit + short definition of each code smell>",
+      "problem_description": "<carry forward unchanged or minimally clarified>",
       "project_files": [{"path":"...","content":"..."}],
       "test_files": [{"path":"...","content":"..."}],
-      "solution_explanation_md": "<markdown explanation of the clean solution>",
+      "solution_explanation_md": "<carry forward unchanged or minimally clarified>",
       "paths_to_ex": ["src/main/java/..."],
       "answers_list": [{"path":"...","content":"..."}]
     }
