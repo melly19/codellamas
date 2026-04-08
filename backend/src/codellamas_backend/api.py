@@ -815,7 +815,7 @@ def _execute_single_generation(body: GenerateRequest, max_retries: int = 3):
 
             csv_row_args = {
                 "folder_name": os.path.basename(saved_path),
-                "model": body.mode,
+                "model": MODEL_SINGLE if body.mode == "single" else MODEL_MULTI,
                 "topic": body.topic,
                 "code_smells": body.code_smells,
                 "problem": exercise_data.problem_description,
