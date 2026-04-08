@@ -118,13 +118,6 @@ def append_to_csv(
     solution_explanation: str,
     solution_code: str
 ):
-
-def append_to_csv(
-    exercise: SpringBootExercise,
-    topic: str,
-    model: str,
-    response_data: dict | None = None,
-):
     try:
         os.makedirs(os.path.dirname(CSV_FILE_PATH), exist_ok=True)
         timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -158,13 +151,6 @@ def append_to_csv(
         file_exists = os.path.isfile(CSV_FILE_PATH)
 
         with open(CSV_FILE_PATH, mode="a", newline="", encoding="utf-8") as csvfile:
-            fieldnames = [
-                "timestamp",
-                "topic",
-                "problem_description",
-                "single_or_multi",
-                "response_json",
-            ]
             writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
             if not file_exists:
                 writer.writeheader()
@@ -783,7 +769,7 @@ def _execute_single_generation(body: GenerateRequest, max_retries: int = 3):
                     verify_maven=body.verify_maven,
                 )
 
-            saved_path = save_exercise_to_repo(exercise_data, body.topic)
+            saved_path = save_exercise_to_repo(exercise_data, body.topic, body.code_smells, body.mode)
 
             smelly_verification = run_maven_verification(
                 verify_maven=body.verify_maven,
@@ -792,6 +778,7 @@ def _execute_single_generation(body: GenerateRequest, max_retries: int = 3):
                 injected_tests=exercise_data.test_files,
                 timeout_sec=180,
             )
+
 
             maven_verification: Dict[str, Any] = smelly_verification
 
@@ -827,10 +814,15 @@ def _execute_single_generation(body: GenerateRequest, max_retries: int = 3):
                 response_data["meta"] = loop_meta
 
             csv_row_args = {
-                "exercise": exercise_data,
-                "topic": body.topic,
+                "folder_name": os.path.basename(saved_path),
                 "model": body.mode,
-                "response_data": response_data,
+                "topic": body.topic,
+                "code_smells": body.code_smells,
+                "problem": exercise_data.problem_description,
+                "project_files": json.dumps([f.model_dump() for f in exercise_data.project_files]),
+                "test_files": json.dumps([f.model_dump() for f in exercise_data.test_files]),
+                "solution_explanation": exercise_data.solution_explanation_md,
+                "solution_code": json.dumps([f.model_dump() for f in exercise_data.answers_list])
             }
 
             return response_data, csv_row_args
