@@ -1,11 +1,10 @@
 # --- GENERATION CREW TASKS ---
 
 define_problem:
-  description: > 
+  description: >
     INPUTS:
     - {topic}: The business domain for the Spring Boot project (e.g. "banking", "e-commerce")
     - {code_smells}: A list of target code smells that this exercise should contain
-      (e.g. ["Long Method", "God Class", "Duplicate Code"])
     - {existing_codebase}: OPTIONAL. A structured string containing an existing Spring Boot codebase.
       Use "NONE" if a fresh project should be generated.
 
@@ -15,11 +14,13 @@ define_problem:
     Hard constraints:
     1. The exercise must focus on a single small business feature only.
     2. The student must need to edit at most 2 Java files.
-    3. The overall implementation should contain at most 5 project files.
-    4. Prefer 2-4 project files when possible.
-    5. Avoid unnecessary architectural layers, DTOs, repositories, controllers, configs, or utilities.
-    6. Prefer plain Java service/domain classes unless Spring-specific structure is absolutely necessary.
-    7. The exercise should be solvable by a student in a short session and should not feel like a full application.
+    3. The Java implementation should contain at most 5 Java source files total.
+    4. Prefer 2-4 Java source files when possible.
+    5. A root-level pom.xml is REQUIRED for every generated exercise.
+    6. pom.xml does NOT count toward the Java file limit.
+    7. Avoid unnecessary architectural layers, DTOs, repositories, controllers, configs, or utilities.
+    8. Prefer plain Java service/domain classes unless Spring-specific structure is absolutely necessary.
+    9. The exercise should be solvable by a student in a short session and should not feel like a full application.
 
     Clearly describe:
     1. what the small feature does,
@@ -41,16 +42,21 @@ define_tests:
     2. Prefer a single test file. Use at most 2 test files.
     3. Keep the number of test cases minimal but sufficient.
     4. Do not force a large architecture or many supporting classes.
-    5. The tests should imply an implementation of at most 5 project files total.
+    5. The implied implementation should contain at most 5 Java source files total.
+    6. A root-level pom.xml will exist and must be sufficient to compile and run the tests in Maven.
 
     Requirements:
     1. The tests define the authoritative external behaviour for the exercise.
     2. Invent all required class names, method signatures, inputs, and edge cases.
     3. Test only observable behaviour, not implementation details.
-    4. Output the FULL test files, each with:
+    4. Assume a standard Maven directory layout:
+       - src/main/java/...
+       - src/test/java/...
+       - pom.xml at project root
+    5. Output the FULL test files, each with:
        - path: full relative path
        - content: complete file contents
-    5. The tests must be compilable in a standard Maven Spring Boot project.
+    6. The tests must be compilable in a standard Maven Spring Boot or plain Maven JUnit 5 project.
 
     OUTPUT MUST BE STRICT JSON ONLY as an array-like test_files payload consumable by later tasks.
   expected_output: >
@@ -63,29 +69,43 @@ implement_smelly_code:
     1. The Problem Description from define_problem
     2. The JUnit 5 Test Suite from define_tests
 
-    Implement the INITIAL SMELLY VERSION of the Spring Boot exercise.
+    Implement the INITIAL SMELLY VERSION of the Spring Boot / Maven refactoring exercise.
 
     Hard constraints:
     1. The implementation MUST stay small and simple.
-    2. The total number of project_files must be at most 5.
-    3. Prefer 2-4 project_files when possible.
-    4. paths_to_ex must contain at most 2 files.
-    5. Prefer exactly 1 or 2 student-editable files.
-    6. Avoid generating unnecessary helper classes, configs, controllers, repositories, DTOs, mappers, or utilities.
-    7. Keep the business logic centered in a very small set of classes.
+    2. The total number of Java source files in `project_files` must be at most 5.
+    3. Prefer 2-4 Java source files when possible.
+    4. A root-level `pom.xml` is MANDATORY in `project_files`.
+    5. `pom.xml` does NOT count toward the Java source file limit.
+    6. `paths_to_ex` must contain at most 2 Java files.
+    7. Prefer exactly 1 or 2 student-editable Java files.
+    8. Avoid generating unnecessary helper classes, configs, controllers, repositories, DTOs, mappers, or utilities.
+    9. Keep the business logic centered in a very small set of classes.
 
     Requirements:
     1. The implementation MUST pass the provided tests logically.
     2. It MUST use the EXACT public API required by the tests.
     3. It MUST intentionally contain the requested code smells.
     4. It MUST identify which Java files the student is expected to edit.
-    5. Include all implementation files needed for the exercise payload.
+    5. It MUST include all implementation files needed for a runnable Maven project.
+    6. `project_files` MUST include:
+       - a root-level `pom.xml`
+       - all required Java source files under `src/main/java/...`
+    7. Generate a MINIMAL valid `pom.xml` that supports:
+       - Java 17
+       - Maven Surefire test execution
+       - JUnit 5 tests
+       - Spring Boot dependencies ONLY if truly needed by the tests
+    8. Do not generate extra build files such as Gradle wrappers, mvnw, application.properties, or Docker files unless explicitly required.
 
     OUTPUT MUST BE STRICT JSON ONLY.
     Return the FULL exercise payload in exactly this shape:
     {
       "problem_description": "<carry forward the exact problem description>",
-      "project_files": [{"path":"...","content":"..."}],
+      "project_files": [
+        {"path":"pom.xml","content":"..."},
+        {"path":"src/main/java/...","content":"..."}
+      ],
       "test_files": [{"path":"...","content":"..."}],
       "solution_explanation_md": "<brief markdown note that this is the initial smelly version>",
       "paths_to_ex": ["src/main/java/..."],
@@ -93,14 +113,15 @@ implement_smelly_code:
     }
 
     Important:
-    - project_files must contain the full smelly implementation files.
-    - test_files must carry forward the full test suite unchanged.
-    - paths_to_ex must not be empty unless there is a very strong reason.
-    - answers_list must be an empty array at this stage.
+    - `project_files` must ALWAYS include `pom.xml`.
+    - `project_files` must contain the full smelly implementation files.
+    - `test_files` must carry forward the full test suite unchanged.
+    - `paths_to_ex` must not be empty unless there is a very strong reason.
+    - `answers_list` must be an empty array at this stage.
     - Return JSON only. No markdown fences. No explanations outside the JSON.
   expected_output: >
     Strict JSON object containing problem_description, project_files, test_files,
-    solution_explanation_md, paths_to_ex, and answers_list.
+    solution_explanation_md, paths_to_ex, and answers_list, with mandatory pom.xml.
   agent: smelly_developer
 
 run_tests_on_smelly_code:
@@ -136,23 +157,25 @@ patch_smelly_code:
     Preserve the code smells as much as possible.
 
     CRITICAL RULES:
-    1. Fix only correctness, compilation, packaging, or path issues.
+    1. Fix only correctness, compilation, packaging, path, or Maven build issues.
     2. Do NOT refactor it into a clean solution.
     3. Do NOT remove the intended smells unless unavoidable for correctness.
     4. Do NOT drop any fields from the payload.
+    5. `project_files` MUST continue to include a valid root-level `pom.xml`.
 
     Hard constraints:
     1. Preserve the small project scope.
-    2. Do not increase project_files beyond 5.
-    3. Do not increase paths_to_ex beyond 2 files.
+    2. Do not increase Java source files beyond 5.
+    3. Do not increase `paths_to_ex` beyond 2 Java files.
     4. Do not introduce new files unless absolutely necessary for correctness.
     5. Preserve the code smells as much as possible.
+    6. `pom.xml` does NOT count toward the Java source file limit.
 
     OUTPUT MUST BE STRICT JSON ONLY.
     Return the FULL exercise payload again in exactly this shape:
     {
       "problem_description": "<carry forward unchanged or minimally updated>",
-      "project_files": [{"path":"...","content":"..."}],
+      "project_files": [{"path":"pom.xml","content":"..."},{"path":"...","content":"..."}],
       "test_files": [{"path":"...","content":"..."}],
       "solution_explanation_md": "<brief markdown note>",
       "paths_to_ex": ["src/main/java/..."],
@@ -171,27 +194,31 @@ generate_answers_list:
     Produce the CLEAN REFERENCE SOLUTION.
 
     Hard constraints:
-    1. Keep the same small project structure.
-    2. Do not increase project_files beyond 5.
-    3. Do not increase paths_to_ex beyond 2 files.
+    1. Keep the same small Maven project structure.
+    2. Do not increase Java source files beyond 5.
+    3. Do not increase paths_to_ex beyond 2 Java files.
     4. The refactoring should primarily affect only the files listed in paths_to_ex.
     5. Avoid introducing extra abstractions unless they are truly necessary.
     6. Prefer simple refactoring over enterprise-style redesign.
+    7. The project must remain Maven-runnable with the root-level pom.xml preserved.
 
     Requirements:
     1. Remove or significantly mitigate the intended code smells.
     2. Preserve the EXACT same public API required by the tests.
     3. Ensure the clean solution still passes the same tests.
     4. Put the clean solution files into `answers_list`.
-    5. Each entry in answers_list MUST include:
+    5. Each entry in `answers_list` MUST include:
        - path: full relative path
        - content: full file contents
+    6. If the clean solution requires pom.xml changes, include `pom.xml` in `answers_list`;
+       otherwise preserve the original `pom.xml` from `project_files` unchanged.
+    7. Do not omit build-critical files.
 
     OUTPUT MUST BE STRICT JSON ONLY.
     Return the FULL exercise payload again in exactly this shape:
     {
       "problem_description": "<carry forward unchanged>",
-      "project_files": [{"path":"...","content":"..."}],
+      "project_files": [{"path":"pom.xml","content":"..."},{"path":"...","content":"..."}],
       "test_files": [{"path":"...","content":"..."}],
       "solution_explanation_md": "<markdown explanation of how the clean solution removes the smells>",
       "paths_to_ex": ["src/main/java/..."],
@@ -199,12 +226,13 @@ generate_answers_list:
     }
 
     Important:
-    - project_files must carry forward the original smelly implementation unchanged.
-    - test_files must carry forward the exact same tests unchanged.
-    - paths_to_ex must carry forward unchanged.
-    - problem_description must not be omitted.
-    - solution_explanation_md must not be omitted.
-    - Do NOT return empty project_files, test_files, or paths_to_ex.
+    - `project_files` must carry forward the original smelly implementation unchanged.
+    - `project_files` must continue to include `pom.xml`.
+    - `test_files` must carry forward the exact same tests unchanged.
+    - `paths_to_ex` must carry forward unchanged.
+    - `problem_description` must not be omitted.
+    - `solution_explanation_md` must not be omitted.
+    - Do NOT return empty `project_files`, `test_files`, or `paths_to_ex`.
   expected_output: >
     Strict JSON object containing the full exercise payload with a populated answers_list.
   agent: answers_list_developer
@@ -214,16 +242,17 @@ run_tests_on_answers_list:
     Using the FULL exercise JSON from the previous task, call the maven_verify tool
     to verify the CLEAN reference solution.
 
+    IMPORTANT:
+    - `answers_list` contains only the changed clean files.
+    - The actual clean solution to verify is:
+      the smelly `project_files`, overridden by `answers_list`.
+
     Tool arguments MUST be:
     - base_project_files = the Spring scaffold/base project provided at runtime
-    - override_project_files = the full `answers_list` from the exercise JSON
+    - override_project_files = the FULL merged clean solution override set
+      (that is, smelly `project_files` with `answers_list` applied on top)
     - injected_tests = the full `test_files` from the exercise JSON
     - timeout_sec = 180
-
-    Interpretation:
-    - base_project_files = scaffold/base project
-    - answers_list = the clean solution files that override the scaffold
-    - test_files = the canonical tests
 
     Return STRICT JSON ONLY with this exact schema:
     {
@@ -251,6 +280,7 @@ patch_answers_list:
     2. Preserve the exact public API expected by the tests.
     3. Do NOT drop any fields from the payload.
     4. Do NOT replace the answers_list with empty content.
+    5. The resulting package must remain Maven-runnable and must preserve a valid root-level pom.xml.
 
     OUTPUT MUST BE STRICT JSON ONLY.
     Return the FULL exercise payload again in exactly this shape:
@@ -281,17 +311,22 @@ audit_exercise:
     5. The exercise remains small and simple
     6. project_files has at most 5 files
     7. paths_to_ex has at most 2 files
+    8. A valid root-level pom.xml exists in project_files or is preserved for the final package
+    9. pom.xml is mandatory but does not count toward the Java file limit
 
-    If the exercise is overly large or complex, simplify it while preserving intent.
+    IMPORTANT:
+    - This is an audit, not a rewrite step.
+    - Preserve project_files, test_files, paths_to_ex, and answers_list exactly unless a field is empty or invalid.
+    - Do not change code or tests just to "improve" them.
 
     OUTPUT MUST BE STRICT JSON ONLY.
 
     Return the final FULL exercise package in exactly this shape:
     {
-      "problem_description": "<markdown short description + student file(s) to edit + short definition of each code smell>",
+      "problem_description": "<carry forward unchanged or minimally clarified>",
       "project_files": [{"path":"...","content":"..."}],
       "test_files": [{"path":"...","content":"..."}],
-      "solution_explanation_md": "<markdown explanation of the clean solution>",
+      "solution_explanation_md": "<carry forward unchanged or minimally clarified>",
       "paths_to_ex": ["src/main/java/..."],
       "answers_list": [{"path":"...","content":"..."}]
     }

@@ -1,14 +1,8 @@
+import * as fs from "fs";
+import * as path from "path";
 import * as vscode from "vscode";
-import { saveToSpringBootProject } from "./springBootSaver";
 import { buildReviewPayload } from "./buildReviewPayload";
-
-interface Feedback {
-  functional_correctness_assessment: string;
-  code_quality_review: string;
-  actionable_feedback: string;
-  overall_verdict: string;
-  rating: number;
-}
+import { saveToSpringBootProject } from "./springBootSaver";
 
 interface ReviewResult {
   feedback: string;
@@ -35,16 +29,30 @@ export interface ResponseData {
   };
 }
 
+interface WebviewMessage {
+  type: string;
+  topic?: string;
+  smells?: string[];
+  backendUrl?: string;
+  mode?: string;
+  modelName?: string;
+  apiEndpoint?: string;
+  apiKey?: string;
+}
+
 export class ActivityWebviewProvider implements vscode.WebviewViewProvider {
   public static readonly viewType = "codellamas_activityView";
 
-  private solutionExp: any[] | string | null = null;
-  private responseData: any = null;
+  private solutionExp: ProjectFile[] | string | null = null;
+  private responseData: ResponseData | null = null;
   private webviewView: vscode.WebviewView | undefined;
   private selectedSmells: string[] = [];
 
   private backendUrl: string;
   private mode: string;
+  private modelName: string;
+  private apiEndpoint: string;
+  private apiKey: string;
 
   public revealReviewPanel() {
     if (this.webviewView) {
@@ -52,165 +60,177 @@ export class ActivityWebviewProvider implements vscode.WebviewViewProvider {
     }
   }
 
-  public getSolutionExp(): any[] | string | null {
+  public getSolutionExp(): ProjectFile[] | string | null {
     return this.solutionExp;
   }
-  constructor(private readonly context: vscode.ExtensionContext) { 
-    this.solutionExp =
-      this.context.workspaceState.get<any[] | string | null>("solutionExp")??null;
-    this.responseData =
-      this.context.workspaceState.get<any>("responseData")??null;
-    this.selectedSmells = 
-      this.context.workspaceState.get<string[]>("selectedSmells")??[];
-    this.backendUrl = 
-      this.context.workspaceState.get<string>("backendUrl") ?? "http://127.0.0.1:8000";
-    this.mode = 
-      this.context.workspaceState.get<string>("mode") ?? "single";
-  }
 
-  /* =========================
-     ACTIVITY BAR VIEW
-     ========================= */
+  constructor(private readonly context: vscode.ExtensionContext) {
+    this.solutionExp =
+      this.context.workspaceState.get<ProjectFile[] | string | null>("solutionExp") ?? null;
+    this.responseData =
+      this.context.workspaceState.get<ResponseData | null>("responseData") ?? null;
+    this.selectedSmells = this.context.workspaceState.get<string[]>("selectedSmells") ?? [];
+
+    this.backendUrl =
+      this.context.workspaceState.get<string>("backendUrl") ??
+      vscode.workspace
+        .getConfiguration("javaExerciseGenerator")
+        .get<string>("backendBaseUrl") ??
+      "http://127.0.0.1:8000";
+
+    this.mode = this.context.workspaceState.get<string>("mode") ?? "single";
+    this.modelName =
+      this.context.workspaceState.get<string>("modelName") ??
+      process.env.AI_MODEL_NAME ??
+      "openrouter/qwen/qwen3-coder-30b-a3b-instruct";
+    this.apiEndpoint =
+      this.context.workspaceState.get<string>("apiEndpoint") ??
+      process.env.AI_API_ENDPOINT ??
+      "https://openrouter.ai/api/v1";
+    this.apiKey = this.context.workspaceState.get<string>("apiKey") ?? process.env.AI_API_KEY ?? "";
+  }
 
   resolveWebviewView(webviewView: vscode.WebviewView) {
     this.webviewView = webviewView;
-    webviewView.webview.options = { enableScripts: true };
+    webviewView.webview.options = {
+      enableScripts: true,
+    };
     webviewView.webview.html = this.getActivityHtml();
 
-    webviewView.webview.onDidReceiveMessage(async (message) => {
-      if (message.type === "submit") {
-        try {
-          this.selectedSmells = message.smells;
-          this.responseData = await this.fetchAiQuestionsFromBackend(
-            message.topic,
-            message.smells
-          );
-          await saveToSpringBootProject(this.responseData, webviewView);
-          this.solutionExp = this.responseData.data.answers_list ?? null;
-          console.log("Full responseData:", this.responseData);
-          console.log("Reference Solution in memory:", this.solutionExp);
+    webviewView.webview.onDidReceiveMessage(async (message: WebviewMessage) => {
+      try {
+        switch (message.type) {
+          case "submit": {
+            this.selectedSmells = Array.isArray(message.smells) ? message.smells : [];
+            this.responseData = await this.fetchAiQuestionsFromBackend(
+              message.topic ?? "",
+              this.selectedSmells,
+            );
+            await saveToSpringBootProject(this.responseData, webviewView);
+            this.solutionExp = this.responseData.data.answers_list ?? null;
 
-          await this.context.workspaceState.update("selectedSmells", this.selectedSmells);
-          await this.context.workspaceState.update("solutionExp", this.solutionExp);
-          await this.context.workspaceState.update("responseData", this.responseData);
-        } catch (error) {   
-          vscode.window.showErrorMessage(
-            "Error generating questions: " + String(error)
-          );
-        } finally {
-          webviewView.webview.postMessage({
-            type: "generateComplete"
-          });
-        }
-      } else if (message.type === "review") {
-        try {
-          const reviewResult = await this.fetchReviewFromBackend(
-            message.payload
-          );
+            await this.context.workspaceState.update("selectedSmells", this.selectedSmells);
+            await this.context.workspaceState.update("solutionExp", this.solutionExp);
+            await this.context.workspaceState.update("responseData", this.responseData);
 
-          webviewView.webview.postMessage({
-            type: "reviewResponse",
-            ...reviewResult
-          });
-        } catch (error) {
-          const errorMessage = "Error running review: " + String(error);
-          vscode.window.showErrorMessage(errorMessage);
-          webviewView.webview.postMessage({
-            type: "reviewError",
-            error: errorMessage
-          });
-        }
-      }
-      else if (message.type === "showAnswerFile") {
-        // Load responseData from workspaceState if not in memory
-        if (!this.responseData) {
-          this.responseData = this.context.workspaceState.get<any>("responseData") ?? null;
-        }
-        
-        if (!this.responseData || !this.responseData.data) {
-          vscode.window.showErrorMessage("No reference solution available");
-          return;
-        }
-        
-        const solutionMd = this.responseData.data.solution_explanation_md;
-        const answersList = this.responseData.data.answers_list;
-        
-        if (!solutionMd && (!answersList || answersList.length === 0)) {
-          vscode.window.showErrorMessage("No reference solution content available");
-          return;
-        }
-        
-        try {
-          // Write solution explanation markdown
-          if (solutionMd) {
-            await this.writeShowFile(solutionMd, "SOLUTION_EXPLANATION.md");
+            webviewView.webview.postMessage({ type: "generateComplete" });
+            break;
           }
-          
-          // Write each answer file
-          if (answersList && Array.isArray(answersList)) {
-            for (const file of answersList) {
-              await this.writeShowFile(file.content, file.path);
+
+          case "review": {
+            const reviewResult = await this.fetchReviewFromBackend();
+            webviewView.webview.postMessage({
+              type: "reviewResponse",
+              ...reviewResult,
+            });
+            break;
+          }
+
+          case "showAnswerFile": {
+            await this.handleShowAnswerFiles();
+            break;
+          }
+
+          case "updateSettings": {
+            this.backendUrl = message.backendUrl?.trim() || this.backendUrl;
+            this.mode = message.mode === "multi" ? "multi" : "single";
+            this.modelName = message.modelName?.trim() || this.modelName;
+            this.apiEndpoint = message.apiEndpoint?.trim() || this.apiEndpoint;
+            this.apiKey = message.apiKey ?? this.apiKey;
+
+            await this.context.workspaceState.update("backendUrl", this.backendUrl);
+            await this.context.workspaceState.update("mode", this.mode);
+            await this.context.workspaceState.update("modelName", this.modelName);
+            await this.context.workspaceState.update("apiEndpoint", this.apiEndpoint);
+            await this.context.workspaceState.update("apiKey", this.apiKey);
+
+            vscode.window.showInformationMessage("Settings saved!");
+            if (this.webviewView) {
+              this.webviewView.webview.html = this.getActivityHtml();
             }
+            break;
           }
-          
-          vscode.window.showInformationMessage("Reference solutions saved to /answers folder!");
-        } catch (err: any) {
-          vscode.window.showErrorMessage(
-            "Failed to show reference solution: " + String(err)
-          );
-        }
-      } else if (message.type === "updateSettings") {
-        this.backendUrl = message.backendUrl;
-        this.mode = message.mode;
-        this.context.workspaceState.update("backendUrl", this.backendUrl);
-        this.context.workspaceState.update("mode", this.mode);
-        vscode.window.showInformationMessage("Settings saved!");
-      }
 
+          default:
+            break;
+        }
+      } catch (error) {
+        const errorMessage = String(error instanceof Error ? error.message : error);
+        if (message.type === "submit") {
+          vscode.window.showErrorMessage(`Error generating questions: ${errorMessage}`);
+          webviewView.webview.postMessage({ type: "generateComplete" });
+        } else if (message.type === "review") {
+          vscode.window.showErrorMessage(`Error running review: ${errorMessage}`);
+          webviewView.webview.postMessage({ type: "reviewError", error: errorMessage });
+        } else {
+          vscode.window.showErrorMessage(errorMessage);
+        }
+      }
     });
   }
 
-  private async writeShowFile(content: string, path: string) {
+  private async handleShowAnswerFiles() {
+    if (!this.responseData) {
+      this.responseData = this.context.workspaceState.get<ResponseData | null>("responseData") ?? null;
+    }
+
+    if (!this.responseData?.data) {
+      throw new Error("No reference solution available.");
+    }
+
+    const solutionMd = this.responseData.data.solution_explanation_md;
+    const answersList = this.responseData.data.answers_list;
+
+    if (!solutionMd && (!answersList || answersList.length === 0)) {
+      throw new Error("No reference solution content available.");
+    }
+
+    if (solutionMd) {
+      await this.writeShowFile(solutionMd, "SOLUTION_EXPLANATION.md");
+    }
+
+    if (answersList && Array.isArray(answersList)) {
+      for (const file of answersList) {
+        await this.writeShowFile(file.content, file.path);
+      }
+    }
+
+    vscode.window.showInformationMessage("Reference solutions saved to /answers folder!");
+  }
+
+  private async writeShowFile(content: string, relativePath: string) {
     const workspaceFolders = vscode.workspace.workspaceFolders;
     if (!workspaceFolders || workspaceFolders.length === 0) {
-      vscode.window.showErrorMessage("No workspace folder open!");
-      return;
+      throw new Error("No workspace folder open!");
     }
-    
-    const pathModule = require("path");
-    const fs = require("fs");
+
     const workspaceRoot = workspaceFolders[0].uri.fsPath;
-    const answersDir = pathModule.join(workspaceRoot, "answers");
-    const filePath = pathModule.join(answersDir, path);
-    const directory = pathModule.dirname(filePath);
-    
-    // Create directory if it doesn't exist
+    const answersDir = path.join(workspaceRoot, "answers");
+    const filePath = path.join(answersDir, relativePath);
+    const directory = path.dirname(filePath);
+
     if (!fs.existsSync(directory)) {
       fs.mkdirSync(directory, { recursive: true });
     }
-    
-    // Write the file
+
     fs.writeFileSync(filePath, content, "utf8");
-    
-    // Open the file
+
     const doc = await vscode.workspace.openTextDocument(filePath);
     await vscode.window.showTextDocument(doc);
   }
 
-  public postMessage(message: any) {
+  public postMessage(message: unknown) {
     if (this.webviewView) {
       this.webviewView.webview.postMessage(message);
-    } else {
-      vscode.window.showWarningMessage(
-        "Activity webview not open. Message cannot be sent."
-      );
     }
   }
-
 
   private getActivityHtml(): string {
     const backendUrl = this.backendUrl;
     const mode = this.mode;
+    const modelName = this.modelName;
+    const apiEndpoint = this.apiEndpoint;
+    const apiKey = this.apiKey;
     
     return /* html */ `
 <!DOCTYPE html>
@@ -218,7 +238,55 @@ export class ActivityWebviewProvider implements vscode.WebviewViewProvider {
 <head>
   <meta charset="UTF-8" />
   <title>Codellamas</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/treeselectjs@0.14.2/dist/treeselectjs.css" />
   <style>
+    :root {
+      --treeselectjs-bg: var(--vscode-dropdown-background, #111e2c);
+      --treeselectjs-border-color: var(--vscode-dropdown-border, #1c324a);
+      --treeselectjs-border-focus: var(--vscode-focusBorder, #4aa6ff);
+      --treeselectjs-tag-bg: var(--vscode-badge-background, #1c324a);
+      --treeselectjs-tag-bg-hover: var(--vscode-list-hoverBackground, #264363);
+      --treeselectjs-tag-remove-hover: var(--vscode-errorForeground, #ff6b6b);
+      --treeselectjs-icon: var(--vscode-icon-foreground, #a0b9d9);
+      --treeselectjs-icon-hover: var(--vscode-foreground, #ffffff);
+      --treeselectjs-item-counter: var(--vscode-descriptionForeground, #8a9fb5);
+      --treeselectjs-item-focus-bg: var(--vscode-list-activeSelectionBackground, #162a42);
+      --treeselectjs-item-selected-bg: var(--vscode-list-inactiveSelectionBackground, #1c3654);
+      --treeselectjs-item-disabled-text: var(--vscode-disabledForeground, #59738c);
+      --treeselectjs-checkbox-bg: var(--vscode-checkbox-background, #0b141e);
+      --treeselectjs-checkbox-border-color: var(--vscode-checkbox-border, #2a4b6e);
+      --treeselectjs-checkbox-checked-bg: var(--vscode-button-background, #0e639c);
+      --treeselectjs-checkbox-checked-icon: var(--vscode-button-foreground, #ffffff);
+    }
+    .treeselect-list {
+      background: var(--treeselectjs-bg);
+      border: 1px solid var(--treeselectjs-border-color);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+      color: var(--vscode-foreground, #ffffff);
+    }
+    .treeselect-input__edit {
+      color: var(--vscode-input-foreground, #ffffff) !important;
+    }
+    .treeselect-input__tags-element {
+      color: var(--vscode-badge-foreground, #ffffff) !important;
+    }
+    .treeselect-input__tags-name {
+      color: var(--vscode-badge-foreground, #ffffff) !important;
+    }
+    .treeselect-item {
+      color: var(--vscode-foreground, #ffffff) !important;
+    }
+    .treeselect-item__name {
+      color: inherit;
+    }
+    .treeselect-input,
+    .treeselect-input * {
+      color: var(--vscode-foreground, #ffffff);
+    }
+    .treeselect-input__tags-count {
+      color: var(--vscode-foreground, #ffffff);
+    }
+
     body {
       font-family: var(--vscode-font-family);
       padding: 16px 20px;
@@ -350,11 +418,15 @@ export class ActivityWebviewProvider implements vscode.WebviewViewProvider {
       font-size: 0.9rem;
     }
 
-    input[type="checkbox"] {
-      accent-color: var(--vscode-checkbox-border, #007acc);
-      width: 14px;
-      height: 14px;
-    }
+  input[type="checkbox"]:focus {
+  outline: none !important;
+  box-shadow: none !important;
+  }
+
+  input[type="checkbox"]:focus-visible {
+  outline: none !important;
+  box-shadow: none !important;
+  }
 
     .topic {
       margin-top: 16px;
@@ -547,46 +619,8 @@ export class ActivityWebviewProvider implements vscode.WebviewViewProvider {
     <div class="section-subtitle">
       Choose one or more refactoring topics to practise.
     </div>
-    <div id="selected-smells" class="selected-smells"></div>
-
-    <details open>
-      <summary>Bloaters</summary>
-      <div class="smell-options">
-        <label class="smell-option">
-          <input type="checkbox" value="Long Method" /> Long Method
-        </label>
-        <label class="smell-option">
-          <input type="checkbox" value="Large Class" /> Large Class
-        </label>
-        <label class="smell-option">
-          <input type="checkbox" value="Primitive Obsession" /> Primitive Obsession
-        </label>
-      </div>
-    </details>
-
-    <details>
-      <summary>Dispensables</summary>
-      <div class="smell-options">
-        <label class="smell-option">
-          <input type="checkbox" value="Duplicate Code" /> Duplicate Code
-        </label>
-        <label class="smell-option">
-          <input type="checkbox" value="Dead Code" /> Dead Code
-        </label>
-      </div>
-    </details>
-
-    <details>
-      <summary>Couplers</summary>
-      <div class="smell-options">
-        <label class="smell-option">
-          <input type="checkbox" value="Feature Envy" /> Feature Envy
-        </label>
-        <label class="smell-option">
-          <input type="checkbox" value="Message Chains" /> Message Chains
-        </label>
-      </div>
-    </details>
+    
+    <div class="example" style="margin-bottom: 20px;"></div>
 
     <div class="topic">
       <label for="topic">Topic</label>
@@ -635,6 +669,21 @@ export class ActivityWebviewProvider implements vscode.WebviewViewProvider {
       <input id="settings-backendUrl" type="text" value="${backendUrl}" />
     </div>
 
+    <div class="topic" style="margin-top: 12px;">
+      <label for="settings-modelName">Model Name</label>
+      <input id="settings-modelName" type="text" value="${modelName}" />
+    </div>
+
+    <div class="topic" style="margin-top: 12px;">
+      <label for="settings-apiEndpoint">AI API Endpoint</label>
+      <input id="settings-apiEndpoint" type="text" value="${apiEndpoint}" />
+    </div>
+
+    <div class="topic" style="margin-top: 12px;">
+      <label for="settings-apiKey">AI API Key</label>
+      <input id="settings-apiKey" type="password" value="${apiKey}" />
+    </div>
+
     <div class="topic" style="margin-top: 16px;">
       <label>Mode</label>
       <div style="margin-top: 4px;">
@@ -650,7 +699,8 @@ export class ActivityWebviewProvider implements vscode.WebviewViewProvider {
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-  <script>
+  <script type="module">
+    import Treeselect from 'https://cdn.jsdelivr.net/npm/treeselectjs@0.14.2/dist/treeselectjs.mjs';
     const vscode = acquireVsCodeApi();
 
     // Persist webview state
@@ -668,6 +718,9 @@ export class ActivityWebviewProvider implements vscode.WebviewViewProvider {
     // Override settings from extension to keep them in sync
     state.backendUrl = "${backendUrl}";
     state.mode = "${mode}";
+    state.modelName = "${modelName}";
+    state.apiEndpoint = "${apiEndpoint}";
+    state.apiKey = "${apiKey}";
     saveState();
 
     const tabs = Array.from(document.querySelectorAll('.tab'));
@@ -685,6 +738,7 @@ export class ActivityWebviewProvider implements vscode.WebviewViewProvider {
       });
 
       Object.entries(panels).forEach(([key, el]) => {
+        if (!el) return;
         el.classList.toggle('active', key === name);
       });
 
@@ -706,12 +760,14 @@ export class ActivityWebviewProvider implements vscode.WebviewViewProvider {
     const clearChatBtn = document.getElementById("clearChatBtn");
     const chatMessages = document.getElementById("chat-messages");
     const showAnswerBtn = document.getElementById("showAnswerBtn");
-    const selectedContainer = document.getElementById("selected-smells");
     const topicInput = document.getElementById("topic");
 
     const settingsIconBtn = document.getElementById("settingsIconBtn");
     const saveSettingsBtn = document.getElementById("saveSettingsBtn");
     const settingsBackendUrl = document.getElementById("settings-backendUrl");
+    const settingsModelName = document.getElementById("settings-modelName");
+    const settingsApiEndpoint = document.getElementById("settings-apiEndpoint");
+    const settingsApiKey = document.getElementById("settings-apiKey");
     const settingsModeBtn = document.getElementById("settings-modeBtn");
 
     if (settingsIconBtn) {
@@ -731,10 +787,16 @@ export class ActivityWebviewProvider implements vscode.WebviewViewProvider {
     if (saveSettingsBtn) {
       saveSettingsBtn.addEventListener('click', () => {
         state.backendUrl = settingsBackendUrl.value;
+        state.modelName = settingsModelName.value;
+        state.apiEndpoint = settingsApiEndpoint.value;
+        state.apiKey = settingsApiKey.value;
         saveState();
         vscode.postMessage({
           type: "updateSettings",
           backendUrl: state.backendUrl,
+          modelName: state.modelName,
+          apiEndpoint: state.apiEndpoint,
+          apiKey: state.apiKey,
           mode: state.mode
         });
       });
@@ -747,42 +809,78 @@ export class ActivityWebviewProvider implements vscode.WebviewViewProvider {
       });
     }
 
-function updateSelectedSmells() {
-  if (!selectedContainer) return;
+    const treeselectOptions = [
+      {
+        name: 'Bloaters',
+        value: 'Bloaters',
+        children: [
+          { name: 'Long Method', value: 'Long Method' },
+          { name: 'Large Class', value: 'Large Class' },
+          { name: 'Primitive Obsession', value: 'Primitive Obsession' },
+          { name: 'Data Clumps', value: 'Data Clumps' },
+          { name: 'Long Parameter List', value: 'Long Parameter List' }
+        ]
+      },
+      {
+        name: 'Dispensables',
+        value: 'Dispensables',
+        children: [
+          { name: 'Duplicate Code', value: 'Duplicate Code' },
+          { name: 'Dead Code', value: 'Dead Code' },
+          { name: 'Comments', value: 'Comments' },
+          { name: 'Data Class', value: 'Data Class' },
+          { name: 'Lazy Class', value: 'Lazy Class' },
+          { name: 'Speculative Generality', value: 'Speculative Generality' }
+        ]
+      },
+      {
+        name: 'Object-Orientation Abusers',
+        value: 'Object-Orientation Abusers',
+        children: [
+          { name: 'Alternative Classes With Different Interfaces', value: 'Alternative Classes With Different Interfaces' },
+          { name: 'Refused Bequest', value: 'Refused Bequest' },
+          { name: 'Temporary Field', value: 'Temporary Field' },
+          { name: 'Switch Statements', value: 'Switch Statements' }
+        ]
+      },
+      {
+        name: 'Change Preventers',
+        value: 'Change Preventers',
+        children: [
+          { name: 'Divergent Change', value: 'Divergent Change' },
+          { name: 'Parallel Inheritance Hierarchies', value: 'Parallel Inheritance Hierarchies' },
+          { name: 'Shotgun Surgery', value: 'Shotgun Surgery' }
+        ]
+      },
+      {
+        name: 'Couplers',
+        value: 'Couplers',
+        children: [
+          { name: 'Feature Envy', value: 'Feature Envy' },
+          { name: 'Message Chains', value: 'Message Chains' },
+          { name: 'Incomplete Library Class', value: 'Incomplete Library Class' },
+          { name: 'Middle Man', value: 'Middle Man' },
+          { name: 'Inappropriate Initimacy', value: 'Inappropriate Initimacy' }
+        ]
+      }
+    ];
 
-  selectedContainer.innerHTML = "";
-
-  const checked = Array.from(
-    document.querySelectorAll('input[type="checkbox"]:checked')
-  );
-
-  state.smells = checked.map(cb => cb.value);
-  saveState();
-
-  checked.forEach(cb => {
-    const chip = document.createElement("div");
-    chip.classList.add("smell-chip");
-
-    const text = document.createElement("span");
-    text.textContent = cb.value;
-
-    const removeBtn = document.createElement("button");
-    removeBtn.textContent = "✕";
-
-    removeBtn.addEventListener("click", () => {
-      cb.checked = false;
-      updateSelectedSmells();
+    const treeselect = new Treeselect({
+      parentHtmlContainer: document.querySelector('.example'),
+      value: state.smells || [],
+      options: treeselectOptions,
+      isGroupedValue: true,
+      showTags: true,
+      searchable: true,
+      placeholder: 'Search Code Smells...',
+      alwaysOpen: false
     });
 
-    chip.appendChild(text);
-    chip.appendChild(removeBtn);
-    selectedContainer.appendChild(chip);
-  });
-}
-
-document.querySelectorAll('input[type="checkbox"]').forEach(cb => {
-  cb.addEventListener("change", updateSelectedSmells);
-});
+    treeselect.srcElement.addEventListener('input', (e) => {
+      // Treeselect passes the new value via e.detail
+      state.smells = e.detail;
+      saveState();
+    });
 
     if (showAnswerBtn){
       showAnswerBtn.addEventListener("click",() => {
@@ -840,15 +938,22 @@ document.querySelectorAll('input[type="checkbox"]').forEach(cb => {
       topicInput.value = state.topic;
     }
     
-    if (state.smells && state.smells.length > 0) {
-      document.querySelectorAll('input[type="checkbox"]').forEach(cb => {
-        if (state.smells.includes(cb.value)) {
-          cb.checked = true;
-        }
-      });
-      updateSelectedSmells();
+    if (state.backendUrl && settingsBackendUrl) {
+      settingsBackendUrl.value = state.backendUrl;
     }
-
+    if (state.modelName && settingsModelName) {
+      settingsModelName.value = state.modelName;
+    }
+    if (state.apiEndpoint && settingsApiEndpoint) {
+      settingsApiEndpoint.value = state.apiEndpoint;
+    }
+    if (state.apiKey && settingsApiKey) {
+      settingsApiKey.value = state.apiKey;
+    }
+    if (state.mode && settingsModeBtn) {
+      settingsModeBtn.textContent = state.mode.toUpperCase();
+    }
+    
     if (state.messages && state.messages.length > 0) {
       state.messages.forEach(msg => {
         appendChatMessage(msg.text, msg.role, false);
@@ -881,16 +986,25 @@ window.addEventListener("message", (event) => {
           appendChatMessage(m, "ai");
         } else if (m && typeof m.text === "string") {
           appendChatMessage(m.text, "ai");
+        } else if (typeof m === "object" && m !== null) {
+          appendChatMessage('\`\`\`json\\n' + JSON.stringify(m, null, 2) + '\\n\`\`\`', "ai");
+        } else if (m) {
+          appendChatMessage(String(m), "ai");
         }
       });
     } else if (msg.message) {
-      appendChatMessage(String(msg.message), "ai");
+      const out = typeof msg.message === "object" ? '\`\`\`json\\n' + JSON.stringify(msg.message, null, 2) + '\\n\`\`\`' : String(msg.message);
+      appendChatMessage(out, "ai");
+    } else if (msg.feedback) {
+      const out = typeof msg.feedback === "object" ? '\`\`\`json\\n' + JSON.stringify(msg.feedback, null, 2) + '\\n\`\`\`' : String(msg.feedback);
+      appendChatMessage(out, "ai");
     }
   }
 
   if (msg.type === "reviewError") {
     setReviewing(false);
-    const text = msg.error || "Review failed. See extension logs for details.";
+    const errObj = msg.error || "Review failed. See extension logs for details.";
+    const text = typeof errObj === "object" ? '\`\`\`json\\n' + JSON.stringify(errObj, null, 2) + '\\n\`\`\`' : String(errObj);
     appendChatMessage(String(text), "ai");
   }
 });
@@ -899,9 +1013,25 @@ window.addEventListener("message", (event) => {
     generateBtn.addEventListener("click", () => {
       if (generateBtn.disabled) return;
 
-      const smells = Array.from(
-        document.querySelectorAll('input[type="checkbox"]:checked')
-      ).map(cb => cb.value);
+      const rawSmells = state.smells || [];
+      const expandedSmells = new Set();
+      
+      const optionsMap = {};
+      treeselectOptions.forEach(group => {
+        optionsMap[group.value] = group.children.map(child => child.value);
+      });
+
+      rawSmells.forEach(smell => {
+        // If it's a category group, push all its children
+        if (optionsMap[smell]) {
+          optionsMap[smell].forEach(childVal => expandedSmells.add(childVal));
+        } else {
+          // Otherwise it's a specific subcategory
+          expandedSmells.add(smell);
+        }
+      });
+
+      const smells = Array.from(expandedSmells);
 
       setGenerating(true);
 
@@ -944,140 +1074,150 @@ window.addEventListener("message", (event) => {
     `;
   }
 
-  /* =========================
-     BACKEND CALL
-     ========================= */
 
-  private async fetchAiQuestionsFromBackend(
-    topic: string,
-    smells: string[]
-  ): Promise<any> {
+  private getNonce(): string {
+    const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+    let nonce = "";
+    for (let i = 0; i < 32; i += 1) {
+      nonce += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return nonce;
+  }
+
+  private safeJsonForScript(value: unknown): string {
+    return JSON.stringify(value)
+      .replace(/</g, "\\u003c")
+      .replace(/>/g, "\\u003e")
+      .replace(/&/g, "\\u0026")
+      .replace(/\u2028/g, "\\u2028")
+      .replace(/\u2029/g, "\\u2029");
+  }
+
+  private normalizeBaseUrl(url: string): string {
+    let baseUrl = (url || "").trim();
+    if (!baseUrl.startsWith("http://") && !baseUrl.startsWith("https://")) {
+      baseUrl = `http://${baseUrl}`;
+    }
+    if (baseUrl.endsWith("/")) {
+      baseUrl = baseUrl.slice(0, -1);
+    }
+    return baseUrl;
+  }
+
+  private async fetchAiQuestionsFromBackend(topic: string, smells: string[]): Promise<ResponseData> {
     const controller = new AbortController();
-    const timeoutMs = 20 * 60 * 1000; // 20 minutes
+    const timeoutMs = 20 * 60 * 1000;
     const timeout = setTimeout(() => controller.abort(), timeoutMs);
 
     try {
-      const payload = { topic, code_smells: smells, mode: this.mode };
-      console.log("=========================================");
-      console.log("[POST /generate] Sending Payload:");
-      console.log(JSON.stringify(payload, null, 2));
-      console.log("=========================================");
+      const payload = {
+        topic,
+        code_smells: smells,
+        mode: this.mode,
+        verify_maven: true,
+        model_name: this.modelName,
+        api_endpoint: this.apiEndpoint,
+        api_key: this.apiKey,
+      };
 
-      let baseUrl = (this.backendUrl || "").trim();
-      if (!baseUrl.startsWith("http://") && !baseUrl.startsWith("https://")) {
-        baseUrl = "http://" + baseUrl;
-      }
-      if (baseUrl.endsWith("/")) {
-        baseUrl = baseUrl.slice(0, -1);
-      }
-
-      const endpoint = `${baseUrl}/generate`;
-      console.log(`[POST /generate] Endpoint: ${endpoint}`);
-      
+      const endpoint = `${this.normalizeBaseUrl(this.backendUrl)}/generate`;
       const response = await fetch(endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
-        signal: controller.signal
+        signal: controller.signal,
       });
 
-      clearTimeout(timeout);
-
       if (!response.ok) {
-        throw new Error(`Backend error: ${response.statusText}`);
+        throw new Error(`Backend error: ${response.status} ${response.statusText}`);
       }
 
-      const data: any = await response.json();
-
-      console.log("=========================================");
-      console.log("[POST /generate] Received Response:");
-      console.log(JSON.stringify(data, null, 2));
-      console.log("=========================================");
-
+      const data = (await response.json()) as ResponseData;
       if (data.status !== "success") {
-        throw new Error(data.message || "Failed to generate exercise");
+        throw new Error(data.message || "Failed to generate exercise.");
       }
 
       return data;
-    } catch (err: any) {
-      if (err && err.name === "AbortError") {
+    } catch (err) {
+      if ((err as Error)?.name === "AbortError") {
         throw new Error("Request timed out after 20 minutes. Please try again later.");
       }
       throw err;
+    } finally {
+      clearTimeout(timeout);
     }
   }
 
-  /**
-   * Boilerplate for calling your backend AI review endpoint.
-   * Configure the URL, payload shape, and response handling to match your backend.
-   */
-  private async fetchReviewFromBackend(payload: any): Promise<any> {
-    // Build payload using selected smells or fallback to generated exercise data
+  private async fetchReviewFromBackend(): Promise<{ messages: string[] }> {
+    if (!this.responseData?.data?.paths_to_ex?.length) {
+      throw new Error("Generate an exercise before running review.");
+    }
+
+    const codeSmells = this.selectedSmells.length
+      ? this.selectedSmells
+      : [];
+
+    const builtPayload = await buildReviewPayload(this, codeSmells, this.responseData.data.paths_to_ex);
+    if (!builtPayload) {
+      throw new Error("Unable to build the review payload.");
+    }
+
+    builtPayload.mode = this.mode;
+    builtPayload.verify_maven = true;
+    builtPayload.model_name = this.modelName;
+    builtPayload.api_endpoint = this.apiEndpoint;
+    builtPayload.api_key = this.apiKey;
+
+    const controller = new AbortController();
+    const timeoutMs = 20 * 60 * 1000;
+    const timeout = setTimeout(() => controller.abort(), timeoutMs);
+
     try {
-      const codeSmells = (this.selectedSmells && this.selectedSmells.length)
-        ? this.selectedSmells
-        : (this.responseData && this.responseData.data && this.responseData.data.code_smells) || [];
-
-      const builtPayload = await buildReviewPayload(this, codeSmells, this.responseData.data.paths_to_ex);
-      if (!builtPayload) {
-        return;
-      }
-      
-      // Attach the mode to the payload dynamically
-      builtPayload.mode = this.mode;
-
-      console.log("=========================================");
-      console.log("[POST /review] Sending Payload:");
-      console.log(JSON.stringify(builtPayload, null, 2));
-      console.log("=========================================");
-
-      let baseUrl = (this.backendUrl || "").trim();
-      if (!baseUrl.startsWith("http://") && !baseUrl.startsWith("https://")) {
-        baseUrl = "http://" + baseUrl;
-      }
-      if (baseUrl.endsWith("/")) {
-        baseUrl = baseUrl.slice(0, -1);
-      }
-
-      const endpoint = `${baseUrl}/review`;
-      console.log(`[POST /review] Endpoint: ${endpoint}`);
-
+      const endpoint = `${this.normalizeBaseUrl(this.backendUrl)}/review`;
       const response = await fetch(endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(builtPayload)
+        body: JSON.stringify(builtPayload),
+        signal: controller.signal,
       });
+
       if (!response.ok) {
-        throw new Error(`Backend review error: ${response.statusText}`);
+        throw new Error(`Backend review error: ${response.status} ${response.statusText}`);
       }
+
       const reviewResult = (await response.json()) as ReviewResult;
-      
-      console.log("=========================================");
-      console.log("[POST /review] Received Response:");
-      console.log(JSON.stringify(reviewResult, null, 2));
-      console.log("=========================================");
-
       let parsedFeedback = reviewResult.feedback;
+
       try {
-        // If the model still happens to return JSON, gracefully parse it
-        const obj = JSON.parse(reviewResult.feedback);
-        parsedFeedback = Object.values(obj).join("\n\n");
-      } catch (e) {
-        // Expected route: it's plain markdown text
+        const extracted = typeof reviewResult.feedback === "string"
+          ? JSON.parse(reviewResult.feedback)
+          : reviewResult.feedback;
+
+        if (typeof extracted === "object" && extracted !== null) {
+          parsedFeedback = Object.entries(extracted)
+            .map(([key, val]) => {
+              const strVal = typeof val === "object" ? JSON.stringify(val, null, 2) : String(val);
+              const formatKey = key.charAt(0).toUpperCase() + key.slice(1).replace(/_/g, " ");
+              return `${formatKey}:\n${strVal}`;
+            })
+            .join("\n\n");
+        } else {
+          parsedFeedback = String(extracted);
+        }
+      } catch {
+        parsedFeedback = typeof reviewResult.feedback === "object"
+          ? JSON.stringify(reviewResult.feedback, null, 2)
+          : String(reviewResult.feedback);
       }
 
-      this.postMessage({
-        type: "reviewResponse",
-        messages: [parsedFeedback]
-      });
-      vscode.window.showInformationMessage("Code submitted successfully!");
-    } catch (err: any) {
-      const errorMessage = "Error submitting code: " + String(err);
-      vscode.window.showErrorMessage(errorMessage);
-      this.postMessage({
-        type: "reviewError",
-        error: errorMessage
-      });
+      return { messages: [parsedFeedback] };
+    } catch (err) {
+      if ((err as Error)?.name === "AbortError") {
+        throw new Error("Review request timed out after 20 minutes. Please try again later.");
+      }
+      throw err;
+    } finally {
+      clearTimeout(timeout);
     }
   }
 }

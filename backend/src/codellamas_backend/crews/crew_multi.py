@@ -33,21 +33,6 @@ class SpringBootExercise(BaseModel):
 
 
 class VerifyToolInput(BaseModel):
-    """
-    Runtime inputs for Maven verification.
-
-    base_project_files:
-        The Spring Initializr scaffold / base project.
-
-    override_project_files:
-        Files that override the scaffold during verification.
-        For smelly verification: exercise.project_files
-        For reference verification: exercise.answers_list
-
-    injected_tests:
-        Canonical JUnit test files to inject into the project.
-    """
-
     base_project_files: List[ProjectFile]
     override_project_files: List[ProjectFile] = Field(default_factory=list)
     injected_tests: List[ProjectFile] = Field(default_factory=list)
@@ -124,12 +109,16 @@ class CodellamasBackendMulti:
     maven_timeout_sec: int = 180
     max_patch_iters: int = 2
 
-    def __init__(self):
+    def __init__(self, model_name: str = None, api_endpoint: str = None, api_key: str = None):
+        self.model_name = model_name or MODEL
+        self.api_endpoint = api_endpoint or BASE_URL
+        self.api_key = api_key or OPENROUTER_API_KEY
         self.llm = LLM(
-            model=MODEL,
-            base_url=BASE_URL,
-            api_key=OPENROUTER_API_KEY,
-            request_timeout=self.request_timeout_sec
+            model=self.model_name,
+            base_url=self.api_endpoint,
+            api_key=self.api_key,
+            request_timeout=self.request_timeout_sec,
+            max_tokens=30000,
         )
         self.verify_tool = MavenVerifyTool()
 
@@ -145,7 +134,6 @@ class CodellamasBackendMulti:
             elif isinstance(item, dict):
                 out.append(ProjectFile(**item))
             else:
-                # tolerate simple objects with .path and .content
                 out.append(ProjectFile(path=item.path, content=item.content))
         return out
 
@@ -182,9 +170,7 @@ class CodellamasBackendMulti:
             problem_description=updated.problem_description or current.problem_description,
             project_files=updated.project_files or current.project_files,
             test_files=updated.test_files or current.test_files,
-            solution_explanation_md=(
-                updated.solution_explanation_md or current.solution_explanation_md
-            ),
+            solution_explanation_md=updated.solution_explanation_md or current.solution_explanation_md,
             paths_to_ex=updated.paths_to_ex or current.paths_to_ex,
             answers_list=(
                 updated.answers_list
@@ -201,6 +187,59 @@ class CodellamasBackendMulti:
             process=Process.sequential,
             verbose=True,
         ).kickoff(inputs=inputs)
+
+    def _build_reference_override_files(
+        self,
+        *,
+        project_files: List[ProjectFile],
+        answers_list: List[ProjectFile],
+        paths_to_ex: List[str],
+    ) -> List[ProjectFile]:
+        """
+        Build the full clean solution override set by starting from the smelly project
+        and replacing only the files present in answers_list.
+        """
+        normalized_project_files = self._to_project_files(project_files)
+        normalized_answers = self._to_project_files(answers_list)
+
+        if not normalized_answers:
+            return normalized_project_files
+
+        project_by_path: Dict[str, ProjectFile] = {f.path: f for f in normalized_project_files}
+        filename_to_paths: Dict[str, List[str]] = {}
+        for f in normalized_project_files:
+            filename_to_paths.setdefault(os.path.basename(f.path), []).append(f.path)
+
+        editable_paths = set(paths_to_ex or [])
+
+        for answer in normalized_answers:
+            answer_path = answer.path
+
+            if answer_path in project_by_path:
+                project_by_path[answer_path] = answer
+                continue
+
+            if answer_path == "pom.xml":
+                project_by_path["pom.xml"] = ProjectFile(path="pom.xml", content=answer.content)
+                continue
+
+            basename = os.path.basename(answer_path)
+            candidate_paths = filename_to_paths.get(basename, [])
+
+            preferred_candidates = [p for p in candidate_paths if p in editable_paths]
+            chosen_path = None
+
+            if len(preferred_candidates) == 1:
+                chosen_path = preferred_candidates[0]
+            elif len(candidate_paths) == 1:
+                chosen_path = candidate_paths[0]
+
+            if chosen_path:
+                project_by_path[chosen_path] = ProjectFile(path=chosen_path, content=answer.content)
+            else:
+                project_by_path[answer_path] = answer
+
+        return list(project_by_path.values())
 
     # -------------------------------------------------------------------------
     # Agents
@@ -375,24 +414,20 @@ class CodellamasBackendMulti:
 
     @crew
     def generation_crew(self) -> Crew:
+        """
+        Lightweight initial generation crew.
+        The real production path for multi mode is generate_with_fix_loop().
+        """
         return Crew(
             agents=[
                 self.problem_architect(),
                 self.test_engineer(),
                 self.smelly_developer(),
-                self.test_runner(),
-                self.answers_list_developer(),
-                self.debug_specialist(),
-                self.quality_assurance(),
             ],
             tasks=[
                 self.define_problem(),
                 self.define_tests(),
                 self.implement_smelly_code(),
-                self.run_tests_on_smelly_code(),
-                self.generate_answers_list(),
-                self.run_tests_on_answers_list(),
-                self.audit_exercise(),
             ],
             process=Process.sequential,
             verbose=True,
@@ -424,16 +459,8 @@ class CodellamasBackendMulti:
         topic: str,
         code_smells: List[str],
         existing_codebase: str,
-        project_files: List[Any],  # scaffold from API (ProjectFile-like)
+        project_files: List[Any],
     ) -> tuple[SpringBootExercise, Dict[str, Any]]:
-        """
-        Verification + patching loops in Python.
-
-        Use this if:
-        - mode == "multi"
-        - verify_maven == True
-        - Spring scaffold project_files are provided from API
-        """
         base_project_files = self._to_project_files(project_files)
 
         meta: Dict[str, Any] = {
@@ -475,7 +502,7 @@ class CodellamasBackendMulti:
 
             verification = self._verify(
                 base_project_files=base_project_files,
-                override_project_files=exercise.answers_list,
+                override_project_files=exercise.project_files,
                 injected_tests=exercise.test_files,
             )
             meta["smelly_maven"] = verification.model_dump()
@@ -499,9 +526,9 @@ class CodellamasBackendMulti:
                 },
             )
             patched_exercise = self._exercise_from_result(patched_result)
-            exercise = self._merge_exercise(exercise, patched_exercise)
+            exercise = self._merge_exercise(exercise, patched_exercise, prefer_updated_answers=False)
 
-        # 3) Generate clean reference solution as full payload
+        # 3) Generate clean reference solution
         ref_result = self._run_single_task_crew(
             self.generate_answers_list(),
             self.answers_list_developer(),
@@ -520,9 +547,15 @@ class CodellamasBackendMulti:
         for i in range(1, self.max_patch_iters + 1):
             meta["reference_iterations"] = i
 
+            reference_override_files = self._build_reference_override_files(
+                project_files=exercise.project_files,
+                answers_list=exercise.answers_list,
+                paths_to_ex=exercise.paths_to_ex,
+            )
+
             verification = self._verify(
                 base_project_files=base_project_files,
-                override_project_files=exercise.answers_list,
+                override_project_files=reference_override_files,
                 injected_tests=exercise.test_files,
             )
             meta["reference_maven"] = verification.model_dump()
@@ -548,19 +581,4 @@ class CodellamasBackendMulti:
             patched_exercise = self._exercise_from_result(patched_result)
             exercise = self._merge_exercise(exercise, patched_exercise)
 
-        # 5) Final audit
-        audited_result = self._run_single_task_crew(
-            self.audit_exercise(),
-            self.quality_assurance(),
-            inputs={
-                "problem_description": exercise.problem_description,
-                "project_files": [p.model_dump() for p in exercise.project_files],
-                "test_files": [t.model_dump() for t in exercise.test_files],
-                "solution_explanation_md": exercise.solution_explanation_md,
-                "paths_to_ex": exercise.paths_to_ex,
-                "answers_list": [a.model_dump() for a in exercise.answers_list],
-            },
-        )
-
-        final_exercise = self._exercise_from_result(audited_result)
-        return final_exercise, meta
+        return exercise, meta

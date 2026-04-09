@@ -3,7 +3,11 @@ version: "3.9"
 services:
   codellamas-backend:
     build: .
+    container_name: codellamas-backend
     ports:
       - "8000:8000"
+    environment:
+      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY}
     env_file:
       - .env
+    restart: unless-stopped
