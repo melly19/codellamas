@@ -66,6 +66,7 @@ class JavaTestRunnerTool(BaseTool):
                 capture_output=True,
                 text=True,
                 timeout=60
+                shell= True,
             )
 
             return {
