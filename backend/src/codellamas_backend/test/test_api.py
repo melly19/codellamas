@@ -8,6 +8,7 @@ from unittest.mock import patch, MagicMock, mock_open
 from typing import List
 
 from fastapi import HTTPException
+from fastapi.testclient import TestClient
 
 from codellamas_backend.api import (
     ingest_code_smells,
@@ -27,7 +28,13 @@ from codellamas_backend.api import (
     default_base_project_files,
     build_preflight_failure_context,
     generate_single_contract,
+    app,
+    _execute_single_generation,
+    GenerateRequest,
+    generate_single_implementation_with_retries,
+
 )
+client = TestClient(app)
 from codellamas_backend.crews.crew_single import (
     ContractSpec,
     ImplementationSpec,
@@ -977,3 +984,386 @@ class TestGenerateSingleContract:
                 existing_codebase="NONE",
             )
         assert "problem_description" in exc_info.value.detail
+
+
+# ─────────────────────────────────────────────
+# /generate, /review
+# ─────────────────────────────────────────────
+
+class TestGenerateEndpoint:
+    @patch("codellamas_backend.api._execute_single_generation")
+    def test_generate_success(self, mock_exec):
+        mock_exec.return_value = (
+            {"status": "success", "data": make_exercise().model_dump()},
+            {"exercise": make_exercise(), "topic": "refactoring",
+             "model": "single", "response_data": {}}
+        )
+        with patch("codellamas_backend.api.append_to_csv"):
+            response = client.post("/generate", json={
+                "topic": "refactoring",
+                "code_smells": ["god class"],
+            })
+        assert response.status_code == 200
+        assert response.json()["status"] == "success"
+
+    @patch("codellamas_backend.api._execute_single_generation")
+    def test_generate_returns_error_raises_500(self, mock_exec):
+        mock_exec.return_value = (
+            {"status": "error", "message": "something failed"},
+            None
+        )
+        with patch("codellamas_backend.api.append_to_csv"):
+            response = client.post("/generate", json={
+                "topic": "refactoring",
+                "code_smells": ["god class"],
+            })
+        assert response.status_code == 500
+
+    @patch("codellamas_backend.api._execute_single_generation",
+       side_effect=Exception("unexpected crash"))
+    def test_generate_exception_raises_500(self, mock_exec):
+        response = client.post("/generate", json={
+            "topic": "refactoring",
+            "code_smells": ["god class"],
+        })
+        assert response.status_code == 500
+
+    @patch("codellamas_backend.api.append_to_csv")
+    @patch("codellamas_backend.api._execute_single_generation")
+    def test_generate_multiple_count_returns_results_list(self, mock_exec, mock_csv):
+        mock_exec.return_value = (
+            {"status": "success", "data": make_exercise().model_dump()},
+            {"exercise": make_exercise(), "topic": "refactoring",
+            "model": "single", "response_data": {}}
+        )
+        response = client.post("/generate", json={
+            "topic": "refactoring",
+            "code_smells": ["god class"],
+            "count": 2,
+        })
+        assert response.status_code == 200
+        assert "results" in response.json()
+        assert len(response.json()["results"]) == 2
+
+
+class TestReviewEndpoint:
+    @patch("codellamas_backend.api.get_backend")
+    @patch("codellamas_backend.api.run_maven_verification",
+           return_value={"enabled": False})
+    def test_review_success(self, mock_maven, mock_backend):
+        mock_raw = MagicMock()
+        mock_raw.__str__ = lambda self: "Great work!"
+        mock_backend.return_value.review_crew.return_value.kickoff.return_value = mock_raw
+
+        response = client.post("/review", json={
+            "code_smells": ["god class"],
+            "question_json": {},
+            "student_code": [],
+        })
+        assert response.status_code == 200
+        assert "feedback" in response.json()
+
+    @patch("codellamas_backend.api.get_backend")
+    @patch("codellamas_backend.api.run_maven_verification",
+           return_value={"enabled": False})
+    def test_review_crew_failure_raises_500(self, mock_maven, mock_backend):
+        mock_backend.return_value.review_crew.return_value.kickoff.side_effect = \
+            RuntimeError("crew failed")
+
+        response = client.post("/review", json={
+            "code_smells": ["god class"],
+            "question_json": {},
+            "student_code": [],
+        })
+        assert response.status_code == 500
+
+    @patch("codellamas_backend.api.get_backend")
+    @patch("codellamas_backend.api.run_maven_verification")
+    def test_review_uses_maven_log_as_test_results(self, mock_maven, mock_backend):
+        mock_maven.return_value = {
+            "enabled": True,
+            "status": "FAIL",
+            "raw_log_head": "BUILD FAILURE log here",
+        }
+        mock_raw = MagicMock()
+        mock_raw.__str__ = lambda self: "feedback"
+        mock_backend.return_value.review_crew.return_value.kickoff.return_value = mock_raw
+
+        response = client.post("/review", json={
+            "code_smells": ["god class"],
+            "question_json": {},
+            "student_code": [],
+            "verify_maven": True,
+        })
+        assert response.status_code == 200
+        # confirm kickoff received the maven log as test_results
+        kickoff_inputs = mock_backend.return_value.review_crew.return_value.kickoff.call_args[1]["inputs"]
+        assert kickoff_inputs["test_results"] == "BUILD FAILURE log here"
+
+
+# ─────────────────────────────────────────────
+# _execute_single_generation
+# ─────────────────────────────────────────────
+
+class TestExecuteSingleGeneration:
+    def setup_method(self):
+        self.request = GenerateRequest(
+            topic="refactoring",
+            code_smells=["god class"],
+        )
+
+    @patch("codellamas_backend.api.save_exercise_to_repo", return_value="/tmp/saved")
+    @patch("codellamas_backend.api.run_maven_verification", return_value={"enabled": False})
+    @patch("codellamas_backend.api.build_solution_override_files", return_value=[])
+    @patch("codellamas_backend.api.generate_single_implementation_with_retries")
+    @patch("codellamas_backend.api.generate_single_contract")
+    @patch("codellamas_backend.api.get_backend")
+    def test_success_returns_response_and_csv_args(
+        self, mock_backend, mock_contract, mock_impl,
+        mock_solution, mock_maven, mock_save
+    ):
+        mock_contract.return_value = make_contract()
+        mock_impl.return_value = (make_exercise(), {"mode": "single"})
+
+        result, csv_args = _execute_single_generation(self.request)
+        assert result["status"] == "success"
+        assert csv_args is not None
+
+    @patch("codellamas_backend.api.save_exercise_to_repo", return_value="/tmp/saved")
+    @patch("codellamas_backend.api.run_maven_verification", return_value={"enabled": False})
+    @patch("codellamas_backend.api.build_solution_override_files", return_value=[])
+    @patch("codellamas_backend.api.generate_single_implementation_with_retries")
+    @patch("codellamas_backend.api.generate_single_contract")
+    @patch("codellamas_backend.api.get_backend")
+    def test_response_contains_exercise_data(
+        self, mock_backend, mock_contract, mock_impl,
+        mock_solution, mock_maven, mock_save
+    ):
+        exercise = make_exercise()
+        mock_contract.return_value = make_contract()
+        mock_impl.return_value = (exercise, {"mode": "single"})
+
+        result, _ = _execute_single_generation(self.request)
+        assert "data" in result
+        assert result["data"]["problem_description"] == exercise.problem_description
+
+    @patch("codellamas_backend.api.save_exercise_to_repo", return_value="/tmp/saved")
+    @patch("codellamas_backend.api.run_maven_verification", return_value={"enabled": False})
+    @patch("codellamas_backend.api.build_solution_override_files", return_value=[])
+    @patch("codellamas_backend.api.generate_single_implementation_with_retries")
+    @patch("codellamas_backend.api.generate_single_contract")
+    @patch("codellamas_backend.api.get_backend")
+    def test_meta_included_in_response(
+        self, mock_backend, mock_contract, mock_impl,
+        mock_solution, mock_maven, mock_save
+    ):
+        mock_contract.return_value = make_contract()
+        mock_impl.return_value = (make_exercise(), {"mode": "single", "fix_loop": True})
+
+        result, _ = _execute_single_generation(self.request)
+        assert "meta" in result
+        assert result["meta"]["mode"] == "single"
+
+    @patch("codellamas_backend.api.get_backend", side_effect=Exception("backend failed"))
+    def test_all_attempts_fail_returns_error(self, mock_backend):
+        result, csv_args = _execute_single_generation(self.request, max_retries=1)
+        assert result["status"] == "error"
+        assert csv_args is None
+
+    @patch("codellamas_backend.api.get_backend", side_effect=Exception("backend failed"))
+    def test_error_message_contains_attempt_count(self, mock_backend):
+        result, _ = _execute_single_generation(self.request, max_retries=2)
+        assert "2" in result["message"]
+
+    @patch("codellamas_backend.api.save_exercise_to_repo", return_value="/tmp/saved")
+    @patch("codellamas_backend.api.run_maven_verification", return_value={"enabled": False})
+    @patch("codellamas_backend.api.build_solution_override_files", return_value=[])
+    @patch("codellamas_backend.api.generate_single_implementation_with_retries")
+    @patch("codellamas_backend.api.generate_single_contract")
+    @patch("codellamas_backend.api.get_backend")
+    def test_single_mode_has_smelly_and_solution_verification(
+        self, mock_backend, mock_contract, mock_impl,
+        mock_solution, mock_maven, mock_save
+    ):
+        mock_contract.return_value = make_contract()
+        mock_impl.return_value = (make_exercise(), {"mode": "single"})
+
+        result, _ = _execute_single_generation(self.request)
+        maven = result["maven_verification"]
+        assert "smelly" in maven
+        assert "solution" in maven
+
+    @patch("codellamas_backend.api.save_exercise_to_repo", return_value="/tmp/saved")
+    @patch("codellamas_backend.api.run_maven_verification", return_value={"enabled": False})
+    @patch("codellamas_backend.api.build_solution_override_files", return_value=[])
+    @patch("codellamas_backend.api.generate_single_implementation_with_retries")
+    @patch("codellamas_backend.api.generate_single_contract")
+    @patch("codellamas_backend.api.get_backend")
+    def test_csv_args_has_correct_keys(
+        self, mock_backend, mock_contract, mock_impl,
+        mock_solution, mock_maven, mock_save
+    ):
+        mock_contract.return_value = make_contract()
+        mock_impl.return_value = (make_exercise(), {"mode": "single"})
+
+        _, csv_args = _execute_single_generation(self.request)
+        assert all(k in csv_args for k in ("exercise", "topic", "model", "response_data"))
+
+    @patch("codellamas_backend.api.save_exercise_to_repo", return_value="/tmp/saved")
+    @patch("codellamas_backend.api.run_maven_verification", return_value={"enabled": False})
+    @patch("codellamas_backend.api.get_backend")
+    def test_multi_mode_with_verify_maven_calls_fix_loop(
+        self, mock_backend, mock_maven, mock_save
+    ):
+        request = GenerateRequest(
+            topic="refactoring",
+            code_smells=["god class"],
+            mode="multi",
+            verify_maven=True,
+        )
+        mock_backend.return_value.generate_with_fix_loop.return_value = (
+            make_exercise(), {"mode": "multi"}
+        )
+
+        result, _ = _execute_single_generation(request)
+        mock_backend.return_value.generate_with_fix_loop.assert_called_once()
+
+
+# ─────────────────────────────────────────────
+# generate_single_implementation_with_retries
+# ─────────────────────────────────────────────
+
+class TestGenerateSingleImplementationWithRetries:
+    def setup_method(self):
+        self.contract = make_contract()
+        self.base_files = [pf("pom.xml", "<project/>")]
+
+        # mock backend that returns a valid implementation
+        self.mock_backend = MagicMock()
+        mock_raw = MagicMock()
+        mock_raw.json_dict = make_implementation().model_dump()
+        self.mock_backend.implementation_crew.return_value.kickoff.return_value = mock_raw
+
+    def _call(self, **kwargs):
+        defaults = dict(
+            backend=self.mock_backend,
+            topic="refactoring",
+            code_smells="god class",
+            contract=self.contract,
+            base_project_files=self.base_files,
+            verify_maven=False,
+        )
+        return generate_single_implementation_with_retries(**{**defaults, **kwargs})
+
+    @patch("codellamas_backend.api.run_maven_verification", return_value={"enabled": False})
+    @patch("codellamas_backend.api.build_solution_override_files", return_value=[])
+    def test_returns_exercise_and_meta(self, mock_solution, mock_maven):
+        result, meta = self._call()
+        assert isinstance(result, SpringBootExercise)
+        assert isinstance(meta, dict)
+
+    @patch("codellamas_backend.api.run_maven_verification", return_value={"enabled": False})
+    @patch("codellamas_backend.api.build_solution_override_files", return_value=[])
+    def test_meta_mode_is_single(self, mock_solution, mock_maven):
+        _, meta = self._call()
+        assert meta["mode"] == "single"
+
+    @patch("codellamas_backend.api.run_maven_verification", return_value={"enabled": False})
+    @patch("codellamas_backend.api.build_solution_override_files", return_value=[])
+    def test_meta_has_implementation_attempts(self, mock_solution, mock_maven):
+        _, meta = self._call()
+        assert "implementation_attempts" in meta
+        assert len(meta["implementation_attempts"]) >= 1
+
+    @patch("codellamas_backend.api.run_maven_verification", return_value={"enabled": False})
+    @patch("codellamas_backend.api.build_solution_override_files", return_value=[])
+    def test_first_attempt_preflight_pass(self, mock_solution, mock_maven):
+        _, meta = self._call()
+        assert meta["implementation_attempts"][0]["preflight"]["status"] == "PASS"
+
+    @patch("codellamas_backend.api.run_maven_verification",
+           return_value={"enabled": True, "status": "PASS"})
+    @patch("codellamas_backend.api.build_solution_override_files", return_value=[])
+    def test_maven_pass_no_retry(self, mock_solution, mock_maven):
+        _, meta = self._call(verify_maven=True)
+        assert meta["single_retries_used"] == 0
+
+    @patch("codellamas_backend.api.run_maven_verification",
+           return_value={"enabled": True, "status": "FAIL",
+                         "failed_tests": ["AppTest"], "errors": ["err"],
+                         "raw_log_head": "BUILD FAILURE"})
+    @patch("codellamas_backend.api.build_solution_override_files", return_value=[])
+    def test_maven_fail_triggers_retry(self, mock_solution, mock_maven):
+        _, meta = self._call(verify_maven=True)
+        assert meta["single_retries_used"] >= 1
+
+    @patch("codellamas_backend.api.run_maven_verification", return_value={"enabled": False})
+    @patch("codellamas_backend.api.build_solution_override_files", return_value=[])
+    def test_preflight_fail_recorded_in_attempts(self, mock_solution, mock_maven):
+        # return exercise with empty project_files to fail preflight
+        mock_raw = MagicMock()
+        mock_raw.json_dict = make_implementation(project_files=[]).model_dump()
+        self.mock_backend.implementation_crew.return_value.kickoff.return_value = mock_raw
+
+        _, meta = self._call()
+        assert meta["implementation_attempts"][0]["preflight"]["status"] == "FAIL"
+
+    @patch("codellamas_backend.api.run_maven_verification", return_value={"enabled": False})
+    @patch("codellamas_backend.api.build_solution_override_files", return_value=[])
+    def test_raises_http_exception_when_no_data_returned(self, mock_solution, mock_maven):
+        # make kickoff return None json_dict to break ImplementationSpec construction
+        mock_raw = MagicMock()
+        mock_raw.json_dict = None
+        self.mock_backend.implementation_crew.return_value.kickoff.return_value = mock_raw
+
+        with pytest.raises((HTTPException, Exception)):
+            self._call()
+
+    @patch("codellamas_backend.api.run_maven_verification", return_value={"enabled": False})
+    @patch("codellamas_backend.api.build_solution_override_files", return_value=[])
+    def test_kickoff_called_with_correct_topic(self, mock_solution, mock_maven):
+        self._call(topic="my topic")
+        kickoff_kwargs = self.mock_backend.implementation_crew.return_value.kickoff.call_args[1]
+        assert kickoff_kwargs["inputs"]["topic"] == "my topic"
+
+    @patch("codellamas_backend.api.run_maven_verification", return_value={"enabled": False})
+    @patch("codellamas_backend.api.build_solution_override_files", return_value=[])
+    def test_contract_json_passed_to_kickoff(self, mock_solution, mock_maven):
+        self._call()
+        kickoff_kwargs = self.mock_backend.implementation_crew.return_value.kickoff.call_args[1]
+        assert "contract_json" in kickoff_kwargs["inputs"]
+
+    @patch("codellamas_backend.api.run_maven_verification",
+           return_value={"enabled": True, "status": "FAIL",
+                         "failed_tests": ["AppTest"], "errors": ["err"],
+                         "raw_log_head": "BUILD FAILURE"})
+    @patch("codellamas_backend.api.build_solution_override_files", return_value=[])
+    def test_failure_context_passed_on_retry(self, mock_solution, mock_maven):
+        self._call(verify_maven=True)
+        # second kickoff call should have non-empty maven_failure_context
+        calls = self.mock_backend.implementation_crew.return_value.kickoff.call_args_list
+        if len(calls) > 1:
+            retry_inputs = calls[1][1]["inputs"]
+            assert retry_inputs["maven_failure_context"] != ""
+
+
+# ─────────────────────────────────────────────
+# /, /health, /capabilities
+# ─────────────────────────────────────────────
+
+class TestSimpleEndpoints:
+    def test_root_returns_healthy(self):
+        response = client.get("/")
+        assert response.status_code == 200
+        assert response.json()["status"] == "healthy"
+
+    def test_health_returns_healthy(self):
+        response = client.get("/health")
+        assert response.status_code == 200
+        assert response.json()["status"] == "healthy"
+        assert "timestamp" in response.json()
+
+    def test_capabilities_returns_backends(self):
+        response = client.get("/capabilities")
+        assert response.status_code == 200
+        assert "backends" in response.json()
