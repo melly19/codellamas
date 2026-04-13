@@ -3,6 +3,7 @@ from __future__ import annotations
 import shutil
 
 import os
+import sys
 import re
 import subprocess
 from dataclasses import dataclass
@@ -77,6 +78,7 @@ class MavenTool:
                     text=True,
                     timeout=self.timeout_sec,
                     env=self._safe_env(),
+                    shell=True,
                 )
             except subprocess.TimeoutExpired:
                 return MavenTestResult(
