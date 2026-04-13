@@ -4,11 +4,10 @@ import logging
 import datetime
 import json
 import csv
-import time
 import asyncio
 from typing import List, Dict, Any, Tuple
 
-from fastapi import FastAPI, HTTPException, BackgroundTasks
+from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field
 
 from codellamas_backend.crews.crew_single import (
@@ -30,6 +29,7 @@ csv_write_lock = asyncio.Lock()
 request_queue_counter = 0
 request_current_turn = 0
 write_condition = asyncio.Condition()
+
 
 def get_backend(
     mode: str,
@@ -743,10 +743,11 @@ def _execute_single_generation(body: GenerateRequest, max_retries: int = 3):
 
     return {"status": "error", "message": f"Generation failed after {max_retries} attempts: {last_error}"}, None
 
+
 @app.post("/generate")
 async def generate_exercise(body: GenerateRequest):
     global request_queue_counter, request_current_turn
-    
+
     async with csv_write_lock:
         my_turn = request_queue_counter
         request_queue_counter += 1
@@ -762,7 +763,7 @@ async def generate_exercise(body: GenerateRequest):
                 await write_condition.wait()
             request_current_turn += 1
             write_condition.notify_all()
-            
+
         logging.error(f"Generation failed: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -770,7 +771,7 @@ async def generate_exercise(body: GenerateRequest):
     async with write_condition:
         while request_current_turn != my_turn:
             await write_condition.wait()
-        
+
         try:
             for response, csv_args in results:
                 if csv_args is not None:
@@ -784,12 +785,13 @@ async def generate_exercise(body: GenerateRequest):
         if responses[0].get("status") == "error":
             raise HTTPException(status_code=500, detail=responses[0].get("message"))
         return responses[0]
-    
+
     return {
         "status": "success",
         "message": f"Finished generating {body.count} exercises.",
         "results": responses
     }
+
 
 @app.post("/review")
 async def review_solution(body: EvaluateRequest):
@@ -846,4 +848,3 @@ async def review_solution(body: EvaluateRequest):
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Review crew failed: {e}")
-
