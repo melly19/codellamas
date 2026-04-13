@@ -65,7 +65,7 @@ class JavaTestRunnerTool(BaseTool):
                 cwd=project_dir,
                 capture_output=True,
                 text=True,
-                timeout=60
+                timeout=60,
                 shell= True,
             )
 
