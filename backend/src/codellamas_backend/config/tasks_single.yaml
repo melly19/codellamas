@@ -15,7 +15,7 @@ generate_contract:
     HARD CONSTRAINTS:
     1. Keep the exercise small and focused on one business feature only.
     2. Prefer plain Maven + JUnit 5. Do NOT require Spring Boot unless absolutely necessary.
-    3. The student should edit at most 2 Java files.
+    3. You should edit at most 2 Java files.
     4. Prefer exactly 1 editable Java file when possible.
     5. Prefer exactly 1 test file.
     6. Do not design an architecture that requires controllers, repositories, DTOs, configs, databases, or external APIs.
@@ -28,10 +28,18 @@ generate_contract:
 
     REQUIREMENTS FOR problem_description:
     1. Briefly describe the feature.
-    2. Clearly state which Java file(s) the student is expected to edit.
+    2. Clearly state which Java file(s) you are expected to edit.
     3. Briefly name the target code smells.
     4. Do not give step-by-step refactoring hints.
     5. Do not mention solution design patterns.
+    6. Write the problem description like a direct coding task.
+    7. Prefer imperative phrasing such as:
+       - "Modify ..."
+       - "Refactor ..."
+       - "Update ..."
+       instead of phrases like:
+       - "The student is expected to ..."
+       - "You are expected to ..."
 
     REQUIREMENTS FOR test_files:
     1. Generate a small JUnit 5 test suite that defines the expected behavior.
@@ -58,6 +66,10 @@ generate_contract:
         ],
         "paths_to_ex": ["src/main/java/."]
       }
+
+    Style rule:
+    - Address the user directly as "you".
+    - Prefer LeetCode-style imperative instructions over third-person instructional wording.
 
   expected_output: >
     A strict JSON object containing only problem_description, test_files, and paths_to_ex.
@@ -183,11 +195,14 @@ review_solution:
     - 0 = did not meaningfully change the code
     - 5 = solution matches the intention of the answer files and preserves correctness
 
+    Style rule:
+    - Address the student directly as "you".
+
     Include headers and output in markdown format.
     Use concise points.
 
   expected_output: >
-    ### Review of Student Submission
+    ### Review of Your Submission
 
     #### 1. Overall Performance
     [concise points]

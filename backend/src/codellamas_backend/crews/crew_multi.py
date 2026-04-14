@@ -22,14 +22,8 @@ class SpringBootExercise(BaseModel):
     project_files: List[ProjectFile]
     test_files: List[ProjectFile]
     solution_explanation_md: str
-    paths_to_ex: List[str] = Field(
-        default_factory=list,
-        description="List of exercise file paths that student has to edit",
-    )
-    answers_list: List[ProjectFile] = Field(
-        default_factory=list,
-        description="List of answer files (solved exercises in Java format)",
-    )
+    paths_to_ex: List[str] = Field(default_factory=list)
+    answers_list: List[ProjectFile] = Field(default_factory=list)
 
 
 class VerifyToolInput(BaseModel):
@@ -49,8 +43,7 @@ class VerifyToolOutput(BaseModel):
 class MavenVerifyTool(BaseTool):
     name: str = "maven_verify"
     description: str = (
-        "Runs mvn test in an isolated workspace (includes compilation) and "
-        "returns PASS/FAIL plus a log head."
+        "Runs mvn test in an isolated workspace and returns PASS/FAIL plus diagnostics."
     )
     args_schema: Type[BaseModel] = VerifyToolInput
 
@@ -81,7 +74,7 @@ class MavenVerifyTool(BaseTool):
             return VerifyToolOutput(
                 status="SKIPPED",
                 failed_tests=[],
-                errors=["No base_project_files provided (Spring Initializr scaffold required)."],
+                errors=["No base_project_files provided."],
                 raw_log_head="",
             ).model_dump_json()
 
@@ -121,10 +114,6 @@ class CodellamasBackendMulti:
             max_tokens=30000,
         )
         self.verify_tool = MavenVerifyTool()
-
-    # -------------------------------------------------------------------------
-    # Helpers
-    # -------------------------------------------------------------------------
 
     def _to_project_files(self, items: Optional[List[Any]]) -> List[ProjectFile]:
         out: List[ProjectFile] = []
@@ -167,7 +156,7 @@ class CodellamasBackendMulti:
         prefer_updated_answers: bool = True,
     ) -> SpringBootExercise:
         return SpringBootExercise(
-            problem_description=updated.problem_description or current.problem_description,
+            problem_description=current.problem_description or updated.problem_description,
             project_files=updated.project_files or current.project_files,
             test_files=updated.test_files or current.test_files,
             solution_explanation_md=updated.solution_explanation_md or current.solution_explanation_md,
@@ -195,10 +184,6 @@ class CodellamasBackendMulti:
         answers_list: List[ProjectFile],
         paths_to_ex: List[str],
     ) -> List[ProjectFile]:
-        """
-        Build the full clean solution override set by starting from the smelly project
-        and replacing only the files present in answers_list.
-        """
         normalized_project_files = self._to_project_files(project_files)
         normalized_answers = self._to_project_files(answers_list)
 
@@ -225,7 +210,6 @@ class CodellamasBackendMulti:
 
             basename = os.path.basename(answer_path)
             candidate_paths = filename_to_paths.get(basename, [])
-
             preferred_candidates = [p for p in candidate_paths if p in editable_paths]
             chosen_path = None
 
@@ -241,45 +225,27 @@ class CodellamasBackendMulti:
 
         return list(project_by_path.values())
 
-    # -------------------------------------------------------------------------
-    # Agents
-    # -------------------------------------------------------------------------
+    def _exercise_json(self, exercise: SpringBootExercise) -> str:
+        return exercise.model_dump_json(indent=2)
+
+    def _verifier_json(self, verification: VerifyToolOutput) -> str:
+        return verification.model_dump_json(indent=2)
 
     @agent
     def problem_architect(self) -> Agent:
-        return Agent(
-            config=self.agents_config["problem_architect"],
-            llm=self.llm,
-            timeout="1800s",
-            verbose=True,
-        )
+        return Agent(config=self.agents_config["problem_architect"], llm=self.llm, timeout="1800s", verbose=True)
 
     @agent
     def test_engineer(self) -> Agent:
-        return Agent(
-            config=self.agents_config["test_engineer"],
-            llm=self.llm,
-            timeout="1800s",
-            verbose=True,
-        )
+        return Agent(config=self.agents_config["test_engineer"], llm=self.llm, timeout="1800s", verbose=True)
 
     @agent
     def smelly_developer(self) -> Agent:
-        return Agent(
-            config=self.agents_config["smelly_developer"],
-            llm=self.llm,
-            timeout="1800s",
-            verbose=True,
-        )
+        return Agent(config=self.agents_config["smelly_developer"], llm=self.llm, timeout="1800s", verbose=True)
 
     @agent
     def answers_list_developer(self) -> Agent:
-        return Agent(
-            config=self.agents_config["answers_list_developer"],
-            llm=self.llm,
-            timeout="1800s",
-            verbose=True,
-        )
+        return Agent(config=self.agents_config["answers_list_developer"], llm=self.llm, timeout="1800s", verbose=True)
 
     @agent
     def test_runner(self) -> Agent:
@@ -293,39 +259,19 @@ class CodellamasBackendMulti:
 
     @agent
     def debug_specialist(self) -> Agent:
-        return Agent(
-            config=self.agents_config["debug_specialist"],
-            llm=self.llm,
-            timeout="1800s",
-            verbose=True,
-        )
+        return Agent(config=self.agents_config["debug_specialist"], llm=self.llm, timeout="1800s", verbose=True)
 
     @agent
     def quality_assurance(self) -> Agent:
-        return Agent(
-            config=self.agents_config["quality_assurance"],
-            llm=self.llm,
-            timeout="1800s",
-            verbose=True,
-        )
-
-    # -------------------------------------------------------------------------
-    # Generation tasks
-    # -------------------------------------------------------------------------
+        return Agent(config=self.agents_config["quality_assurance"], llm=self.llm, timeout="1800s", verbose=True)
 
     @task
     def define_problem(self) -> Task:
-        return Task(
-            config=self.tasks_config["define_problem"],
-            agent=self.problem_architect(),
-        )
+        return Task(config=self.tasks_config["define_problem"], agent=self.problem_architect())
 
     @task
     def define_tests(self) -> Task:
-        return Task(
-            config=self.tasks_config["define_tests"],
-            agent=self.test_engineer(),
-        )
+        return Task(config=self.tasks_config["define_tests"], agent=self.test_engineer())
 
     @task
     def implement_smelly_code(self) -> Task:
@@ -344,27 +290,11 @@ class CodellamasBackendMulti:
         )
 
     @task
-    def run_tests_on_smelly_code(self) -> Task:
-        return Task(
-            config=self.tasks_config["run_tests_on_smelly_code"],
-            agent=self.test_runner(),
-            output_json=VerifyToolOutput,
-        )
-
-    @task
     def generate_answers_list(self) -> Task:
         return Task(
             config=self.tasks_config["generate_answers_list"],
             agent=self.answers_list_developer(),
             output_json=SpringBootExercise,
-        )
-
-    @task
-    def run_tests_on_answers_list(self) -> Task:
-        return Task(
-            config=self.tasks_config["run_tests_on_answers_list"],
-            agent=self.test_runner(),
-            output_json=VerifyToolOutput,
         )
 
     @task
@@ -383,75 +313,14 @@ class CodellamasBackendMulti:
             output_json=SpringBootExercise,
         )
 
-    # -------------------------------------------------------------------------
-    # Review tasks
-    # -------------------------------------------------------------------------
-
-    @task
-    def check_functional_correctness(self) -> Task:
-        return Task(
-            config=self.tasks_config["check_functional_correctness"],
-            agent=self.test_runner(),
-        )
-
-    @task
-    def evaluate_code_quality(self) -> Task:
-        return Task(
-            config=self.tasks_config["evaluate_code_quality"],
-            agent=self.quality_assurance(),
-        )
-
-    @task
-    def generate_review_feedback(self) -> Task:
-        return Task(
-            config=self.tasks_config["generate_review_feedback"],
-            agent=self.quality_assurance(),
-        )
-
-    # -------------------------------------------------------------------------
-    # Crews
-    # -------------------------------------------------------------------------
-
     @crew
     def generation_crew(self) -> Crew:
-        """
-        Lightweight initial generation crew.
-        The real production path for multi mode is generate_with_fix_loop().
-        """
         return Crew(
-            agents=[
-                self.problem_architect(),
-                self.test_engineer(),
-                self.smelly_developer(),
-            ],
-            tasks=[
-                self.define_problem(),
-                self.define_tests(),
-                self.implement_smelly_code(),
-            ],
+            agents=[self.problem_architect(), self.test_engineer(), self.smelly_developer()],
+            tasks=[self.define_problem(), self.define_tests(), self.implement_smelly_code()],
             process=Process.sequential,
             verbose=True,
         )
-
-    @crew
-    def review_crew(self) -> Crew:
-        return Crew(
-            agents=[
-                self.test_runner(),
-                self.quality_assurance(),
-            ],
-            tasks=[
-                self.check_functional_correctness(),
-                self.evaluate_code_quality(),
-                self.generate_review_feedback(),
-            ],
-            process=Process.sequential,
-            verbose=True,
-        )
-
-    # -------------------------------------------------------------------------
-    # Python-side verification / patch loop
-    # -------------------------------------------------------------------------
 
     def generate_with_fix_loop(
         self,
@@ -472,18 +341,9 @@ class CodellamasBackendMulti:
             "reference_maven": None,
         }
 
-        # 1) Initial exercise generation
         initial_result = Crew(
-            agents=[
-                self.problem_architect(),
-                self.test_engineer(),
-                self.smelly_developer(),
-            ],
-            tasks=[
-                self.define_problem(),
-                self.define_tests(),
-                self.implement_smelly_code(),
-            ],
+            agents=[self.problem_architect(), self.test_engineer(), self.smelly_developer()],
+            tasks=[self.define_problem(), self.define_tests(), self.implement_smelly_code()],
             process=Process.sequential,
             verbose=True,
         ).kickoff(
@@ -496,7 +356,6 @@ class CodellamasBackendMulti:
 
         exercise = self._exercise_from_result(initial_result)
 
-        # 2) Verify + patch smelly implementation
         for i in range(1, self.max_patch_iters + 1):
             meta["smelly_iterations"] = i
 
@@ -514,36 +373,28 @@ class CodellamasBackendMulti:
                 self.patch_smelly_code(),
                 self.debug_specialist(),
                 inputs={
-                    "problem_description": exercise.problem_description,
-                    "project_files": [p.model_dump() for p in exercise.project_files],
-                    "test_files": [t.model_dump() for t in exercise.test_files],
-                    "solution_explanation_md": exercise.solution_explanation_md,
-                    "paths_to_ex": exercise.paths_to_ex,
-                    "answers_list": [a.model_dump() for a in exercise.answers_list],
-                    "failed_tests": verification.failed_tests,
-                    "errors": verification.errors,
-                    "raw_log_head": verification.raw_log_head,
+                    "topic": topic,
+                    "code_smells": code_smells,
+                    "existing_codebase": existing_codebase,
+                    "exercise_json": self._exercise_json(exercise),
+                    "verifier_json": self._verifier_json(verification),
                 },
             )
             patched_exercise = self._exercise_from_result(patched_result)
             exercise = self._merge_exercise(exercise, patched_exercise, prefer_updated_answers=False)
 
-        # 3) Generate clean reference solution
         ref_result = self._run_single_task_crew(
             self.generate_answers_list(),
             self.answers_list_developer(),
             inputs={
-                "problem_description": exercise.problem_description,
-                "project_files": [p.model_dump() for p in exercise.project_files],
-                "test_files": [t.model_dump() for t in exercise.test_files],
-                "solution_explanation_md": exercise.solution_explanation_md,
-                "paths_to_ex": exercise.paths_to_ex,
-                "answers_list": [a.model_dump() for a in exercise.answers_list],
+                "topic": topic,
+                "code_smells": code_smells,
+                "existing_codebase": existing_codebase,
+                "exercise_json": self._exercise_json(exercise),
             },
         )
         exercise = self._merge_exercise(exercise, self._exercise_from_result(ref_result))
 
-        # 4) Verify + patch reference solution
         for i in range(1, self.max_patch_iters + 1):
             meta["reference_iterations"] = i
 
@@ -567,18 +418,26 @@ class CodellamasBackendMulti:
                 self.patch_answers_list(),
                 self.debug_specialist(),
                 inputs={
-                    "problem_description": exercise.problem_description,
-                    "project_files": [p.model_dump() for p in exercise.project_files],
-                    "test_files": [t.model_dump() for t in exercise.test_files],
-                    "solution_explanation_md": exercise.solution_explanation_md,
-                    "paths_to_ex": exercise.paths_to_ex,
-                    "answers_list": [a.model_dump() for a in exercise.answers_list],
-                    "failed_tests": verification.failed_tests,
-                    "errors": verification.errors,
-                    "raw_log_head": verification.raw_log_head,
+                    "topic": topic,
+                    "code_smells": code_smells,
+                    "existing_codebase": existing_codebase,
+                    "exercise_json": self._exercise_json(exercise),
+                    "verifier_json": self._verifier_json(verification),
                 },
             )
             patched_exercise = self._exercise_from_result(patched_result)
             exercise = self._merge_exercise(exercise, patched_exercise)
 
-        return exercise, meta
+        audited_result = self._run_single_task_crew(
+            self.audit_exercise(),
+            self.quality_assurance(),
+            inputs={
+                "topic": topic,
+                "code_smells": code_smells,
+                "existing_codebase": existing_codebase,
+                "exercise_json": self._exercise_json(exercise),
+            },
+        )
+
+        final_exercise = self._merge_exercise(exercise, self._exercise_from_result(audited_result))
+        return final_exercise, meta
