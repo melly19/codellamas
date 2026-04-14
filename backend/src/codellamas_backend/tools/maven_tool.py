@@ -3,7 +3,6 @@ from __future__ import annotations
 import shutil
 
 import os
-import sys
 import re
 import subprocess
 from dataclasses import dataclass

@@ -3,12 +3,17 @@ import csv
 import json
 import pytest
 import tempfile
-import datetime
-from unittest.mock import patch, MagicMock, mock_open
-from typing import List
+from unittest.mock import patch, MagicMock
 
 from fastapi import HTTPException
 from fastapi.testclient import TestClient
+from codellamas_backend.schemas.files import ProjectFile
+
+from codellamas_backend.crews.crew_single import (
+    ContractSpec,
+    ImplementationSpec,
+    SpringBootExercise,
+)
 
 from codellamas_backend.api import (
     ingest_code_smells,
@@ -35,12 +40,6 @@ from codellamas_backend.api import (
 
 )
 client = TestClient(app)
-from codellamas_backend.crews.crew_single import (
-    ContractSpec,
-    ImplementationSpec,
-    SpringBootExercise,
-)
-from codellamas_backend.schemas.files import ProjectFile
 
 
 # ─────────────────────────────────────────────
@@ -436,7 +435,7 @@ class TestBuildMavenFailureContext:
             "errors": [],
             "raw_log_head": log,
         })
-        error_lines = [l for l in result.splitlines() if "[ERROR]" in l]
+        error_lines = [line for line in result.splitlines() if "[ERROR]" in line]
         assert len(error_lines) <= 10
 
     def test_none_fields_handled(self):
@@ -913,7 +912,7 @@ class TestBuildPreflightFailureContext:
         errors = [f"error {i}" for i in range(20)]
         result = build_preflight_failure_context("IMPLEMENTATION", errors)
         lines = result.splitlines()
-        error_lines = [l for l in lines if l.startswith("- ")]
+        error_lines = [line for line in lines if line.startswith("- ")]
         assert len(error_lines) == 10
 
     def test_empty_errors(self):
@@ -1020,7 +1019,7 @@ class TestGenerateEndpoint:
         assert response.status_code == 500
 
     @patch("codellamas_backend.api._execute_single_generation",
-       side_effect=Exception("unexpected crash"))
+           side_effect=Exception("unexpected crash"))
     def test_generate_exception_raises_500(self, mock_exec):
         response = client.post("/generate", json={
             "topic": "refactoring",
@@ -1034,7 +1033,7 @@ class TestGenerateEndpoint:
         mock_exec.return_value = (
             {"status": "success", "data": make_exercise().model_dump()},
             {"exercise": make_exercise(), "topic": "refactoring",
-            "model": "single", "response_data": {}}
+             "model": "single", "response_data": {}}
         )
         response = client.post("/generate", json={
             "topic": "refactoring",

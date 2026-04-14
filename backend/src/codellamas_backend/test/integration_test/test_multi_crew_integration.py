@@ -2,7 +2,7 @@ import json
 import pytest
 from codellamas_backend.crews.crew_multi import MavenVerifyTool
 from codellamas_backend.schemas.files import ProjectFile
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock
 from crewai import Agent
 from codellamas_backend.crews.crew_multi import CodellamasBackendMulti
 

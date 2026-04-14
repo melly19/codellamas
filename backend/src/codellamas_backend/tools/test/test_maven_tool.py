@@ -1,6 +1,6 @@
 import subprocess
 import pytest
-from unittest.mock import patch, MagicMock, call
+from unittest.mock import patch, MagicMock
 from typing import List
 
 from codellamas_backend.tools.maven_tool import MavenTool, MavenTestResult
@@ -314,13 +314,11 @@ class TestRunTests:
     @patch("subprocess.run")
     def test_workspace_cleaned_up_after_run(self, mock_run):
         mock_run.return_value = make_proc()
-        captured_root = {}
 
         original_run = self.tool.run_tests
 
         def patched_run_tests(*args, **kwargs):
             # grab root before cleanup
-            import tempfile, os
             result = original_run(*args, **kwargs)
             return result
 

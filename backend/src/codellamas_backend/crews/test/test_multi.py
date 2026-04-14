@@ -1,6 +1,5 @@
-import os
 import pytest
-from unittest.mock import patch, MagicMock, PropertyMock
+from unittest.mock import patch, MagicMock
 from pydantic import ValidationError
 from crewai import Process, Agent
 
@@ -41,6 +40,7 @@ def make_verify_output(status="PASS") -> VerifyToolOutput:
         errors=[] if status == "PASS" else ["Test failures"],
         raw_log_head="",
     )
+
 
 def patch_test_runner():
     return patch.object(
@@ -1095,3 +1095,4 @@ class TestGenerateWithFixLoop:
         assert kickoff_kwargs["inputs"]["topic"] == "refactoring"
         assert kickoff_kwargs["inputs"]["code_smells"] == ["god class"]
         assert kickoff_kwargs["inputs"]["existing_codebase"] == "my code"
+        

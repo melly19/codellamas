@@ -2,8 +2,8 @@ import os
 
 from crewai import Process
 import pytest
-from unittest.mock import patch, MagicMock
-from pydantic import ValidationError, BaseModel
+from unittest.mock import patch
+from pydantic import ValidationError
 
 from codellamas_backend.crews.crew_single import (
     CodellamasBackend,
@@ -12,8 +12,6 @@ from codellamas_backend.crews.crew_single import (
     SpringBootExercise,
 )
 from codellamas_backend.schemas.files import ProjectFile
-from typing import List
-
 
 
 # ─────────────────────────────────────────────

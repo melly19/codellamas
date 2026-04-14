@@ -1,5 +1,3 @@
-# tests/integration_test/test_java_test_runner_integration.py
-
 import json
 import pytest
 from codellamas_backend.tools.custom_tool import JavaTestRunnerTool

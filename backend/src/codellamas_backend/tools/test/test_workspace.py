@@ -1,10 +1,9 @@
 import os
-import tempfile
 import pytest
 
-from unittest.mock import patch, MagicMock
 from codellamas_backend.tools.workspace import Workspace
 from codellamas_backend.schemas.files import ProjectFile
+
 
 class TestWorkspace:
     def test_workspace_initialization(self):
@@ -22,7 +21,7 @@ class TestWorkspace:
             ProjectFile(path="src/utils/helper.py", content="def help(): pass"),
         ]
         ws.write_files(files)
-        
+
         assert ws.read("src/main.py") == "print('hello')"
         assert ws.read("src/utils/helper.py") == "def help(): pass"
         ws.cleanup()
@@ -35,7 +34,7 @@ class TestWorkspace:
             "path_file_2": "content_2",
         }
         ws.write_file_map(file_map)
-        
+
         assert ws.read("path_file_1") == "content_1"
         assert ws.read("path_file_2") == "content_2"
         ws.cleanup()
@@ -50,7 +49,7 @@ class TestWorkspace:
         """Test path normalization with leading slashes and backslashes."""
         ws = Workspace()
         ws.write_file_map({"/src\\file.py": "content"})
-        
+
         assert ws.read("/src\\file.py") == "content"
         assert ws.read("src/file.py") == "content"
         ws.cleanup()
@@ -61,7 +60,7 @@ class TestWorkspace:
             root = ws.root
             ws.write_file_map({"test.txt": "data"})
             assert os.path.exists(root)
-        
+
         assert not os.path.exists(root)
 
     def test_cleanup_removes_directory(self):
@@ -69,7 +68,7 @@ class TestWorkspace:
         ws = Workspace()
         root = ws.root
         ws.write_file_map({"file.txt": "content"})
-        
+
         assert os.path.exists(root)
         ws.cleanup()
         assert not os.path.exists(root)
@@ -78,7 +77,7 @@ class TestWorkspace:
         """Test nested directories are created automatically."""
         ws = Workspace()
         ws.write_file_map({"a/b/c/d/file.txt": "deep content"})
-        
+
         assert ws.read("a/b/c/d/file.txt") == "deep content"
         ws.cleanup()
 
@@ -87,7 +86,7 @@ class TestWorkspace:
         ws = Workspace()
         content = "Hello 世界 🌍"
         ws.write_file_map({"unicode.txt": content})
-        
+
         assert ws.read("unicode.txt") == content
         ws.cleanup()
 
@@ -96,7 +95,7 @@ class TestWorkspace:
         ws = Workspace()
         ws.write_file_map({"file.txt": "original"})
         ws.write_file_map({"file.txt": "updated"})
-        
+
         assert ws.read("file.txt") == "updated"
         ws.cleanup()
 
@@ -104,7 +103,7 @@ class TestWorkspace:
         """Test _write_one writes a file correctly."""
         ws = Workspace()
         ws._write_one("test.txt", "hello world")
-        
+
         # Verify the file exists and has correct content
         assert ws.read("test.txt") == "hello world"
         ws.cleanup()
@@ -113,19 +112,19 @@ class TestWorkspace:
         """Test reading with directory path (trailing slash) raises ValueError."""
         ws = Workspace()
         ws.write_file_map({"file.txt": "content"})
-        
+
         with pytest.raises(ValueError, match="Invalid path: must be a file, not a directory"):
             ws.read("file.txt/")  # Path ends with slash - should raise
-        
+
         ws.cleanup()
 
     def test_write_one_directory_path_raises_error(self):
         """Test _write_one with directory path (trailing slash) raises ValueError."""
         ws = Workspace()
-        
+
         with pytest.raises(ValueError, match="Invalid path: must be a file, not a directory"):
             ws._write_one("file/", "malicious")
-        
+
         ws.cleanup()
 
     def test_cleanup_removes_files_inside(self):

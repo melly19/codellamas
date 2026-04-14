@@ -3,8 +3,7 @@ import os
 import subprocess
 import tempfile
 import pytest
-from unittest.mock import patch, MagicMock, mock_open, call
-from typing import Dict
+from unittest.mock import patch, MagicMock
 
 from codellamas_backend.tools.custom_tool import JavaTestRunnerTool, TestRunnerInput
 
@@ -22,7 +21,7 @@ def make_proc(returncode=0, stdout="BUILD SUCCESS", stderr="") -> MagicMock:
 
 
 SAMPLE_SOURCE = {"src/main/java/App.java": "public class App {}"}
-SAMPLE_TESTS  = {"src/test/java/AppTest.java": "public class AppTest {}"}
+SAMPLE_TESTS = {"src/test/java/AppTest.java": "public class AppTest {}"}
 
 
 # ─────────────────────────────────────────────
@@ -131,7 +130,7 @@ class TestWriteProjectFiles:
         # dict merge: test_files wins on collision
         with tempfile.TemporaryDirectory() as tmpdir:
             source = {"src/Foo.java": "source content"}
-            tests  = {"src/Foo.java": "test content"}
+            tests = {"src/Foo.java": "test content"}
             self.tool._write_project_files(tmpdir, source, tests)
             with open(os.path.join(tmpdir, "src/Foo.java")) as f:
                 assert f.read() == "test content"

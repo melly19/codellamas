@@ -1,5 +1,5 @@
 import pytest
-from codellamas_backend.tools.maven_tool import MavenTool, MavenTestResult
+from codellamas_backend.tools.maven_tool import MavenTool
 from codellamas_backend.schemas.files import ProjectFile
 
 

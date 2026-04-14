@@ -6,9 +6,7 @@ from codellamas_backend.crews.crew_single import (
     CodellamasBackend,
     ContractSpec,
     ImplementationSpec,
-    SpringBootExercise,
 )
-from codellamas_backend.schemas.files import ProjectFile
 
 
 def make_backend():

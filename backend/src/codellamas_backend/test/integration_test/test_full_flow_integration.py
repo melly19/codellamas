@@ -1,7 +1,5 @@
 import pytest
-import json
 import tempfile
-import os
 from unittest.mock import patch, MagicMock
 from fastapi.testclient import TestClient
 
@@ -9,7 +7,6 @@ from codellamas_backend.api import app
 from codellamas_backend.crews.crew_single import (
     SpringBootExercise,
     ContractSpec,
-    ImplementationSpec,
 )
 from codellamas_backend.schemas.files import ProjectFile
 

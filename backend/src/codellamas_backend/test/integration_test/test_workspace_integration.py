@@ -1,6 +1,5 @@
 import os
 import pytest
-import tempfile
 from codellamas_backend.tools.workspace import Workspace
 from codellamas_backend.schemas.files import ProjectFile
 
