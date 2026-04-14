@@ -69,9 +69,11 @@ class MavenTool:
             cmd += ["test"]
             cmd += extra_mvn_args
 
+            cmd_str = " ".join(cmd)
+
             try:
                 proc = subprocess.run(
-                    cmd,
+                    cmd_str,
                     cwd=ws.root,
                     capture_output=True,
                     text=True,
