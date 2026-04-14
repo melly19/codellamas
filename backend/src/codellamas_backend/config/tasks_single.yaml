@@ -27,19 +27,40 @@ generate_contract:
     12. Prefer a single public class for the main business logic unless a second class is clearly useful.
 
     REQUIREMENTS FOR problem_description:
-    1. Briefly describe the feature.
-    2. Clearly state which Java file(s) you are expected to edit.
-    3. Briefly name the target code smells.
-    4. Do not give step-by-step refactoring hints.
-    5. Do not mention solution design patterns.
-    6. Write the problem description like a direct coding task.
-    7. Prefer imperative phrasing such as:
-       - "Modify ..."
-       - "Refactor ..."
-       - "Update ..."
-       instead of phrases like:
-       - "The student is expected to ..."
-       - "You are expected to ..."
+    1. problem_description must be a multi-line structured task description, not a single short paragraph.
+    2. Use exactly the following section order and headings:
+       Topic:
+       Code Smell(s):
+       Your Task:
+       Files to Edit:
+       Expected Outcome:
+    3. Topic:
+       - State the business/domain topic in 1 short line.
+    4. Code Smell(s):
+       - List the requested code smell(s) in 1 short line.
+    5. Your Task:
+       - Write 2-4 short imperative sentences describing the coding task.
+       - Focus on the business behavior and refactoring objective.
+       - Do not provide step-by-step hints.
+       - Do not mention design patterns or the intended clean solution.
+    6. Files to Edit:
+       - List every editable Java file from paths_to_ex, one per line as bullet points.
+       - Use the exact full relative paths.
+    7. Expected Outcome:
+       - Briefly state what should still work after the refactor, based on the tests.
+       - Keep this high-level and behavior-focused.
+    8. The description must be clear enough that a student can immediately see:
+       - what domain they are working in,
+       - which code smells are relevant,
+       - and which file(s) they are allowed to modify.
+    9. Do not mention hidden tests, answer files, solution structure, or internal generation process.
+    10. Prefer imperative phrasing such as:
+        - "Refactor ..."
+        - "Update ..."
+        - "Modify ..."
+        instead of:
+        - "The student is expected to ..."
+        - "You are expected to ..."
 
     REQUIREMENTS FOR test_files:
     1. Generate a small JUnit 5 test suite that defines the expected behavior.
@@ -58,6 +79,7 @@ generate_contract:
     - OUTPUT ONLY VALID JSON.
     - No markdown fences.
     - No commentary before or after the JSON.
+    - The Files to Edit section must match paths_to_ex exactly.
     - Return exactly one JSON object with this shape:
       {
         "problem_description": ".",
@@ -186,10 +208,13 @@ review_solution:
     - Additional user query: {query}
 
     OUTPUT FORMAT:
-    1. Overall performance in this exercise
-    2. Areas for improvement
-    3. Code smell observations
-    4. Rating out of 5
+     1. How did the student do in this exercise
+     2. Hints on how the student can do better if any without revealing too much about the intended solution
+     3. A rating of the solution out of 5
+       0 - did not change the code at all
+       5 - solution matches intention of the answer files
+    Include headers and output in markdown format
+    Use concise points
 
     Rating guide:
     - 0 = did not meaningfully change the code

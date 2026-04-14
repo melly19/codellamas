@@ -836,13 +836,22 @@ async def review_solution(body: EvaluateRequest):
             "verify_maven": body.verify_maven,
         }
 
-        backend = get_backend(
-            body.mode,
+        # backend = get_backend(
+        #     body.mode,
+        #     model_name=body.model_name,
+        #     api_endpoint=body.api_endpoint,
+        #     api_key=body.api_key,
+        # )
+        # raw = backend.review_crew().kickoff(inputs=inputs)
+        
+        # Use the single-agent review backend for both single and multi modes.
+        # The multi-agent backend currently has no review_crew implementation.
+        review_backend = CodellamasBackend(
             model_name=body.model_name,
             api_endpoint=body.api_endpoint,
             api_key=body.api_key,
         )
-        raw = backend.review_crew().kickoff(inputs=inputs)
+        raw = review_backend.review_crew().kickoff(inputs=inputs)
 
         return {"feedback": str(raw), "maven_verification": maven_verification}
 
