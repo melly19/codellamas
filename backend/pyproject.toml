@@ -31,6 +31,17 @@ type = "crew"
 markers = [
     "integration: marks tests as integration tests (deselect with '-m \"not integration\"')",
 ]
-python_files = ["test_*.py"]
-python_classes = ["Test*"]
-python_functions = ["test_*"]
+
+[tool.coverage.run]
+omit = [
+     "*/test/*",
+    "*test_*.py",
+    "*/*/test/*"
+]
+
+[tool.coverage.report]
+omit = [
+    "*/test/*",
+    "*test_*.py",
+    "*/*/test/*"
+]

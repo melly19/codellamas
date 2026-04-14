@@ -5,6 +5,7 @@ from codellamas_backend.tools.workspace import Workspace
 from codellamas_backend.schemas.files import ProjectFile
 
 
+@pytest.mark.integration
 class TestWorkspaceIntegration:
     """Real filesystem operations — no mocks"""
 
