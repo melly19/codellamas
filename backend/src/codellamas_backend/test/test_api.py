@@ -1046,21 +1046,20 @@ class TestGenerateEndpoint:
 
 
 class TestReviewEndpoint:
-    # @patch("codellamas_backend.api.get_backend")
-    # @patch("codellamas_backend.api.run_maven_verification",
-    #        return_value={"enabled": False})
-    # def test_review_success(self, mock_maven, mock_backend):
-    #     mock_raw = MagicMock()
-    #     mock_raw.__str__ = lambda self: "Great work!"
-    #     mock_backend.return_value.review_crew.return_value.kickoff.return_value = mock_raw
+    @patch("codellamas_backend.api.CodellamasBackend")
+    @patch("codellamas_backend.api.run_maven_verification", return_value={"enabled": False})
+    def test_review_success(self, mock_maven, mock_backend_cls):
+        mock_raw = MagicMock()
+        mock_raw.__str__ = lambda self: "Great work!"
+        mock_backend_cls.return_value.review_crew.return_value.kickoff.return_value = mock_raw
 
-    #     response = client.post("/review", json={
-    #         "code_smells": ["god class"],
-    #         "question_json": {},
-    #         "student_code": [],
-    #     })
-    #     assert response.status_code == 200
-    #     assert "feedback" in response.json()
+        response = client.post("/review", json={
+            "code_smells": ["god class"],
+            "question_json": {},
+            "student_code": [],
+        })
+        assert response.status_code == 200
+        assert "feedback" in response.json()
 
     @patch("codellamas_backend.api.get_backend")
     @patch("codellamas_backend.api.run_maven_verification",
@@ -1076,28 +1075,28 @@ class TestReviewEndpoint:
         })
         assert response.status_code == 500
 
-    # @patch("codellamas_backend.api.get_backend")
-    # @patch("codellamas_backend.api.run_maven_verification")
-    # def test_review_uses_maven_log_as_test_results(self, mock_maven, mock_backend):
-    #     mock_maven.return_value = {
-    #         "enabled": True,
-    #         "status": "FAIL",
-    #         "raw_log_head": "BUILD FAILURE log here",
-    #     }
-    #     mock_raw = MagicMock()
-    #     mock_raw.__str__ = lambda self: "feedback"
-    #     mock_backend.return_value.review_crew.return_value.kickoff.return_value = mock_raw
+    @patch("codellamas_backend.api.CodellamasBackend")
+    @patch("codellamas_backend.api.run_maven_verification")
+    def test_review_uses_maven_log_as_test_results(self, mock_maven, mock_backend_cls):
+        mock_maven.return_value = {
+            "enabled": True,
+            "status": "FAIL",
+            "raw_log_head": "BUILD FAILURE log here",
+        }
+        mock_raw = MagicMock()
+        mock_raw.__str__ = lambda self: "feedback"
+        mock_backend_cls.return_value.review_crew.return_value.kickoff.return_value = mock_raw
 
-    #     response = client.post("/review", json={
-    #         "code_smells": ["god class"],
-    #         "question_json": {},
-    #         "student_code": [],
-    #         "verify_maven": True,
-    #     })
-    #     assert response.status_code == 200
-    #     # confirm kickoff received the maven log as test_results
-    #     kickoff_inputs = mock_backend.return_value.review_crew.return_value.kickoff.call_args[1]["inputs"]
-    #     assert kickoff_inputs["test_results"] == "BUILD FAILURE log here"
+        response = client.post("/review", json={
+            "code_smells": ["god class"],
+            "question_json": {},
+            "student_code": [],
+            "verify_maven": True,
+        })
+        assert response.status_code == 200
+
+        kickoff_inputs = mock_backend_cls.return_value.review_crew.return_value.kickoff.call_args[1]["inputs"]
+        assert kickoff_inputs["test_results"] == "BUILD FAILURE log here"
 
 
 # ─────────────────────────────────────────────

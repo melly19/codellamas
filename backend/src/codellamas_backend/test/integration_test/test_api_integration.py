@@ -153,13 +153,12 @@ class TestGenerateEndpointIntegration:
 
 @pytest.mark.integration
 class TestReviewEndpointIntegration:
-    @patch("codellamas_backend.api.get_backend")
-    @patch("codellamas_backend.api.run_maven_verification",
-           return_value={"enabled": False})
-    def test_review_returns_200(self, mock_maven, mock_backend):
+    @patch("codellamas_backend.api.CodellamasBackend")
+    @patch("codellamas_backend.api.run_maven_verification", return_value={"enabled": False})
+    def test_review_returns_200(self, mock_maven, mock_backend_cls):
         mock_raw = MagicMock()
         mock_raw.__str__ = lambda self: "Good work!"
-        mock_backend.return_value.review_crew.return_value.kickoff.return_value = mock_raw
+        mock_backend_cls.return_value.review_crew.return_value.kickoff.return_value = mock_raw
 
         response = client.post("/review", json={
             "code_smells": ["god class"],
@@ -168,13 +167,12 @@ class TestReviewEndpointIntegration:
         })
         assert response.status_code == 200
 
-    @patch("codellamas_backend.api.get_backend")
-    @patch("codellamas_backend.api.run_maven_verification",
-           return_value={"enabled": False})
-    def test_review_response_has_feedback(self, mock_maven, mock_backend):
+    @patch("codellamas_backend.api.CodellamasBackend")
+    @patch("codellamas_backend.api.run_maven_verification", return_value={"enabled": False})
+    def test_review_response_has_feedback(self, mock_maven, mock_backend_cls):
         mock_raw = MagicMock()
         mock_raw.__str__ = lambda self: "Good work!"
-        mock_backend.return_value.review_crew.return_value.kickoff.return_value = mock_raw
+        mock_backend_cls.return_value.review_crew.return_value.kickoff.return_value = mock_raw
 
         response = client.post("/review", json={
             "code_smells": ["god class"],
@@ -183,13 +181,12 @@ class TestReviewEndpointIntegration:
         })
         assert "feedback" in response.json()
 
-    @patch("codellamas_backend.api.get_backend")
-    @patch("codellamas_backend.api.run_maven_verification",
-           return_value={"enabled": False})
-    def test_review_response_has_maven_verification(self, mock_maven, mock_backend):
+    @patch("codellamas_backend.api.CodellamasBackend")
+    @patch("codellamas_backend.api.run_maven_verification", return_value={"enabled": False})
+    def test_review_response_has_maven_verification(self, mock_maven, mock_backend_cls):
         mock_raw = MagicMock()
         mock_raw.__str__ = lambda self: "Good work!"
-        mock_backend.return_value.review_crew.return_value.kickoff.return_value = mock_raw
+        mock_backend_cls.return_value.review_crew.return_value.kickoff.return_value = mock_raw
 
         response = client.post("/review", json={
             "code_smells": ["god class"],

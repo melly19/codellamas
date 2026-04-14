@@ -51,13 +51,13 @@ class TestFullFlowIntegration:
 
     @patch("codellamas_backend.api.append_to_csv")
     @patch("codellamas_backend.api.save_exercise_to_repo")
-    @patch("codellamas_backend.api.run_maven_verification",
-           return_value={"enabled": False})
+    @patch("codellamas_backend.api.run_maven_verification", return_value={"enabled": False})
     @patch("codellamas_backend.api.generate_single_implementation_with_retries")
     @patch("codellamas_backend.api.generate_single_contract")
+    @patch("codellamas_backend.api.CodellamasBackend")
     @patch("codellamas_backend.api.get_backend")
     def test_generate_then_review(
-        self, mock_backend, mock_contract, mock_impl,
+        self, mock_get_backend, mock_backend_cls, mock_contract, mock_impl,
         mock_maven, mock_save, mock_csv
     ):
         exercise = make_exercise()
@@ -82,14 +82,16 @@ class TestFullFlowIntegration:
         # Step 2 — review using generated exercise data
         mock_raw = MagicMock()
         mock_raw.__str__ = lambda self: "Good refactoring!"
-        mock_backend.return_value.review_crew.return_value.kickoff.return_value = mock_raw
+        mock_backend_cls.return_value.review_crew.return_value.kickoff.return_value = mock_raw
 
         review_response = client.post("/review", json={
             "code_smells": ["god class"],
             "question_json": generated_data,
             "student_code": [
-                {"path": "src/main/java/com/example/App.java",
-                 "content": "package com.example;\npublic class App { // student fix }"}
+                {
+                    "path": "src/main/java/com/example/App.java",
+                    "content": "package com.example;\npublic class App { // student fix }"
+                }
             ],
             "verify_maven": False,
         })
