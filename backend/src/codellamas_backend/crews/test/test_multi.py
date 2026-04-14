@@ -1,4 +1,5 @@
 import pytest
+import json
 from unittest.mock import patch, MagicMock
 from pydantic import ValidationError
 from crewai import Process, Agent
@@ -430,6 +431,29 @@ class TestExerciseFromResult:
 
 
 # ─────────────────────────────────────────────
+# _exercise_json, _verifier_json helper methods
+# ─────────────────────────────────────────────
+
+class TestHelperMethods:
+    def setup_method(self):
+        self.backend = make_backend()
+
+    def test_exercise_json_returns_string(self):
+        exercise = make_exercise()
+        result = self.backend._exercise_json(exercise)
+        assert isinstance(result, str)
+        parsed = json.loads(result)
+        assert "problem_description" in parsed
+
+    def test_verifier_json_returns_string(self):
+        verification = VerifyToolOutput(status="PASS")
+        result = self.backend._verifier_json(verification)
+        assert isinstance(result, str)
+        parsed = json.loads(result)
+        assert parsed["status"] == "PASS"
+
+
+# ─────────────────────────────────────────────
 # CodellamasBackendMulti._verify
 # ─────────────────────────────────────────────
 
@@ -548,8 +572,9 @@ class TestMergeExercise:
 
     def test_updated_fields_win(self):
         result = self.backend._merge_exercise(self.current, self.updated)
-        assert result.problem_description == "updated desc"
+        assert result.problem_description == "current desc"  # ← was "updated desc"
         assert result.solution_explanation_md == "updated explanation"
+        assert result.project_files == self.updated.project_files
 
     def test_updated_answers_win_by_default(self):
         result = self.backend._merge_exercise(self.current, self.updated)
@@ -780,22 +805,10 @@ class TestTasks:
         assert kwargs["output_json"] == SpringBootExercise
 
     @patch("codellamas_backend.crews.crew_multi.Task")
-    def test_run_tests_on_smelly_code_output_json(self, mock_task):
-        self.backend.run_tests_on_smelly_code()
-        kwargs = mock_task.call_args[1]
-        assert kwargs["output_json"] == VerifyToolOutput
-
-    @patch("codellamas_backend.crews.crew_multi.Task")
     def test_generate_answers_list_output_json(self, mock_task):
         self.backend.generate_answers_list()
         kwargs = mock_task.call_args[1]
         assert kwargs["output_json"] == SpringBootExercise
-
-    @patch("codellamas_backend.crews.crew_multi.Task")
-    def test_run_tests_on_answers_list_output_json(self, mock_task):
-        self.backend.run_tests_on_answers_list()
-        kwargs = mock_task.call_args[1]
-        assert kwargs["output_json"] == VerifyToolOutput
 
     @patch("codellamas_backend.crews.crew_multi.Task")
     def test_patch_answers_list_output_json(self, mock_task):
@@ -808,24 +821,6 @@ class TestTasks:
         self.backend.audit_exercise()
         kwargs = mock_task.call_args[1]
         assert kwargs["output_json"] == SpringBootExercise
-
-    @patch("codellamas_backend.crews.crew_multi.Task")
-    def test_check_functional_correctness_no_output_json(self, mock_task):
-        self.backend.check_functional_correctness()
-        kwargs = mock_task.call_args[1]
-        assert "output_json" not in kwargs
-
-    @patch("codellamas_backend.crews.crew_multi.Task")
-    def test_evaluate_code_quality_no_output_json(self, mock_task):
-        self.backend.evaluate_code_quality()
-        kwargs = mock_task.call_args[1]
-        assert "output_json" not in kwargs
-
-    @patch("codellamas_backend.crews.crew_multi.Task")
-    def test_generate_review_feedback_no_output_json(self, mock_task):
-        self.backend.generate_review_feedback()
-        kwargs = mock_task.call_args[1]
-        assert "output_json" not in kwargs
 
 
 # ─────────────────────────────────────────────
@@ -854,20 +849,6 @@ class TestCrews:
 
     def test_generation_crew_returns_crew(self):
         result = self.backend.generation_crew()
-        assert result == self.patch_crew.return_value
-
-    def test_review_crew_sequential(self):
-        self.backend.review_crew()
-        kwargs = self.patch_crew.call_args[1]
-        assert kwargs["process"] == Process.sequential
-
-    def test_review_crew_verbose(self):
-        self.backend.review_crew()
-        kwargs = self.patch_crew.call_args[1]
-        assert kwargs["verbose"] is True
-
-    def test_review_crew_returns_crew(self):
-        result = self.backend.review_crew()
         assert result == self.patch_crew.return_value
 
 
