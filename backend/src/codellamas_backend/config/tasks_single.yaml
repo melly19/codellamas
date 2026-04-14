@@ -30,10 +30,15 @@ generate_contract:
     1. problem_description must be a multi-line structured task description, not a single short paragraph.
     2. Use exactly the following section order and headings:
        Topic:
+
        Code Smell(s):
+
        Your Task:
+
        Files to Edit:
+
        Expected Outcome:
+       
     3. Topic:
        - State the business/domain topic in 1 short line.
     4. Code Smell(s):
