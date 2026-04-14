@@ -178,7 +178,7 @@ class TestRunTestsMethod:
         self.tool._run_tests("/tmp/project", "maven")
         mock_run.assert_called_once()
         cmd = mock_run.call_args[0][0]
-        assert cmd == ["mvn", "test"]
+        assert cmd == "mvn test"
 
     @patch("subprocess.run")
     def test_cwd_is_project_dir(self, mock_run):
