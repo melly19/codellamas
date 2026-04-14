@@ -30,6 +30,7 @@ request_queue_counter = 0
 request_current_turn = 0
 write_condition = asyncio.Condition()
 
+
 def get_backend(
     mode: str,
     model_name: str | None = None,
@@ -847,4 +848,3 @@ async def review_solution(body: EvaluateRequest):
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Review crew failed: {e}")
-    

@@ -135,7 +135,7 @@ class TestCodellamasBackendInit:
     def test_defaults_to_env_and_constants(self):
         with patch("codellamas_backend.crews.crew_single.OPENROUTER_API_KEY", "test-key"):
             with patch.dict(os.environ, {"OPENROUTER_API_KEY": "test-key"}):
-                with patch("codellamas_backend.crews.crew_single.LLM") as mock_llm:
+                with patch("codellamas_backend.crews.crew_single.LLM"):
                     crew = CodellamasBackend()
                     assert crew.api_key == "test-key"
 

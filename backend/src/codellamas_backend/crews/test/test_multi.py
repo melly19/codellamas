@@ -1095,4 +1095,3 @@ class TestGenerateWithFixLoop:
         assert kickoff_kwargs["inputs"]["topic"] == "refactoring"
         assert kickoff_kwargs["inputs"]["code_smells"] == ["god class"]
         assert kickoff_kwargs["inputs"]["existing_codebase"] == "my code"
-        

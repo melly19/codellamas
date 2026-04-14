@@ -1,6 +1,7 @@
 import os
 import pytest
 
+from unittest.mock import patch
 from codellamas_backend.tools.workspace import Workspace
 from codellamas_backend.schemas.files import ProjectFile
 
