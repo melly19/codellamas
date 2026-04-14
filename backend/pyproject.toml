@@ -26,3 +26,22 @@ build-backend = "hatchling.build"
 
 [tool.crewai]
 type = "crew"
+
+[tool.pytest.ini_options]
+markers = [
+    "integration: marks tests as integration tests (deselect with '-m \"not integration\"')",
+]
+
+[tool.coverage.run]
+omit = [
+     "*/test/*",
+    "*test_*.py",
+    "*/*/test/*"
+]
+
+[tool.coverage.report]
+omit = [
+    "*/test/*",
+    "*test_*.py",
+    "*/*/test/*"
+]

@@ -69,14 +69,17 @@ class MavenTool:
             cmd += ["test"]
             cmd += extra_mvn_args
 
+            cmd_str = " ".join(cmd)
+
             try:
                 proc = subprocess.run(
-                    cmd,
+                    cmd_str,
                     cwd=ws.root,
                     capture_output=True,
                     text=True,
                     timeout=self.timeout_sec,
                     env=self._safe_env(),
+                    shell=True,
                 )
             except subprocess.TimeoutExpired:
                 return MavenTestResult(

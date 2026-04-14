@@ -29,6 +29,8 @@ class Workspace:
 
     def _write_one(self, rel_path: str, content: str) -> None:
         rel_path = rel_path.lstrip("/").replace("\\", "/")
+        if rel_path.endswith("/"):
+            raise ValueError(f"Invalid path: must be a file, not a directory ({rel_path})")
         abs_path = os.path.join(self.root, rel_path)
         os.makedirs(os.path.dirname(abs_path), exist_ok=True)
         with open(abs_path, "w", encoding="utf-8") as out:
@@ -37,6 +39,8 @@ class Workspace:
     def read(self, rel_path: str) -> Optional[str]:
         rel_path = rel_path.lstrip("/").replace("\\", "/")
         abs_path = os.path.join(self.root, rel_path)
+        if rel_path.endswith("/"):
+            raise ValueError(f"Invalid path: must be a file, not a directory ({rel_path})")
         if not os.path.exists(abs_path):
             return None
         with open(abs_path, "r", encoding="utf-8") as f:
