@@ -613,7 +613,7 @@ export class ActivityWebviewProvider implements vscode.WebviewViewProvider {
   </div>
 
   <div id="panel-generate" class="panel active">
-    <h1>Generating A Refactoring Exercise</h1>
+    <h1>Generate A Refactoring Exercise</h1>
 
     <div class="section-title">Select Code Smells</div>
     <div class="section-subtitle">
