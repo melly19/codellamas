@@ -613,17 +613,17 @@ export class ActivityWebviewProvider implements vscode.WebviewViewProvider {
   </div>
 
   <div id="panel-generate" class="panel active">
-    <h1>Generating Code Smell Activity</h1>
+    <h1>Generating A Refactoring Exercise</h1>
 
     <div class="section-title">Select Code Smells</div>
     <div class="section-subtitle">
-      Choose one or more refactoring topics to practise.
+      Choose one or more code smells to practise.
     </div>
     
     <div class="example" style="margin-bottom: 20px;"></div>
 
     <div class="topic">
-      <label for="topic">Topic</label>
+      <label for="topic">Exercise Topic</label>
       <input id="topic" type="text" placeholder="e.g. Banking, E-Commerce" />
     </div>
 
