@@ -1,0 +1,20 @@
+{
+  "compilerOptions": {
+    "module": "Node16",
+    "target": "ES2022",
+    "lib": ["ES2022"],
+    "rootDir": ".",
+    "outDir": "out",
+    "strict": true,
+    "types": ["node", "vscode"],
+    "esModuleInterop": true
+  },
+  "include": [
+    "frontend/src/**/*.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    "frontend/node_modules",
+    "out"
+  ]
+}
