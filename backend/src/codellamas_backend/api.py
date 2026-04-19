@@ -31,7 +31,6 @@ MAX_CONCURRENT_TASKS = int(os.getenv("MAX_CONCURRENT_TASKS", "200"))
 task_semaphore = asyncio.Semaphore(MAX_CONCURRENT_TASKS)
 
 
-
 def get_backend(
     mode: str,
     model_name: str | None = None,
