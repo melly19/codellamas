@@ -61,11 +61,12 @@ class JavaTestRunnerTool(BaseTool):
     def _run_tests(self, project_dir, build_tool):
         try:
             process = subprocess.run(
-                ["mvn", "test"],
+                "mvn test",
                 cwd=project_dir,
                 capture_output=True,
                 text=True,
-                timeout=60
+                timeout=60,
+                shell=True,
             )
 
             return {

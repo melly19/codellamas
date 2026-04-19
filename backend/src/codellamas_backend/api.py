@@ -26,9 +26,10 @@ logging.getLogger("LiteLLM").setLevel(logging.CRITICAL)
 app = FastAPI()
 CSV_FILE_PATH = "output/exercises_evaluation.csv"
 csv_write_lock = asyncio.Lock()
-request_queue_counter = 0
-request_current_turn = 0
-write_condition = asyncio.Condition()
+
+MAX_CONCURRENT_TASKS = int(os.getenv("MAX_CONCURRENT_TASKS", "200"))
+task_semaphore = asyncio.Semaphore(MAX_CONCURRENT_TASKS)
+
 
 
 def get_backend(
@@ -746,39 +747,23 @@ def _execute_single_generation(body: GenerateRequest, max_retries: int = 3):
 
 @app.post("/generate")
 async def generate_exercise(body: GenerateRequest):
-    global request_queue_counter, request_current_turn
-
-    async with csv_write_lock:
-        my_turn = request_queue_counter
-        request_queue_counter += 1
+    async def _run_with_semaphore():
+        async with task_semaphore:
+            return await asyncio.to_thread(_execute_single_generation, body, 3)
 
     try:
-        # Run generations in parallel in separate threads
-        tasks = [asyncio.to_thread(_execute_single_generation, body, 3) for _ in range(body.count)]
+        # Run generations in parallel, limited by semaphore
+        tasks = [_run_with_semaphore() for _ in range(body.count)]
         results = await asyncio.gather(*tasks)
     except Exception as e:
-        # Prevent queue from blocking on exception
-        async with write_condition:
-            while request_current_turn != my_turn:
-                await write_condition.wait()
-            request_current_turn += 1
-            write_condition.notify_all()
-
         logging.error(f"Generation failed: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
-    # Sequential write phase
-    async with write_condition:
-        while request_current_turn != my_turn:
-            await write_condition.wait()
-
-        try:
-            for response, csv_args in results:
-                if csv_args is not None:
-                    append_to_csv(**csv_args)
-        finally:
-            request_current_turn += 1
-            write_condition.notify_all()
+    # Write phase
+    for response, csv_args in results:
+        if csv_args is not None:
+            async with csv_write_lock:
+                await asyncio.to_thread(append_to_csv, **csv_args)
 
     responses = [res for res, _ in results]
     if body.count == 1:
@@ -793,8 +778,7 @@ async def generate_exercise(body: GenerateRequest):
     }
 
 
-@app.post("/review")
-async def review_solution(body: EvaluateRequest):
+def _execute_single_review(body: EvaluateRequest) -> Dict[str, Any]:
     parsed_q: Dict[str, Any] = body.question_json or {}
 
     project_files_q = parsed_q.get("project_files", [])
@@ -836,15 +820,25 @@ async def review_solution(body: EvaluateRequest):
             "verify_maven": body.verify_maven,
         }
 
-        backend = get_backend(
-            body.mode,
+        # Use the single-agent review backend for both single and multi modes.
+        # The multi-agent backend currently has no review_crew implementation.
+        review_backend = CodellamasBackend(
             model_name=body.model_name,
             api_endpoint=body.api_endpoint,
             api_key=body.api_key,
         )
-        raw = backend.review_crew().kickoff(inputs=inputs)
+        raw = review_backend.review_crew().kickoff(inputs=inputs)
 
         return {"feedback": str(raw), "maven_verification": maven_verification}
 
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Review crew failed: {e}")
+        raise Exception(f"Review crew failed: {e}")
+
+
+@app.post("/review")
+async def review_solution(body: EvaluateRequest):
+    async with task_semaphore:
+        try:
+            return await asyncio.to_thread(_execute_single_review, body)
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=str(e))

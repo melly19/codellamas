@@ -1,2 +1,3 @@
 "backend/src/codellamas_backend/output/*.csv" 
 node_modules/
+.coverage

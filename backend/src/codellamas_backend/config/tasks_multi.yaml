@@ -3,10 +3,18 @@
 define_problem:
   description: >
     INPUTS:
-    - {topic}: The business domain for the Spring Boot project (e.g. "banking", "e-commerce")
+    - {topic}: The exact topic/domain/setting requested by the user
     - {code_smells}: A list of target code smells that this exercise should contain
     - {existing_codebase}: OPTIONAL. A structured string containing an existing Spring Boot codebase.
       Use "NONE" if a fresh project should be generated.
+
+    CRITICAL TOPIC LOCK:
+    1. The exercise MUST be explicitly about the provided topic.
+    2. You MUST NOT substitute a different domain such as e-commerce, shopping, banking, finance, healthcare, etc. unless it is explicitly the provided topic.
+    3. The problem description must mention the user topic clearly and the feature must materially depend on that topic.
+    4. If the topic is broad, choose one small feature within that topic, but keep the topic recognizable.
+    5. If the topic is unusual or non-business, still adapt it into a small Java/Maven feature without changing the topic.
+
 
     Generate a simple, small, realistic and concise software problem description in the given domain.
     If an existing codebase is provided, adapt the exercise to that structure.
@@ -147,96 +155,6 @@ run_tests_on_smelly_code:
     Strict JSON verifier output with status, failed_tests, errors, and raw_log_head.
   agent: test_runner
 
-patch_smelly_code:
-  description: >
-    Review:
-    1. The FULL exercise JSON for the smelly implementation
-    2. The JSON verifier output for the smelly implementation
-
-    If there are compilation or test failures, patch the smelly implementation so it passes.
-    Preserve the code smells as much as possible.
-
-    CRITICAL RULES:
-    1. Fix only correctness, compilation, packaging, path, or Maven build issues.
-    2. Do NOT refactor it into a clean solution.
-    3. Do NOT remove the intended smells unless unavoidable for correctness.
-    4. Do NOT drop any fields from the payload.
-    5. `project_files` MUST continue to include a valid root-level `pom.xml`.
-
-    Hard constraints:
-    1. Preserve the small project scope.
-    2. Do not increase Java source files beyond 5.
-    3. Do not increase `paths_to_ex` beyond 2 Java files.
-    4. Do not introduce new files unless absolutely necessary for correctness.
-    5. Preserve the code smells as much as possible.
-    6. `pom.xml` does NOT count toward the Java source file limit.
-
-    OUTPUT MUST BE STRICT JSON ONLY.
-    Return the FULL exercise payload again in exactly this shape:
-    {
-      "problem_description": "<carry forward unchanged or minimally updated>",
-      "project_files": [{"path":"pom.xml","content":"..."},{"path":"...","content":"..."}],
-      "test_files": [{"path":"...","content":"..."}],
-      "solution_explanation_md": "<brief markdown note>",
-      "paths_to_ex": ["src/main/java/..."],
-      "answers_list": []
-    }
-  expected_output: >
-    Strict JSON object containing the corrected smelly exercise payload while preserving simplicity.
-  agent: debug_specialist
-
-generate_answers_list:
-  description: >
-    Using:
-    1. The FULL smelly exercise JSON
-    2. The JUnit 5 test suite as the authoritative contract
-
-    Produce the CLEAN REFERENCE SOLUTION.
-
-    Hard constraints:
-    1. Keep the same small Maven project structure.
-    2. Do not increase Java source files beyond 5.
-    3. Do not increase paths_to_ex beyond 2 Java files.
-    4. The refactoring should primarily affect only the files listed in paths_to_ex.
-    5. Avoid introducing extra abstractions unless they are truly necessary.
-    6. Prefer simple refactoring over enterprise-style redesign.
-    7. The project must remain Maven-runnable with the root-level pom.xml preserved.
-
-    Requirements:
-    1. Remove or significantly mitigate the intended code smells.
-    2. Preserve the EXACT same public API required by the tests.
-    3. Ensure the clean solution still passes the same tests.
-    4. Put the clean solution files into `answers_list`.
-    5. Each entry in `answers_list` MUST include:
-       - path: full relative path
-       - content: full file contents
-    6. If the clean solution requires pom.xml changes, include `pom.xml` in `answers_list`;
-       otherwise preserve the original `pom.xml` from `project_files` unchanged.
-    7. Do not omit build-critical files.
-
-    OUTPUT MUST BE STRICT JSON ONLY.
-    Return the FULL exercise payload again in exactly this shape:
-    {
-      "problem_description": "<carry forward unchanged>",
-      "project_files": [{"path":"pom.xml","content":"..."},{"path":"...","content":"..."}],
-      "test_files": [{"path":"...","content":"..."}],
-      "solution_explanation_md": "<markdown explanation of how the clean solution removes the smells>",
-      "paths_to_ex": ["src/main/java/..."],
-      "answers_list": [{"path":"...","content":"..."}]
-    }
-
-    Important:
-    - `project_files` must carry forward the original smelly implementation unchanged.
-    - `project_files` must continue to include `pom.xml`.
-    - `test_files` must carry forward the exact same tests unchanged.
-    - `paths_to_ex` must carry forward unchanged.
-    - `problem_description` must not be omitted.
-    - `solution_explanation_md` must not be omitted.
-    - Do NOT return empty `project_files`, `test_files`, or `paths_to_ex`.
-  expected_output: >
-    Strict JSON object containing the full exercise payload with a populated answers_list.
-  agent: answers_list_developer
-
 run_tests_on_answers_list:
   description: >
     Using the FULL exercise JSON from the previous task, call the maven_verify tool
@@ -267,23 +185,151 @@ run_tests_on_answers_list:
     Strict JSON verifier output with status, failed_tests, errors, and raw_log_head.
   agent: test_runner
 
+patch_smelly_code:
+  description: >
+    INPUTS:
+    - {topic}: The exact original topic/domain/setting requested by the user
+    - {code_smells}: The requested code smells
+    - {existing_codebase}: Existing project context, or "NONE"
+    - {exercise_json}: The FULL current smelly exercise JSON
+    - {verifier_json}: The FULL verifier result JSON for the smelly implementation
+
+    You are PATCHING an existing exercise, not inventing a new one.
+
+    Read {exercise_json} as the source of truth for:
+    - problem_description
+    - project_files
+    - test_files
+    - solution_explanation_md
+    - paths_to_ex
+    - answers_list
+
+    Read {verifier_json} as the source of truth for:
+    - status
+    - failed_tests
+    - errors
+    - raw_log_head
+
+    Task:
+    Patch only the smelly implementation so the exercise passes the tests.
+
+    CRITICAL TOPIC PRESERVATION:
+    1. The original topic/domain/setting in the exercise JSON is mandatory and immutable.
+    2. You MUST preserve that topic in code, naming, strings, examples, and business meaning.
+    3. You MUST NOT replace the exercise with a fallback toy domain such as Calculator,
+       Shopping Cart, Bank Account, Inventory, Library, Employee Manager, or Task Tracker.
+    4. You are patching in place.
+
+    CRITICAL PATCH RULES:
+    1. Fix only correctness, compilation, packaging, path, or Maven build issues.
+    2. Do NOT refactor into a clean solution.
+    3. Do NOT remove the intended smells unless unavoidable for correctness.
+    4. Do NOT drop any fields.
+    5. Preserve the existing public API and tests.
+
+    OUTPUT MUST BE STRICT JSON ONLY.
+    Return the FULL exercise payload:
+    {
+      "problem_description": "<carry forward unchanged or minimally updated>",
+      "project_files": [{"path":"pom.xml","content":"..."},{"path":"...","content":"..."}],
+      "test_files": [{"path":"...","content":"..."}],
+      "solution_explanation_md": "<brief markdown note>",
+      "paths_to_ex": ["src/main/java/..."],
+      "answers_list": []
+    }
+  expected_output: >
+    Strict JSON object containing the corrected smelly exercise payload while preserving the exact topic.
+  agent: debug_specialist
+
+
+generate_answers_list:
+  description: >
+    INPUTS:
+    - {topic}: The exact original topic/domain/setting requested by the user
+    - {code_smells}: The requested code smells
+    - {existing_codebase}: Existing project context, or "NONE"
+    - {exercise_json}: The FULL smelly exercise JSON
+
+    Read {exercise_json} as the authoritative source of truth for:
+    - problem_description
+    - project_files
+    - test_files
+    - solution_explanation_md
+    - paths_to_ex
+    - answers_list
+
+    Task:
+    Produce the CLEAN REFERENCE SOLUTION for this exact exercise.
+
+    CRITICAL TOPIC PRESERVATION:
+    1. The original topic/domain/setting from the exercise JSON is mandatory and immutable.
+    2. The clean solution MUST remain explicitly and recognizably about that exact topic.
+    3. You MUST NOT replace the domain with a generic toy problem such as Calculator,
+       Shopping Cart, Bank Account, Inventory, Employee Manager, or Task Tracker.
+    4. You are refactoring the existing exercise, not reimagining it.
+
+    CRITICAL API RULES:
+    1. Preserve the EXACT public API required by the tests.
+    2. Preserve the exact same package structure and file paths unless clearly invalid.
+    3. Keep the project small.
+    4. Put only the changed clean files into answers_list.
+
+    OUTPUT MUST BE STRICT JSON ONLY.
+    Return the FULL exercise payload:
+    {
+      "problem_description": "<carry forward unchanged>",
+      "project_files": [{"path":"pom.xml","content":"..."},{"path":"...","content":"..."}],
+      "test_files": [{"path":"...","content":"..."}],
+      "solution_explanation_md": "<markdown explanation of how the clean solution removes the smells>",
+      "paths_to_ex": ["src/main/java/..."],
+      "answers_list": [{"path":"...","content":"..."}]
+    }
+  expected_output: >
+    Strict JSON object containing the full exercise payload with a populated answers_list.
+  agent: answers_list_developer
+
+
 patch_answers_list:
   description: >
-    Review:
-    1. The FULL exercise JSON containing the generated answers_list
-    2. The JSON verifier output for the reference solution
+    INPUTS:
+    - {topic}: The exact original topic/domain/setting requested by the user
+    - {code_smells}: The requested code smells
+    - {existing_codebase}: Existing project context, or "NONE"
+    - {exercise_json}: The FULL current exercise JSON containing answers_list
+    - {verifier_json}: The FULL verifier result JSON for the reference solution
 
-    If there are failures, patch the reference solution so it passes all tests.
+    Read {exercise_json} as the source of truth for:
+    - problem_description
+    - project_files
+    - test_files
+    - solution_explanation_md
+    - paths_to_ex
+    - answers_list
+
+    Read {verifier_json} as the source of truth for:
+    - status
+    - failed_tests
+    - errors
+    - raw_log_head
+
+    Task:
+    Patch only the clean reference solution so it passes all tests.
+
+    CRITICAL TOPIC PRESERVATION:
+    1. The original topic/domain/setting from the exercise JSON is mandatory and immutable.
+    2. You MUST preserve that topic in answers_list.
+    3. You MUST NOT rewrite the solution into a generic fallback domain such as Calculator,
+       Shopping Cart, Bank Account, Employee Manager, Inventory, etc.
+    4. Patch the existing clean solution in place.
 
     CRITICAL RULES:
     1. Keep the solution clean and maintainable.
     2. Preserve the exact public API expected by the tests.
-    3. Do NOT drop any fields from the payload.
-    4. Do NOT replace the answers_list with empty content.
-    5. The resulting package must remain Maven-runnable and must preserve a valid root-level pom.xml.
+    3. Do NOT drop any fields.
+    4. Do NOT replace answers_list with empty content.
 
     OUTPUT MUST BE STRICT JSON ONLY.
-    Return the FULL exercise payload again in exactly this shape:
+    Return the FULL exercise payload:
     {
       "problem_description": "<carry forward unchanged>",
       "project_files": [{"path":"...","content":"..."}],
@@ -296,32 +342,40 @@ patch_answers_list:
     Strict JSON object containing the corrected full exercise payload with answers_list.
   agent: debug_specialist
 
+
 audit_exercise:
   description: >
-    Review the complete exercise package:
-    1. The smelly code in `project_files`
-    2. The clean reference solution in `answers_list`
-    3. The JUnit 5 test suite in `test_files`
+    INPUTS:
+    - {topic}: The exact original topic/domain/setting requested by the user
+    - {code_smells}: The requested code smells
+    - {existing_codebase}: Existing project context, or "NONE"
+    - {exercise_json}: The FULL final exercise JSON
+
+    Read {exercise_json} as the source of truth for:
+    - problem_description
+    - project_files
+    - test_files
+    - solution_explanation_md
+    - paths_to_ex
+    - answers_list
+
+    Task:
+    Audit the complete exercise package.
 
     Validate:
     1. Functional equivalence between the smelly implementation and the reference solution
     2. The requested code smells are clearly present in the smelly implementation
     3. The reference solution meaningfully removes or mitigates those smells
-    4. The exercise is pedagogically useful
-    5. The exercise remains small and simple
-    6. project_files has at most 5 files
-    7. paths_to_ex has at most 2 files
-    8. A valid root-level pom.xml exists in project_files or is preserved for the final package
-    9. pom.xml is mandatory but does not count toward the Java file limit
+    4. The final exercise remains explicitly grounded in the exact original user topic/domain/setting
 
     IMPORTANT:
     - This is an audit, not a rewrite step.
     - Preserve project_files, test_files, paths_to_ex, and answers_list exactly unless a field is empty or invalid.
-    - Do not change code or tests just to "improve" them.
+    - If the package has drifted into a different domain such as Calculator or another generic toy problem,
+      treat that as INVALID and restore/carry forward only topic-consistent content.
 
     OUTPUT MUST BE STRICT JSON ONLY.
-
-    Return the final FULL exercise package in exactly this shape:
+    Return the FULL exercise payload:
     {
       "problem_description": "<carry forward unchanged or minimally clarified>",
       "project_files": [{"path":"...","content":"..."}],
@@ -331,8 +385,7 @@ audit_exercise:
       "answers_list": [{"path":"...","content":"..."}]
     }
   expected_output: >
-    Strict JSON final exercise package with problem_description, project_files, test_files,
-    solution_explanation_md, paths_to_ex, and answers_list.
+    Strict JSON final exercise package with exact topic preservation.
   agent: quality_assurance
 
 # --- REVIEW CREW TASKS ---
