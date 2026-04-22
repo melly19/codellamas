@@ -3,10 +3,10 @@
   "displayName": "codellamas",
   "publisher": "MichaelSuteja",
   "description": "Java Spring Boot Refactoring Exercise Generator",
-  "version": "1.5.0",
+  "version": "1.6.0",
   "icon": "media/codellamas-big.png",
   "engines": {
-    "vscode": "^1.115.0"
+    "vscode": "^1.116.0"
   },
   "categories": [
     "Other"
@@ -65,10 +65,13 @@
     "@types/mocha": "^10.0.10",
     "@types/node": "^22.19.17",
     "@types/unzipper": "^0.10.11",
-    "@types/vscode": "^1.115.0",
+    "@types/vscode": "^1.116.0",
     "@vscode/test-cli": "^0.0.12",
     "@vscode/test-electron": "^2.5.2",
     "eslint": "^9.39.2",
+    "jest": "^30.3.0",
+    "jest-util": "^30.3.0",
+    "ts-jest": "^29.4.9",
     "typescript": "^5.9.3",
     "typescript-eslint": "^8.52.0"
   },
